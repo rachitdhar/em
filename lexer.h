@@ -4,7 +4,6 @@
 #define LEXER_H
 
 #include <stdio.h>
-#include <cstdlib>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -13,7 +12,7 @@
 enum Token_Type {
     TOKEN_IDENTIFIER,          // abcd  sdf2324  dfs_23fs56df
     TOKEN_KEYWORD,
-    TOKEN_NUMERIC_LITERAL,     // 23434
+    TOKEN_NUMERIC_LITERAL,     // 23434 12.656
     TOKEN_CHAR_LITERAL,        // 'A'
     TOKEN_STRING_LITERAL,      // "fds..."
     TOKEN_SYMBOL,              // , ; #
@@ -62,6 +61,16 @@ enum Token_Type {
     TOKEN_AMPERSAND,           // & (binary and / address-of)
 };
 
+
+// partial types
+// (for raw strings, before having a determined token)
+
+enum Partial_Token_Type {
+    PTOK_NUMERIC,     // pure numbers
+    PTOK_ALNUM,       // both alphabets and numbers (starts with alpha)
+};
+
+
 struct Token {
     std::string val;
     Token_Type type;
@@ -78,9 +87,13 @@ struct Lexer {
 // *****************************************************
 
 std::string KEYWORDS[] = {
+    /* literals */
+    "NULL",
+
     /* data types */
     "void",
     "uint",
+    "float",
     "char",
     "string",
 
@@ -95,5 +108,18 @@ std::string KEYWORDS[] = {
     "break",
     "continue",
 };
+
+//                Helper functions
+// ************************************************
+
+bool is_alpha(char c)
+{
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
+bool is_numeric(char c)
+{
+    return (c >= '0' && c <= '9');
+}
 
 #endif

@@ -93,18 +93,17 @@ void make_token_as_per_ptok(Lexer* lexer, std::string& curr, Partial_Token_Type 
 }
 
 
-// TODO: Handle comments
-
 // generates tokens for a line
 void generate_tokens(Lexer* lexer)
 {
     int pos = 0;
     bool currently_reading_token = false;
+    bool encountered_comment = false;
 
     std::string curr;
     Partial_Token_Type ptok;
 
-    while (lexer->line[pos]) {
+    while (lexer->line[pos] && !encountered_comment) {
 	if (!currently_reading_token) {
 	    // skip whitespace
 	    while (
@@ -341,6 +340,12 @@ void generate_tokens(Lexer* lexer)
 		if (next && next == '=') {
 		    lexer->tokens.push_back(Token{"/=", TOKEN_DIVIDEEQ});
 		    pos++;
+		    break;
+		} else if (next && next == '/') {
+		    // encountered a comment
+		    // (so the remaining line ahead will be ignored)
+
+		    encountered_comment = true;
 		    break;
 		}
 		lexer->tokens.push_back(Token{"/", TOKEN_DIVIDE});

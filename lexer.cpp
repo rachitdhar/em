@@ -69,30 +69,6 @@ and this is NOT a continuation.
 */
 
 
-void make_token_as_per_ptok(Lexer* lexer, std::string& curr, Partial_Token_Type ptok)
-{
-    if (ptok == PTOK_NUMERIC) {
-	lexer->tokens.push_back(Token{curr, TOKEN_NUMERIC_LITERAL});
-	return;
-    }
-
-    for (int i = 0; i < TOTAL_KEYWORDS; i++) {
-	if (KEYWORDS[i] == curr) {
-	    lexer->tokens.push_back(Token{curr, TOKEN_KEYWORD});
-	    return;
-	}
-    }
-
-    for (int i = 0; i < TOTAL_DATA_TYPES; i++) {
-	if (DATA_TYPES[i] == curr) {
-	    lexer->tokens.push_back(Token{curr, TOKEN_DATA_TYPE});
-	    return;
-	}
-    }
-    lexer->tokens.push_back(Token{curr, TOKEN_IDENTIFIER});
-}
-
-
 // generates tokens for a line
 void generate_tokens(Lexer* lexer)
 {
@@ -120,7 +96,7 @@ void generate_tokens(Lexer* lexer)
 
 	// reached a whitespace or end of line
 	if (curr != "" && (!c || c == ' ' || c == '\t')) {
-	    make_token_as_per_ptok(lexer, curr, ptok);
+	    make_token_as_per_ptok(lexer, curr, ptok, pos);
 	    curr.clear();
 
 	    pos++;
@@ -153,8 +129,9 @@ void generate_tokens(Lexer* lexer)
 	    // RULE BREAK:
 	    // invalid to have identifier starting with numbers
 	    if (curr != "" && ptok == PTOK_NUMERIC) {
-		fprintf(stderr, "SYNTAX ERROR: Invalid token. Identifiers cannot start with numeric characters. [line %d]", lexer->line_num);
-		exit(1);
+		throw_error(
+		"SYNTAX ERROR: Invalid token. Identifiers cannot start with numeric characters.",
+		lexer->line, lexer->line_num, pos);
 	    }
 
 	    curr += c;
@@ -171,7 +148,7 @@ void generate_tokens(Lexer* lexer)
 	// which is different from whatever token the symbol will be in
 
 	if (curr != "") {
-	    make_token_as_per_ptok(lexer, curr, ptok);
+	    make_token_as_per_ptok(lexer, curr, ptok, pos);
 	    curr.clear();
 	}
 
@@ -179,32 +156,32 @@ void generate_tokens(Lexer* lexer)
 	switch (c) {
 	    /* brackets */
 	    case '{': {
-		lexer->tokens.push_back(Token{"{", TOKEN_LEFT_BRACE});
+		lexer->tokens.push_back(Token{"{", TOKEN_LEFT_BRACE, lexer->line_num, pos});
 		pos++;
 		break;
 	    }
 	    case '}': {
-		lexer->tokens.push_back(Token{"}", TOKEN_RIGHT_BRACE});
+		lexer->tokens.push_back(Token{"}", TOKEN_RIGHT_BRACE, lexer->line_num, pos});
 		pos++;
 		break;
 	    }
 	    case '(': {
-		lexer->tokens.push_back(Token{"(", TOKEN_LEFT_PAREN});
+		lexer->tokens.push_back(Token{"(", TOKEN_LEFT_PAREN, lexer->line_num, pos});
 		pos++;
 		break;
 	    }
 	    case ')': {
-		lexer->tokens.push_back(Token{")", TOKEN_RIGHT_PAREN});
+		lexer->tokens.push_back(Token{")", TOKEN_RIGHT_PAREN, lexer->line_num, pos});
 		pos++;
 		break;
 	    }
 	    case '[': {
-		lexer->tokens.push_back(Token{"[", TOKEN_LEFT_SQUARE});
+		lexer->tokens.push_back(Token{"[", TOKEN_LEFT_SQUARE, lexer->line_num, pos});
 		pos++;
 		break;
 	    }
 	    case ']': {
-		lexer->tokens.push_back(Token{"]", TOKEN_RIGHT_SQUARE});
+		lexer->tokens.push_back(Token{"]", TOKEN_RIGHT_SQUARE, lexer->line_num, pos});
 		pos++;
 		break;
 	    }
@@ -212,16 +189,18 @@ void generate_tokens(Lexer* lexer)
 	    case '\'': {
 		char literal_val = lexer->line[++pos];
 		if (!literal_val || literal_val == '\t') {
-		    fprintf(stderr, "SYNTAX ERROR: Invalid character literal [line %d]", lexer->line_num);
-		    exit(1);
+		    throw_error(
+		    "SYNTAX ERROR: Invalid character literal",
+		    lexer->line, lexer->line_num, pos);
 		}
 
-		lexer->tokens.push_back(Token{std::string(1, literal_val), TOKEN_CHAR_LITERAL});
+		lexer->tokens.push_back(Token{std::string(1, literal_val), TOKEN_CHAR_LITERAL, lexer->line_num, pos});
 
 		char closing_quote = lexer->line[++pos];
 		if (!closing_quote || closing_quote != '\'') {
-		    fprintf(stderr, "SYNTAX ERROR: Invalid character literal. Closing quote not found. [line %d]", lexer->line_num);
-		    exit(1);
+		    throw_error(
+		    "SYNTAX ERROR: Invalid character literal. Closing quote not found.",
+		    lexer->line, lexer->line_num, pos);
 		}
 		pos++;
 		break;
@@ -233,8 +212,9 @@ void generate_tokens(Lexer* lexer)
 
 		while (literal_char && literal_char != '\"') {
 		    if (literal_char == '\t') {
-			fprintf(stderr, "SYNTAX ERROR: Invalid character \'\\t\' in string literal [line %d]", lexer->line_num);
-			exit(1);
+			throw_error(
+			"SYNTAX ERROR: Invalid character \'\\t\' in string literal",
+			lexer->line, lexer->line_num, pos);
 		    }
 
 		    literal += literal_char;
@@ -243,32 +223,33 @@ void generate_tokens(Lexer* lexer)
 		}
 
 		if (!literal_char) {
-		    fprintf(stderr, "SYNTAX ERROR: Invalid string literal. Closing quote not found. [line %d]", lexer->line_num);
-		    exit(1);
+		    throw_error(
+		    "SYNTAX ERROR: Invalid string literal. Closing quote not found.",
+		    lexer->line, lexer->line_num, pos);
 		}
 
-		lexer->tokens.push_back(Token{literal, TOKEN_STRING_LITERAL});
+		lexer->tokens.push_back(Token{literal, TOKEN_STRING_LITERAL, lexer->line_num, pos});
 		pos++;
 		break;
 	    }
 	    /* other symbols */
 	    case '~': {
-		lexer->tokens.push_back(Token{"~", TOKEN_BIT_NOT});
+		lexer->tokens.push_back(Token{"~", TOKEN_BIT_NOT, lexer->line_num, pos});
 		pos++;
 		break;
 	    }
 	    case '.': {
-	      lexer->tokens.push_back(Token{".", TOKEN_DOT});
+	      lexer->tokens.push_back(Token{".", TOKEN_DOT, lexer->line_num, pos});
 		pos++;
 		break;
 	    }
 	    case ',': {
-		lexer->tokens.push_back(Token{",", TOKEN_SEPARATOR});
+		lexer->tokens.push_back(Token{",", TOKEN_SEPARATOR, lexer->line_num, pos});
 		pos++;
 		break;
 	    }
 	    case ';': {
-		lexer->tokens.push_back(Token{";", TOKEN_DELIMITER});
+		lexer->tokens.push_back(Token{";", TOKEN_DELIMITER, lexer->line_num, pos});
 		pos++;
 		break;
 	    }
@@ -278,11 +259,11 @@ void generate_tokens(Lexer* lexer)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"!=", TOKEN_NOTEQ});
+		    lexer->tokens.push_back(Token{"!=", TOKEN_NOTEQ, lexer->line_num, pos});
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"!", TOKEN_NOT});
+		lexer->tokens.push_back(Token{"!", TOKEN_NOT, lexer->line_num, pos});
 		break;
 	    }
 	    /* (+ ++ +=)  */
@@ -291,15 +272,15 @@ void generate_tokens(Lexer* lexer)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"+=", TOKEN_PLUSEQ});
+		    lexer->tokens.push_back(Token{"+=", TOKEN_PLUSEQ, lexer->line_num, pos});
 		    pos++;
 		    break;
 		} else if (next && next == '+') {
-		    lexer->tokens.push_back(Token{"++", TOKEN_INCREMENT});
+		    lexer->tokens.push_back(Token{"++", TOKEN_INCREMENT, lexer->line_num, pos});
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"+", TOKEN_PLUS});
+		lexer->tokens.push_back(Token{"+", TOKEN_PLUS, lexer->line_num, pos});
 		break;
 	    }
 	    /* (- -- -=) */
@@ -308,15 +289,15 @@ void generate_tokens(Lexer* lexer)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"-=", TOKEN_MINUSEQ});
+		    lexer->tokens.push_back(Token{"-=", TOKEN_MINUSEQ, lexer->line_num, pos});
 		    pos++;
 		    break;
 		} else if (next && next == '-') {
-		    lexer->tokens.push_back(Token{"--", TOKEN_DECREMENT});
+		    lexer->tokens.push_back(Token{"--", TOKEN_DECREMENT, lexer->line_num, pos});
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"-", TOKEN_MINUS});
+		lexer->tokens.push_back(Token{"-", TOKEN_MINUS, lexer->line_num, pos});
 		break;
 	    }
 	    /* (* *=) */
@@ -325,11 +306,11 @@ void generate_tokens(Lexer* lexer)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"*=", TOKEN_MULTIPLYEQ});
+		    lexer->tokens.push_back(Token{"*=", TOKEN_MULTIPLYEQ, lexer->line_num, pos});
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"*", TOKEN_STAR});
+		lexer->tokens.push_back(Token{"*", TOKEN_STAR, lexer->line_num, pos});
 		break;
 	    }
 	    /* (/ /=) */
@@ -338,7 +319,7 @@ void generate_tokens(Lexer* lexer)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"/=", TOKEN_DIVIDEEQ});
+		    lexer->tokens.push_back(Token{"/=", TOKEN_DIVIDEEQ, lexer->line_num, pos});
 		    pos++;
 		    break;
 		} else if (next && next == '/') {
@@ -348,7 +329,7 @@ void generate_tokens(Lexer* lexer)
 		    encountered_comment = true;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"/", TOKEN_DIVIDE});
+		lexer->tokens.push_back(Token{"/", TOKEN_DIVIDE, lexer->line_num, pos});
 		break;
 	    }
 	    /* (% %=) */
@@ -357,11 +338,11 @@ void generate_tokens(Lexer* lexer)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"%=", TOKEN_MODEQ});
+		    lexer->tokens.push_back(Token{"%=", TOKEN_MODEQ, lexer->line_num, pos});
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"%", TOKEN_MOD});
+		lexer->tokens.push_back(Token{"%", TOKEN_MOD, lexer->line_num, pos});
 		break;
 	    }
 	    /* (< <=) */
@@ -370,11 +351,11 @@ void generate_tokens(Lexer* lexer)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"<=", TOKEN_LESSEQ});
+		    lexer->tokens.push_back(Token{"<=", TOKEN_LESSEQ, lexer->line_num, pos});
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"<", TOKEN_LESS});
+		lexer->tokens.push_back(Token{"<", TOKEN_LESS, lexer->line_num, pos});
 		break;
 	    }
 	    /* (> >=) */
@@ -383,11 +364,11 @@ void generate_tokens(Lexer* lexer)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{">=", TOKEN_GREATEREQ});
+		    lexer->tokens.push_back(Token{">=", TOKEN_GREATEREQ, lexer->line_num, pos});
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{">", TOKEN_GREATER});
+		lexer->tokens.push_back(Token{">", TOKEN_GREATER, lexer->line_num, pos});
 		break;
 	    }
 	    /* (= ==) */
@@ -396,11 +377,11 @@ void generate_tokens(Lexer* lexer)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"==", TOKEN_EQUAL});
+		    lexer->tokens.push_back(Token{"==", TOKEN_EQUAL, lexer->line_num, pos});
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"=", TOKEN_ASSIGN});
+		lexer->tokens.push_back(Token{"=", TOKEN_ASSIGN, lexer->line_num, pos});
 		break;
 	    }
 	    /* (& && &= &&=) */
@@ -409,20 +390,20 @@ void generate_tokens(Lexer* lexer)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"&=", TOKEN_BIT_ANDEQ});
+		    lexer->tokens.push_back(Token{"&=", TOKEN_BIT_ANDEQ, lexer->line_num, pos});
 		    pos++;
 		    break;
 		} else if (next && next == '&') {
 		    next = lexer->line[++pos];
 		    if (next && next == '=') {
-			lexer->tokens.push_back(Token{"&&=", TOKEN_ANDEQ});
+			lexer->tokens.push_back(Token{"&&=", TOKEN_ANDEQ, lexer->line_num, pos});
 			pos++;
 			break;
 		    }
-		    lexer->tokens.push_back(Token{"&&", TOKEN_AND});
+		    lexer->tokens.push_back(Token{"&&", TOKEN_AND, lexer->line_num, pos});
 		    break;
 		}
-		lexer->tokens.push_back(Token{"&", TOKEN_AMPERSAND});
+		lexer->tokens.push_back(Token{"&", TOKEN_AMPERSAND, lexer->line_num, pos});
 		break;
 	    }
 	    /* (| || |= ||=) */
@@ -431,20 +412,20 @@ void generate_tokens(Lexer* lexer)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"|=", TOKEN_BIT_OREQ});
+		    lexer->tokens.push_back(Token{"|=", TOKEN_BIT_OREQ, lexer->line_num, pos});
 		    pos++;
 		    break;
 		} else if (next && next == '|') {
 		    next = lexer->line[++pos];
 		    if (next && next == '=') {
-			lexer->tokens.push_back(Token{"||=", TOKEN_OREQ});
+			lexer->tokens.push_back(Token{"||=", TOKEN_OREQ, lexer->line_num, pos});
 			pos++;
 			break;
 		    }
-		    lexer->tokens.push_back(Token{"||", TOKEN_OR});
+		    lexer->tokens.push_back(Token{"||", TOKEN_OR, lexer->line_num, pos});
 		    break;
 		}
-		lexer->tokens.push_back(Token{"|", TOKEN_BIT_OR});
+		lexer->tokens.push_back(Token{"|", TOKEN_BIT_OR, lexer->line_num, pos});
 		break;
 	    }
 	    /* (^ ^=) */
@@ -453,11 +434,11 @@ void generate_tokens(Lexer* lexer)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"^=", TOKEN_XOREQ});
+		    lexer->tokens.push_back(Token{"^=", TOKEN_XOREQ, lexer->line_num, pos});
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"^", TOKEN_XOR});
+		lexer->tokens.push_back(Token{"^", TOKEN_XOR, lexer->line_num, pos});
 		break;
 	    }
 	}

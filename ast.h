@@ -3,13 +3,10 @@
 //
 
 
-#include "lexer.h"
-
-
 struct AST_Expression {
     // to ensure that in case a derived struct is deleted,
     // the derived struct's destructor is called
-    virtual ~AST_Expression = default;
+    virtual ~AST_Expression() = default;
 };
 
 
@@ -38,7 +35,7 @@ union Function_Argument {
 struct AST_Function_Definition : AST_Expression {
     std::string return_type;
     std::string function_name;
-    vector<Function_Parameter> params;
+    vector<Function_Parameter*> params;
     vector<AST_Expression*> block;
 };
 
@@ -46,6 +43,7 @@ struct AST_Function_Definition : AST_Expression {
 struct AST_If_Expression : AST_Expression {
     AST_Expression *condition;
     vector<AST_Expression*> block;
+    vector<AST_Expression*> else_block;
 };
 
 

@@ -89,7 +89,41 @@ struct Lexer {
     int line_num = 0;
 
     std::vector<Token> tokens;
+
+    /* for parsing */
+    int curr_token_index = 0;
+
+    Token *peek_next_token();
+    Token *peek(int num_tokens_ahead);
+    Token *peek_prev_token();
+    void move_to_next_token();
 };
+
+
+inline Token* Lexer::peek_next_token()
+{
+    assert(curr_token_index + 1 >= tokens.size());
+    return &(tokens[curr_token_index + 1]);
+}
+
+inline Token* Lexer::peek(int num_tokens_ahead)
+{
+    assert(curr_token_index + num_tokens_ahead >= tokens.size());
+    return &(tokens[curr_token_index + num_tokens_ahead]);
+}
+
+inline Token* Lexer::peek_prev_token()
+{
+    assert(curr_token_index > 0);
+    return &(tokens[curr_token_index - 1]);
+}
+
+inline void Lexer::move_to_next_token()
+{
+    assert(curr_token_index + 1 >= tokens.size());
+    curr_token_index++;
+}
+
 
 //          list of keywords for the language
 // *****************************************************

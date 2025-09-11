@@ -1,4 +1,6 @@
-#include "lexer.h"
+//
+// parser.cpp
+//
 
 /*
 
@@ -97,15 +99,24 @@ to go over operator-precedence, which will be important when
 evaluating many expressions.
 */
 
+#include "ast.h"
+
+
+void parse_tokens(Lexer *lexer)
+{
+    vector<Token> tokens = lexer->tokens;
+
+    while (lexer->curr_token_index < tokens.size()) {
+
+    }
+}
+
 
 int main()
 {
     Lexer lexer;
     perform_lexical_analysis(&lexer, "program.txt");
 
-    // list of tokens
-    std::vector<Token> tokens = lexer->tokens;
-
-
+    parse_tokens(&lexer);
     return 0;
 }

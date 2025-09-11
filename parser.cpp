@@ -110,7 +110,7 @@ AST_Expression *parse_ast_expression(Lexer *lexer)
 }
 
 
-void parse_ast_block(vector<AST_Expression*> &block, Lexer *lexer)
+void parse_ast_block(std::vector<AST_Expression*> &block, Lexer *lexer)
 {
     // the current token would be '{'
     // so we will get the next token
@@ -126,16 +126,9 @@ void parse_ast_block(vector<AST_Expression*> &block, Lexer *lexer)
     }
 
     while (tok->type != TOKEN_RIGHT_BRACE) {
-	// the current token is the beginning of some expression
-	// OR
-	// it is a ';' (delimiter)
-
-	if (tok->type == TOKEN_DELIMITER) {
-	    tok = lexer->get_next_token();
-	    if (tok == NULL) {
-		throw_parser_error("SYNTAX ERROR: Missing \'}\' from scope.", lexer);
-	    }
-	    continue;
+	tok = lexer->get_next_token();
+	if (tok == NULL) {
+	    throw_parser_error("SYNTAX ERROR: Missing \'}\' from scope.", lexer);
 	}
 
 	AST_Expression *expr = parse_ast_expression(lexer);
@@ -252,12 +245,12 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer)
 
 void parse_tokens(Lexer *lexer)
 {
-    vector<Token> tokens = lexer->tokens;
+    std::vector<Token> tokens = lexer->tokens;
     if (tokens.size() == 0) {
 	throw_parser_error("ERROR: No tokens found.", lexer);
     }
 
-    auto ast = new vector<AST_Expression*>; // abstract syntax tree initialized
+    auto ast = new std::vector<AST_Expression*>; // abstract syntax tree initialized
 
     // TODO: Handle global variables
 

@@ -35,15 +35,15 @@ union Function_Argument {
 struct AST_Function_Definition : AST_Expression {
     std::string return_type;
     std::string function_name;
-    vector<Function_Parameter*> params;
-    vector<AST_Expression*> block;
+    std::vector<Function_Parameter*> params;
+    std::vector<AST_Expression*> block;
 };
 
 
 struct AST_If_Expression : AST_Expression {
     AST_Expression *condition;
-    vector<AST_Expression*> block;
-    vector<AST_Expression*> else_block;
+    std::vector<AST_Expression*> block;
+    std::vector<AST_Expression*> else_block;
 };
 
 
@@ -51,13 +51,13 @@ struct AST_For_Expression : AST_Expression {
     AST_Expression *init;
     AST_Expression *condition;
     AST_Expression *increment;
-    vector<AST_Expression*> block;
+    std::vector<AST_Expression*> block;
 };
 
 
 struct AST_While_Expression : AST_Expression {
     AST_Expression *condition;
-    vector<AST_Expression*> block;
+    std::vector<AST_Expression*> block;
 };
 
 
@@ -83,7 +83,7 @@ struct AST_Binary_Expression : AST_Expression {
 
 struct AST_Function_Call : AST_Expression {
     std::string function_name;
-    vector<Function_Argument> params;
+    std::vector<Function_Argument> params;
 };
 
 

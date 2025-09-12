@@ -441,6 +441,11 @@ void generate_tokens(Lexer* lexer)
 		lexer->tokens.push_back(Token{"^", TOKEN_XOR, lexer->line_num, pos});
 		break;
 	    }
+	    default: {
+		throw_error(
+		"SYNTAX ERROR: Invalid token encountered.",
+		lexer->line, lexer->line_num, pos);
+	    }
 	}
 
 	currently_reading_token = false; // to handle possible whitespace

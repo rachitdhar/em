@@ -64,7 +64,6 @@ struct AST_While_Expression : AST_Expression {
 struct AST_Declaration : AST_Expression {
     std::string data_type;
     std::string variable_name;
-    AST_Expression *value;
 };
 
 

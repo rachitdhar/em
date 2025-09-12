@@ -104,14 +104,19 @@ evaluating many expressions.
 #include "parser.h"
 
 
-AST_Expression *parse_ast_expression(Lexer *lexer)
-{
-    // what are all possible kinds of expressions?
-}
-
 
 void parse_ast_block(std::vector<AST_Expression*> &block, Lexer *lexer)
 {
+    // one possibility is that this is not a block
+    // and just a single statement/expression
+
+    if (lexer->peek(0)->type != TOKEN_LEFT_BRACE) {
+	AST_Expression *expr = parse_ast_expression(lexer);
+	block.push_back(expr);
+	return;
+    }
+
+    // if it is a block:
     // the current token would be '{'
     // so we will get the next token
 
@@ -134,8 +139,292 @@ void parse_ast_block(std::vector<AST_Expression*> &block, Lexer *lexer)
 	AST_Expression *expr = parse_ast_expression(lexer);
 	block.push_back(expr);
     }
+    tok = lexer->get_next_token();
 }
 
+
+inline AST_If_Expression *parse_ast_if_expression(Lexer *lexer)
+{
+    // currently the token must be an "if"
+    // so we will start from the next token
+
+    Token *tok = lexer->get_next_token();
+    if (tok == NULL) {
+	throw_parser_error("SYNTAX ERROR: Incomplete \'if\' statement encountered.", lexer);
+    }
+    if (tok->type != TOKEN_LEFT_PAREN) {
+	throw_parser_error("SYNTAX ERROR: Missing \'(\' from if statement condition.", lexer);
+    }
+    tok = lexer->get_next_token();
+    if (tok == NULL) {
+	throw_parser_error("SYNTAX ERROR: Incomplete \'if\' statement encountered.", lexer);
+    }
+
+    // parse the expression
+    AST_Expression *condition = parse_ast_expression(lexer);
+
+    tok = lexer->get_next_token();
+    if (tok == NULL) {
+	throw_parser_error("SYNTAX ERROR: Incomplete \'if\' statement encountered.", lexer);
+    }
+    if (tok->type != TOKEN_RIGHT_PAREN) {
+	throw_parser_error("SYNTAX ERROR: Missing \')\' from if statement condition.", lexer);
+    }
+    tok = lexer->get_next_token();
+    if (tok == NULL) {
+	throw_parser_error("SYNTAX ERROR: Incomplete \'if\' statement encountered.", lexer);
+    }
+
+    auto *ast_if = new AST_If_Expression;
+    ast_if->condition = condition;
+
+    // parse if block
+    parse_ast_block(ast_if->block, lexer);
+
+    // check whether there is an else block as well
+    tok = lexer->peek(0);
+    if (tok != NULL && tok->val == "else") {
+	tok = lexer->get_next_token();
+	if (tok == NULL) {
+	    throw_parser_error("SYNTAX ERROR: Incomplete \'else\' statement encountered.", lexer);
+	}
+
+	// parse else block
+	parse_ast_block(ast_if->else_block, lexer);
+    }
+    return ast_if;
+}
+
+
+inline AST_For_Expression *parse_ast_for_expression(Lexer *lexer)
+{
+    // currently the token must be a "for"
+    // so we will start from the next token
+
+    Token *tok = lexer->get_next_token();
+    if (tok == NULL) {
+	throw_parser_error("SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
+    }
+    if (tok->type != TOKEN_LEFT_PAREN) {
+	throw_parser_error("SYNTAX ERROR: Missing \'(\' from for statement condition.", lexer);
+    }
+    tok = lexer->get_next_token();
+    if (tok == NULL) {
+	throw_parser_error("SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
+    }
+
+    // parse the initialization
+    AST_Expression *init = NULL;
+    if (tok->type != TOKEN_DELIMITER) {
+	init = parse_ast_expression(lexer);
+
+	tok = lexer->get_next_token();
+	if (tok == NULL || tok != TOKEN_DELIMITER) {
+	    throw_parser_error("SYNTAX ERROR: Missing \';\' after \'for\' expression initialization.", lexer);
+	}
+    }
+
+    tok = lexer->get_next_token();
+    if (tok == NULL) {
+	throw_parser_error("SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
+    }
+
+    // parse the condition
+    AST_Expression *condition = NULL;
+    if (tok->type != TOKEN_DELIMITER) {
+	condition = parse_ast_expression(lexer);
+
+	tok = lexer->get_next_token();
+	if (tok == NULL || tok != TOKEN_DELIMITER) {
+	    throw_parser_error("SYNTAX ERROR: Missing \';\' after \'for\' expression condition.", lexer);
+	}
+    }
+
+    tok = lexer->get_next_token();
+    if (tok == NULL) {
+	throw_parser_error("SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
+    }
+
+    // parse the increment
+    AST_Expression *increment = NULL;
+    if (tok->type != TOKEN_DELIMITER) {
+	increment = parse_ast_expression(lexer);
+    }
+
+    tok = lexer->get_next_token();
+    if (tok == NULL || tok->type != TOKEN_RIGHT_PAREN) {
+	throw_parser_error("SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
+    }
+
+    tok = lexer->get_next_token();
+    if (tok == NULL) {
+	throw_parser_error("SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
+    }
+
+    auto *ast_for = new AST_For_Expression;
+    ast_for->init = init;
+    ast_for->condition = condition;
+    ast_for->increment = increment;
+
+    // parse the block
+    parse_ast_block(ast_for->block, lexer);
+
+    return ast_for;
+}
+
+
+inline AST_While_Expression *parse_ast_while_expression(Lexer *lexer)
+{
+    // currently the token must be a "while"
+    // so we will start from the next token
+
+    Token *tok = lexer->get_next_token();
+    if (tok == NULL) {
+	throw_parser_error("SYNTAX ERROR: Incomplete \'while\' statement encountered.", lexer);
+    }
+    if (tok->type != TOKEN_LEFT_PAREN) {
+	throw_parser_error("SYNTAX ERROR: Missing \'(\' from while statement condition.", lexer);
+    }
+    tok = lexer->get_next_token();
+    if (tok == NULL) {
+	throw_parser_error("SYNTAX ERROR: Incomplete \'while\' statement encountered.", lexer);
+    }
+
+    // parse the expression
+    AST_Expression *condition = parse_ast_expression(lexer);
+
+    tok = lexer->get_next_token();
+    if (tok == NULL) {
+	throw_parser_error("SYNTAX ERROR: Incomplete \'while\' statement encountered.", lexer);
+    }
+    if (tok->type != TOKEN_RIGHT_PAREN) {
+	throw_parser_error("SYNTAX ERROR: Missing \')\' from if statement condition.", lexer);
+    }
+    tok = lexer->get_next_token();
+    if (tok == NULL) {
+	throw_parser_error("SYNTAX ERROR: Incomplete \'while\' statement encountered.", lexer);
+    }
+
+    auto *ast_while = new AST_While_Expression;
+    ast_while->condition = condition;
+
+    // parse while block
+    parse_ast_block(ast_while->block, lexer);
+
+    return ast_while;
+}
+
+
+inline AST_Return_Expression *parse_ast_return_expression(Lexer *lexer)
+{
+    // currently the token must be a "return"
+    // so we will start from the next token
+
+    Token *tok = lexer->get_next_token();
+    if (tok == NULL) {
+	throw_parser_error("SYNTAX ERROR: Incomplete \'return\' statement encountered.", lexer);
+    }
+
+    // there are two possibilities
+    //     1. nothing is returned, and we have a ;
+    //     2. there is some expression, and then a ;
+
+    auto *ast_return = new AST_Return_Expression;
+
+    if (tok->type == TOKEN_DELIMITER) {
+	ast_return->value = NULL;
+    } else {
+	AST_Expression *expr = parse_ast_expression(lexer);
+	ast_return->value = expr;
+
+	tok = lexer->peek(0);
+	if (tok == NULL || tok->type != TOKEN_DELIMITER) {
+	    throw_error__missing_delimiter(lexer);
+	}
+    }
+    return ast_return;
+}
+
+
+inline AST_Jump_Expression *parse_ast_jump_expression(Lexer *lexer, std::string jump_type)
+{
+    // currently the token must be either a "break" or "continue"
+    // so we will start from the next token
+
+    auto *ast_jump = new AST_Jump_Expression;
+    ast_jump->jump_type = jump_type;
+
+    Token *tok = lexer->get_next_token();
+    if (tok == NULL || tok->type != TOKEN_DELIMITER) {
+	throw_error__missing_delimiter(lexer);
+    }
+    return ast_jump;
+}
+
+
+AST_Expression *parse_ast_expression(Lexer *lexer)
+{
+    // what are all possible kinds of expressions?
+    // well there are a lot. so we will need to find
+    // a way to look through the tokens and figure out
+    // the kind of expression.
+
+    Token *tok = lexer->peek(0);
+
+    //         First possibility: starts with a keyword
+    // *******************************************************
+
+    //     if ( <expression> ) <block>
+    //     for ( <expression> ; <expression> ; <expression> ) <block>
+    //     while ( <expression> ) <block>
+    //     return <expression>;
+    //     break; OR continue;
+
+    if (tok->type == TOKEN_KEYWORD) {
+	if (tok->val == "if") return parse_ast_if_expression(lexer);
+	else if (tok->val == "for") return parse_ast_for_expression(lexer);
+	else if (tok->val == "while") return parse_ast_while_expression(lexer);
+	else if (tok->val == "return") return parse_ast_return_expression(lexer);
+	else if (tok->val == "break") return parse_ast_jump_expression(lexer, "break");
+	else if (tok->val == "continue") return parse_ast_jump_expression(lexer, "continue");
+	else throw_parser_error("SYNTAX ERROR: Keyword could not be parsed.", lexer);
+    }
+
+    //       Second possibility: starts with a literal
+    // *****************************************************
+    //     <literal>
+
+    if (is_literal(tok)) {
+
+    }
+
+    //       Third possibility: starts with a data type
+    // *****************************************************
+
+    // declaration
+    //     <data_type> <identifier>
+
+    if (tok->type == TOKEN_DATA_TYPE) {
+
+    }
+
+    // identifier
+    //     <identifier>
+
+    // unary operation
+    //     <expression> <postfix_unary_op> OR <prefix_unary_op> <expression>
+
+    // binary operation
+    //     <expresssion> <binary_op> <expression>
+
+    // function call
+    //     <identifier> ( <args> ... )
+
+    return NULL; // in case nothing is parsed
+}
+
+
+// TODO: params could be pointers (to handle *)
 
 // parses the function params, and adds them to ast_function->params
 void parse_ast_function_params(AST_Function_Definition *ast_function, Lexer *lexer)
@@ -234,19 +523,14 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer)
     if (tok == NULL) {
 	throw_parser_error("SYNTAX ERROR: Function definition must be followed by a statement.", lexer);
     }
-    if (tok->type == TOKEN_LEFT_BRACE) parse_ast_block(ast_function->block, lexer);
-    else {
-	AST_Expression *expr = parse_ast_expression(lexer);
-	ast_function->block.push_back(expr);
-    }
+    parse_ast_block(ast_function->block, lexer);
     return ast_function;
 }
 
 
 void parse_tokens(Lexer *lexer)
 {
-    std::vector<Token> tokens = lexer->tokens;
-    if (tokens.size() == 0) {
+    if (lexer->tokens.size() == 0) {
 	throw_parser_error("ERROR: No tokens found.", lexer);
     }
 
@@ -254,9 +538,10 @@ void parse_tokens(Lexer *lexer)
 
     // TODO: Handle global variables
 
-    while (lexer->curr_token_index < tokens.size()) {
-	// at the outermost, we only have function definitions
+    while (1) {
+	if (lexer->peek(0) == NULL) break;
 
+	// at the outermost, we only have function definitions
 	AST_Function_Definition *ast_function = parse_ast_function(lexer);
 	ast.push_back(ast_function);
     }

@@ -27,3 +27,10 @@ inline void throw_error__insufficient_tokens_func_def(Lexer *lexer)
 {
     throw_parser_error("SYNTAX ERROR: Insufficient tokens for function definition.", lexer);
 }
+
+
+// missing delimiter ';' at end of statement
+inline void throw_error__missing_delimiter(Lexer *lexer)
+{
+    throw_parser_error("SYNTAX ERROR: Missing delimiter \';\' at the end of the statement.", lexer);
+}

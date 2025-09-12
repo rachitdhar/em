@@ -10,17 +10,17 @@
 
 
 enum Token_Type {
-    TOKEN_IDENTIFIER,          // abcd  sdf2324  dfs_23fs56df
-    TOKEN_KEYWORD,
-    TOKEN_DATA_TYPE,
-    TOKEN_NUMERIC_LITERAL,     // 23434 12.656
-    TOKEN_CHAR_LITERAL,        // 'A'
-    TOKEN_STRING_LITERAL,      // "fds..."
-    TOKEN_SEPARATOR,           // ,
-    TOKEN_DELIMITER,           // ;
+    TOKEN_IDENTIFIER = 0,          // abcd  sdf2324  dfs_23fs56df
+    TOKEN_KEYWORD = 1,
+    TOKEN_DATA_TYPE = 2,
+    TOKEN_NUMERIC_LITERAL = 3,     // 23434 12.656
+    TOKEN_CHAR_LITERAL = 4,        // 'A'
+    TOKEN_STRING_LITERAL = 5,      // "fds..."
+    TOKEN_SEPARATOR = 6,           // ,
+    TOKEN_DELIMITER = 7,           // ;
 
     /* brackets */
-    TOKEN_LEFT_BRACE,          // {
+    TOKEN_LEFT_BRACE = 100,    // {
     TOKEN_RIGHT_BRACE,         // }
     TOKEN_LEFT_PAREN,          // (
     TOKEN_RIGHT_PAREN,         // )
@@ -28,13 +28,13 @@ enum Token_Type {
     TOKEN_RIGHT_SQUARE,        // ]
 
     /* unary ops */
-    TOKEN_NOT,                 // !
+    TOKEN_NOT = 200,           // !
     TOKEN_BIT_NOT,             // ~
     TOKEN_INCREMENT,           // ++
     TOKEN_DECREMENT,           // --
 
     /* binary ops */
-    TOKEN_PLUS,                // +
+    TOKEN_PLUS = 300,          // +
     TOKEN_MINUS,               // -
     TOKEN_DIVIDE,              // /
     TOKEN_MOD,                 // %
@@ -62,9 +62,25 @@ enum Token_Type {
     TOKEN_DOT,                 // .
 
     /* non context-free (must be interpreted at parsing) */
-    TOKEN_STAR,                // * (multiplication / pointer de-reference)
+    TOKEN_STAR = 400,          // * (multiplication / pointer de-reference)
     TOKEN_AMPERSAND,           // & (binary and / address-of)
 };
+
+
+inline bool is_literal(Token *tok)
+{
+    return (tok->type >= 3 && tok->type <= 5);
+}
+
+inline bool is_unary_op(Token *tok)
+{
+    return (tok->type >= 200 && tok->type < 300);
+}
+
+inline bool is_binary_op(Token *tok)
+{
+    return (tok->type >= 300);
+}
 
 
 // partial types
@@ -144,9 +160,6 @@ const std::string DATA_TYPES[] = {
 };
 
 const std::string KEYWORDS[] = {
-    /* literals */
-    "NULL",
-
     /* control flow */
     "if",
     "else",

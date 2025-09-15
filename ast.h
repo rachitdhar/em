@@ -22,13 +22,12 @@ struct AST_Identifier : AST_Expression {
 
 
 struct AST_Literal : AST_Expression {
-    std::string value;
-};
-
-
-union Function_Argument {
-    AST_Literal literal;
-    AST_Identifier identifier;
+    union {
+	int i;
+	float f;
+	char c;
+	std::string s;
+    } value;
 };
 
 
@@ -82,7 +81,7 @@ struct AST_Binary_Expression : AST_Expression {
 
 struct AST_Function_Call : AST_Expression {
     std::string function_name;
-    std::vector<Function_Argument> params;
+    std::vector<AST_Expression*> params;
 };
 
 

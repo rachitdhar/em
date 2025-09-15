@@ -362,6 +362,65 @@ inline AST_Jump_Expression *parse_ast_jump_expression(Lexer *lexer, std::string 
 }
 
 
+inline AST_Function_Call *parse_ast_function_call(Lexer *lexer)
+{
+    // currently the token must be at the function name (i.e., an identifier)
+    // we will read that token, and then move ahead.
+
+    auto ast_call = new AST_Function_Call;
+
+    Token *tok = lexer->peek(0);
+    ast_call->function_name = tok->val;
+
+    /*
+    The argument structure is:
+
+	( <arg_1>, <arg_2>, ..., <arg_n> )
+
+    where, each <arg_k>, can be some kind of expression.
+    */
+
+    tok = lexer->get_next_token(); // this is '('
+    // we won't check if it is NULL
+    // because we already checked this, and only due to that
+    // was the parse_ast_function_call() called in the first place.
+
+    tok = lexer->get_next_token();
+
+    while (tok->type != TOKEN_RIGHT_PAREN) {
+	AST_Expression *arg_expr = parse_ast_expression(lexer);
+	ast_call->params.push_back(arg_expr);
+
+	tok = lexer->get_next_token();
+	if (tok == NULL) {
+	    throw_parser_error("SYNTAX ERROR: Incomplete function call expression.", lexer);
+	}
+	if (tok->type == TOKEN_SEPARATOR) {
+	    tok = lexer->get_next_token();
+	    if (tok == NULL) {
+		throw_parser_error("SYNTAX ERROR: Incomplete function call expression.", lexer);
+	    }
+	}
+    }
+    return ast_call;
+}
+
+
+/*
+
+TODO:
+
+    1. Need to handle pointers everywhere where identifiers exist.
+    as of now i've just ignored their existence.
+
+    2. Need to handle arrays (through []), again, where identifiers exist.
+*/
+
+// this is the core of the parser
+// basically the main job of a parser is to be able to parse expressions
+// this is also the most "complicated" part, so to speak. the main thing
+// that makes it complicated is handling operations. here I will be trying
+// to implement a recursive descent kind of parser.
 AST_Expression *parse_ast_expression(Lexer *lexer)
 {
     // what are all possible kinds of expressions?
@@ -371,8 +430,7 @@ AST_Expression *parse_ast_expression(Lexer *lexer)
 
     Token *tok = lexer->peek(0);
 
-    //         First possibility: starts with a keyword
-    // *******************************************************
+    //     POSSIBILITY 1 : starts with a keyword
 
     //     if ( <expression> ) <block>
     //     for ( <expression> ; <expression> ; <expression> ) <block>
@@ -390,35 +448,128 @@ AST_Expression *parse_ast_expression(Lexer *lexer)
 	else throw_parser_error("SYNTAX ERROR: Keyword could not be parsed.", lexer);
     }
 
-    //       Second possibility: starts with a literal
-    // *****************************************************
-    //     <literal>
+    // POSSIBILITY 2 : does not start with a keyword
+
+    /*
+    Here's the thing. When trying to parse an expression,
+    we could encounter the possibility that there is an operator
+    ahead that needs to be considered.
+
+    For instance:
+
+	int x = 3 * func(5) - y - ++y;
+
+    We need the AST tree for this part of the expression
+    to look something like:
+
+	           (=)
+		   / \
+	      int x   (-)
+	              / \
+		    (-)  (PRE ++)
+		    / \     |
+	          (*)  y    y
+		  / \
+		 3   func(5)
+
+    To do this, we will read through tokens, till we reach the
+    semicolon (;) at the end. Then, we will take all the operators
+    that come up in the process (here: =, -, -, ++, and *) and
+    form the tree for the expression as per the appropriate
+    precedence. The operators of higher precedence are "deeper"
+    in the tree (so that they get evaluated first).
+    */
+
+    // <literal>
 
     if (is_literal(tok)) {
+	auto *ast_literal = new AST_Literal;
 
+	if (tok->type == TOKEN_NUMERIC_LITERAL) {
+	    // it is either an int or a float
+	    // if it has a decimal point ('.'), then it is a float
+
+	    if (tok->val.find('.') != std::string::npos) {
+		ast_literal->value.f = std::stof(tok->val);
+	    } else {
+		ast_literal->value.i = std::stoi(tok->val);
+	    }
+	} else if (tok->type == TOKEN_CHAR_LITERAL) {
+	    ast_literal->value.c = tok->val[0];
+	} else {
+	    ast_literal->value.s = tok->val;
+	}
+	return ast_literal;
     }
-
-    //       Third possibility: starts with a data type
-    // *****************************************************
 
     // declaration
     //     <data_type> <identifier>
 
     if (tok->type == TOKEN_DATA_TYPE) {
+	auto *ast_decl = new AST_Declaration;
+	ast_decl->data_type = tok->val;
 
+	tok = lexer->get_next_token();
+	if (tok == NULL || tok->type != TOKEN_IDENTIFIER) {
+	    throw_parser_error("SYNTAX ERROR: Invalid declaration. Missing identifier after data type", lexer);
+	}
+
+	ast_decl->variable_name = tok->val;
+	return ast_decl;
     }
 
-    // identifier
-    //     <identifier>
+    // parenthesized expression
+    //     ( <expression> )
+
+    if (tok->type == TOKEN_LEFT_PAREN) {
+	tok = lexer->get_next_token();
+	if (tok == NULL) {
+	    throw_parser_error("SYNTAX ERROR: Missing expression after \'(\'.", lexer);
+	}
+
+	AST_Expression *expr = parse_ast_expression(lexer);
+
+	tok = lexer->get_next_token();
+	if (tok == NULL || tok->type != TOKEN_RIGHT_PAREN) {
+	    throw_parser_error("SYNTAX ERROR: Missing \')\' after expression.", lexer);
+	}
+
+	return expr;
+    }
+
+    // function call: <identifier> ( <args> ... )
+    //
+    // OR
+    //
+    // just a variable: <identifier>
+
+    if (tok->type == TOKEN_IDENTIFIER) {
+	// we need to "peek" ahead just to check in case
+	// it might be actually a function call.
+	// if we find a '(', we will assume that the
+	// identifier is a function name
+
+	Token *next = lexer->peek_next_token();
+	if (next == NULL) {
+	    throw_error__missing_delimiter(lexer);
+	}
+	if (next == TOKEN_LEFT_PAREN) {
+	    // this is a function call
+	    return parse_ast_function_call(lexer);
+	}
+
+	// if it is not a function call
+	auto *ast_ident = new AST_Identifier;
+	ast_ident->name = tok->val;
+
+	return ast_ident;
+    }
 
     // unary operation
     //     <expression> <postfix_unary_op> OR <prefix_unary_op> <expression>
 
     // binary operation
     //     <expresssion> <binary_op> <expression>
-
-    // function call
-    //     <identifier> ( <args> ... )
 
     return NULL; // in case nothing is parsed
 }

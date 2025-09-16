@@ -12,6 +12,7 @@
 // defining precedence levels
 // (from lowest to highest)
 enum Precedence {
+    PREC_MIN, // minimum precedence (for default at the start of subexpression parsing)
     PREC_ASSIGNMENT,
     PREC_OR,
     PREC_AND,

@@ -163,7 +163,7 @@ inline AST_If_Expression *parse_ast_if_expression(Lexer *lexer)
     }
 
     // parse the expression
-    AST_Expression *condition = parse_ast_subexpression(lexer, -1);
+    AST_Expression *condition = parse_ast_subexpression(lexer, PREC_MIN);
 
     tok = lexer->get_next_token();
     if (tok == NULL) {
@@ -220,7 +220,7 @@ inline AST_For_Expression *parse_ast_for_expression(Lexer *lexer)
     // parse the initialization
     AST_Expression *init = NULL;
     if (tok->type != TOKEN_DELIMITER) {
-	init = parse_ast_subexpression(lexer, -1);
+	init = parse_ast_subexpression(lexer, PREC_MIN);
 
 	tok = lexer->get_next_token();
 	if (tok == NULL || tok != TOKEN_DELIMITER) {
@@ -238,7 +238,7 @@ inline AST_For_Expression *parse_ast_for_expression(Lexer *lexer)
     // parse the condition
     AST_Expression *condition = NULL;
     if (tok->type != TOKEN_DELIMITER) {
-	condition = parse_ast_subexpression(lexer, -1);
+	condition = parse_ast_subexpression(lexer, PREC_MIN);
 
 	tok = lexer->get_next_token();
 	if (tok == NULL || tok != TOKEN_DELIMITER) {
@@ -256,7 +256,7 @@ inline AST_For_Expression *parse_ast_for_expression(Lexer *lexer)
     // parse the increment
     AST_Expression *increment = NULL;
     if (tok->type != TOKEN_DELIMITER) {
-	increment = parse_ast_subexpression(lexer, -1);
+	increment = parse_ast_subexpression(lexer, PREC_MIN);
     }
 
     tok = lexer->get_next_token();
@@ -301,7 +301,7 @@ inline AST_While_Expression *parse_ast_while_expression(Lexer *lexer)
     }
 
     // parse the expression
-    AST_Expression *condition = parse_ast_subexpression(lexer, -1);
+    AST_Expression *condition = parse_ast_subexpression(lexer, PREC_MIN);
 
     tok = lexer->get_next_token();
     if (tok == NULL) {
@@ -347,7 +347,7 @@ inline AST_Return_Expression *parse_ast_return_expression(Lexer *lexer)
     else if (tok->type == TOKEN_KEYWORD) {
 	throw_parser_error("SYNTAX ERROR: return statement cannot contain another keyword.", lexer);
     } else {
-	AST_Expression *expr = parse_ast_subexpression(lexer, -1);
+	AST_Expression *expr = parse_ast_subexpression(lexer, PREC_MIN);
 	ast_return->value = expr;
 
 	tok = lexer->peek(0);
@@ -510,108 +510,133 @@ inline AST_Expression *parse_ast_parenthesized_expression(Lexer *lexer)
     return expr;
 }
 
+
+// to parse the primary expressions (identifiers / function calls / literals / parenthesized expressions)
+// based on the type of token
+inline AST_Expression *parse_primary_subexpression(Lexer *lexer, Token *tok)
+{
+    switch (tok->type) {
+    case TOKEN_IDENTIFIER: return parse_ast_identifier(lexer);
+    case TOKEN_CHAR_LITERAL:
+    case TOKEN_NUMERIC_LITERAL:
+    case TOKEN_STRING_LITERAL: return parse_ast_literal(lexer);
+    case TOKEN_LEFT_PAREN: return parse_ast_parenthesized_expression(lexer);
+    default:
+	throw_parser_error("SYNTAX ERROR (Parser): Failed to parse primary expression.", lexer);
+    }
+}
+
+
+AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression *left, Precedence curr_precedence)
+{
+    auto *curr_expression = new AST_Binary_Expression;
+
+    while (1) {
+	curr_expression->left = left;
+
+	Token *tok = lexer->get_next_token();
+	if (tok == NULL || !is_binary_op(tok)) {
+	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
+	}
+	curr_expression->op = tok->type;
+
+	tok = lexer->get_next_token();
+	if (tok == NULL || op_prec[tok->type] != PREC_PRIMARY) {
+	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
+	}
+	AST_Expression *tok_expr = parse_primary_subexpression(lexer, tok);
+	Token *op = lexer->peek_next_token();
+
+	if (op == NULL) {
+	    curr_expression->right = tok_expr;
+	    break;
+	}
+	if (!is_binary_op(op)) {
+	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
+	}
+
+	Precedence new_prec = op_prec[op->type];
+	if (new_prec > curr_precedence) {
+	    curr_expression->right = parse_ast_subexpression(lexer, new_prec);
+	    break;
+	}
+
+	curr_expression->right = tok_expr;
+	left = curr_expression;
+	curr_precedence = new_prec;
+	curr_expression = new AST_Binary_Expression;
+    }
+    return curr_expression;
+}
+
+
 // TODO: to handle consecutive operators (eg: a++ - ++b;)
 
+// parses the subexpression
+//
+// (this block of the code handles the increasing precedence scenario,
+// and makes use of a call to parse_decreasing_precedence for handling
+// the decreasing precedence cases)
 AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence)
 {
     /*
-    Here is an example of what sort of behavior we would want.
-    Expression:
-    4 + 5 * 7 - 8;
+    The idea is that parsing in accordance with operator
+    precedence can simply be broken into two scenarios:
 
-    Algorithm:
-    4
-    + --> 5
-          * --> 7
-                - (NOT HIGHER)
-                return 7
-          = (5 * 7)
-          - (NOT HIGHER)
-          return (5 * 7)
-    = (4 + (5 * 7))
-    - --> 8
-          ; (end)
-          return 8
-    = ((4 + (5 * 7)) - 8)
+	(1) the next operator is of higher precedence -> rightward bent tree
+	(2) the next operator is of lower precedence -> leftward bent tree
 
-    Here, each (-->) means a further recursive call.
-    We will make this call whenever we encounter a higher precedence
-    operator. For primary expressions (identifiers/literals/calls)
-    we will just accept them normally. We should not get two
-    primary expressions next to each other.
+    I got this idea from a conversation between Jonathan Blow
+    and Casey Muratori that I saw on youtube. Based on this,
+    the algorithm can be written through two recursive functions
     */
 
-    Token *tok = lexer->peek(0);
-    bool prev_token_was_primary = false;
+    auto *expr = new AST_Binary_Expression;
+    auto *curr_expression = expr;
 
-    AST_Expression *curr_expression = NULL;
-
-    while (tok->type != TOKEN_DELIMITER) {
-	if (op_prec(tok->type) == PREC_PRIMARY) {
-	    if (prev_token_was_primary) {
-		throw_parser_error("SYNTAX ERROR: Consecutive primary expressions are invalid.", lexer);
-	    }
-
-	    AST_Expression *expr = NULL;
-
-	    switch (tok->type) {
-	    case TOKEN_IDENTIFIER: {
-		expr = parse_ast_identifier(lexer);
-		break;
-	    }
-	    case TOKEN_CHAR_LITERAL:
-	    case TOKEN_NUMERIC_LITERAL:
-	    case TOKEN_STRING_LITERAL: {
-		expr = parse_ast_literal(lexer);
-		break;
-	    }
-	    case TOKEN_LEFT_PAREN: {
-		expr = parse_ast_parenthesized_expression(lexer);
-		break;
-	    }
-	    default: {
-		throw_parser_error("SYNTAX ERROR (Parser): Failed to parse primary expression.", lexer);
-	    }
-	    }
-
-	    if (curr_expression == NULL) {
-		curr_expression = new AST_Binary_Expression;
-		curr_expression->left = expr;
-	    } else {
-		curr_expression->right = expr;
-	    }
-	    prev_token_was_primary = true;
-
-	} else if (!prev_token_was_primary || !curr_expression) {
-	    throw_parser_error("SYNTAX ERROR: Expression cannot begin with an operator.", lexer);
-	} else {
-	    // we come here only if
-	    // the prev token was primary
-	    // and the current one is an operator
-
-	    if (!is_unary_op(tok) && !is_binary_op(tok)) {
-		throw_parser_error("SYNTAX ERROR: Invalid operation. Identifiers/literals/function calls must be separated by operators.", lexer);
-	    }
-
-	    if (curr_expression->op != "") {
-		auto *parent_expr = new AST_Binary_Expression;
-		parent_expr->left = curr_expression;
-		parent_expr->op = tok->type;
-
-		curr_expression = parent_expr;
-	    } else {
-		curr_expression->op = tok->type;
-	    }
-
-	    prev_token_was_primary = false;
+    while (1) {
+	Token *tok = lexer->peek(0);
+	if (tok == NULL) throw_error__missing_delimiter(lexer);
+	if (tok->type == TOKEN_DELIMITER) break;
+	if (op_prec[tok->type] != PREC_PRIMARY) {
+	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
 	}
+	AST_Expression *tok_expr = parse_primary_subexpression(lexer, tok);
+	curr_expression->left = tok_expr;
 
 	tok = lexer->get_next_token();
-	if (tok == NULL) {
-	    throw_error__missing_delimiter(lexer);
+	if (tok == NULL || !is_binary_op(tok)) {
+	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
 	}
+	curr_expression->op = tok->type;
+
+	tok = lexer->get_next_token();
+	if (tok == NULL || op_prec[tok->type] != PREC_PRIMARY) {
+	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
+	}
+	tok_expr = parse_primary_subexpression(lexer, tok);
+	Token *op = lexer->peek_next_token();
+
+	if (op == NULL) {
+	    curr_expression->right = tok_expr;
+	    break;
+	}
+	if (!is_binary_op(op)) {
+	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
+	}
+
+	Precedence new_prec = op_prec[op->type];
+	if (new_prec < curr_precedence) {
+	    curr_expression->right = tok_expr;
+	    parse_decreasing_precedence(lexer, curr_expression, new_prec); // TODO: is this correct?
+	    break;
+	}
+
+	curr_expression->right = new AST_Binary_Expression;
+	curr_expression = curr_expression->right;
+	curr_precedence = new_prec;
     }
-    return curr_expression;
+    return expr;
 }
 
 
@@ -690,7 +715,7 @@ AST_Expression *parse_ast_expression(Lexer *lexer)
     in the tree (so that they get evaluated first).
     */
 
-    return parse_ast_subexpression(lexer, -1);
+    return parse_ast_subexpression(lexer, PREC_MIN);
 }
 
 

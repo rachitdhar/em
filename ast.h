@@ -6,6 +6,8 @@
 #ifndef AST_H
 #define AST_H
 
+#include "lexer.h"
+
 
 enum Expression_Type {
     EXPR_IDENT,
@@ -23,10 +25,11 @@ enum Expression_Type {
 
 
 struct AST_Expression {
-    Expression_Type expr_type;
+    Expression_Type expr_type = EXPR_IDENT;
 
     // set the expression type for a derived struct
     AST_Expression(Expression_Type type): expr_type(type) {}
+    AST_Expression(): expr_type(EXPR_IDENT) {}
 
     // to ensure that in case a derived struct is deleted,
     // the derived struct's destructor is called
@@ -48,19 +51,19 @@ struct AST_Identifier : AST_Expression {
 
 
 struct AST_Literal : AST_Expression {
-    AST_Identifier(): AST_Expression(EXPR_LITERAL) {}
+    AST_Literal(): AST_Expression(EXPR_LITERAL) {}
 
     union {
 	int i;
 	float f;
 	char c;
-	std::string s;
+	std::string *s; // storing the address of the string
     } value;
 };
 
 
 struct AST_Function_Definition : AST_Expression {
-    AST_Identifier(): AST_Expression(EXPR_FUNC_DEF) {}
+    AST_Function_Definition(): AST_Expression(EXPR_FUNC_DEF) {}
 
     std::string return_type;
     std::string function_name;
@@ -70,7 +73,7 @@ struct AST_Function_Definition : AST_Expression {
 
 
 struct AST_If_Expression : AST_Expression {
-    AST_Identifier(): AST_Expression(EXPR_IF) {}
+    AST_If_Expression(): AST_Expression(EXPR_IF) {}
 
     AST_Expression *condition;
     std::vector<AST_Expression*> block;
@@ -79,7 +82,7 @@ struct AST_If_Expression : AST_Expression {
 
 
 struct AST_For_Expression : AST_Expression {
-    AST_Identifier(): AST_Expression(EXPR_FOR) {}
+    AST_For_Expression(): AST_Expression(EXPR_FOR) {}
 
     AST_Expression *init;
     AST_Expression *condition;
@@ -89,7 +92,7 @@ struct AST_For_Expression : AST_Expression {
 
 
 struct AST_While_Expression : AST_Expression {
-    AST_Identifier(): AST_Expression(EXPR_WHILE) {}
+    AST_While_Expression(): AST_Expression(EXPR_WHILE) {}
 
     AST_Expression *condition;
     std::vector<AST_Expression*> block;
@@ -97,7 +100,7 @@ struct AST_While_Expression : AST_Expression {
 
 
 struct AST_Declaration : AST_Expression {
-    AST_Identifier(): AST_Expression(EXPR_DECL) {}
+    AST_Declaration(): AST_Expression(EXPR_DECL) {}
 
     std::string data_type;
     std::string variable_name;
@@ -105,7 +108,7 @@ struct AST_Declaration : AST_Expression {
 
 
 struct AST_Binary_Expression : AST_Expression {
-    AST_Identifier(): AST_Expression(EXPR_BINARY) {}
+    AST_Binary_Expression(): AST_Expression(EXPR_BINARY) {}
 
     Token_Type op;
     AST_Expression *left;
@@ -114,7 +117,7 @@ struct AST_Binary_Expression : AST_Expression {
 
 
 struct AST_Function_Call : AST_Expression {
-    AST_Identifier(): AST_Expression(EXPR_FUNC_CALL) {}
+    AST_Function_Call(): AST_Expression(EXPR_FUNC_CALL) {}
 
     std::string function_name;
     std::vector<AST_Expression*> params;
@@ -122,14 +125,14 @@ struct AST_Function_Call : AST_Expression {
 
 
 struct AST_Return_Expression : AST_Expression {
-    AST_Identifier(): AST_Expression(EXPR_RETURN) {}
+    AST_Return_Expression(): AST_Expression(EXPR_RETURN) {}
 
     AST_Expression *value;
 };
 
 
 struct AST_Jump_Expression : AST_Expression {
-    AST_Identifier(): AST_Expression(EXPR_JUMP) {}
+    AST_Jump_Expression(): AST_Expression(EXPR_JUMP) {}
 
     std::string jump_type;
 };

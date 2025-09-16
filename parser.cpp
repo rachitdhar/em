@@ -99,9 +99,11 @@ to go over operator-precedence, which will be important when
 evaluating many expressions.
 */
 
-#include "ast.h"
-#include "lexer.h"
 #include "parser.h"
+
+
+AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence);
+AST_Expression *parse_ast_expression(Lexer *lexer);
 
 
 
@@ -223,7 +225,7 @@ inline AST_For_Expression *parse_ast_for_expression(Lexer *lexer)
 	init = parse_ast_subexpression(lexer, PREC_MIN);
 
 	tok = lexer->get_next_token();
-	if (tok == NULL || tok != TOKEN_DELIMITER) {
+	if (tok == NULL || tok->type != TOKEN_DELIMITER) {
 	    throw_parser_error("SYNTAX ERROR: Missing \';\' after \'for\' expression initialization.", lexer);
 	}
     }
@@ -241,7 +243,7 @@ inline AST_For_Expression *parse_ast_for_expression(Lexer *lexer)
 	condition = parse_ast_subexpression(lexer, PREC_MIN);
 
 	tok = lexer->get_next_token();
-	if (tok == NULL || tok != TOKEN_DELIMITER) {
+	if (tok == NULL || tok->type != TOKEN_DELIMITER) {
 	    throw_parser_error("SYNTAX ERROR: Missing \';\' after \'for\' expression condition.", lexer);
 	}
     }
@@ -435,7 +437,7 @@ inline AST_Expression *parse_ast_identifier(Lexer *lexer)
     if (next == NULL) {
 	throw_error__missing_delimiter(lexer);
     }
-    if (next == TOKEN_LEFT_PAREN) {
+    if (next->type == TOKEN_LEFT_PAREN) {
         // this is a function call
         return parse_ast_function_call(lexer);
     }
@@ -484,7 +486,7 @@ inline AST_Literal *parse_ast_literal(Lexer *lexer)
     } else if (tok->type == TOKEN_CHAR_LITERAL) {
 	ast_literal->value.c = tok->val[0];
     } else {
-	ast_literal->value.s = tok->val;
+	ast_literal->value.s = &(tok->val);
     }
     return ast_literal;
 }
@@ -633,7 +635,7 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
 	}
 
 	curr_expression->right = new AST_Binary_Expression;
-	curr_expression = curr_expression->right;
+	curr_expression = (AST_Binary_Expression*)curr_expression->right;
 	curr_precedence = new_prec;
     }
     return expr;
@@ -829,14 +831,14 @@ std::vector<AST_Expression*> *parse_tokens(Lexer *lexer)
 	throw_parser_error("ERROR: No tokens found.", lexer);
     }
 
-    auto ast = new std::vector<AST_Expression*>; // abstract syntax tree initialized
+    auto *ast = new std::vector<AST_Expression*>; // abstract syntax tree initialized
 
     // TODO: Handle global variables
 
     while (lexer->peek(0) != NULL) {
 	// at the outermost, we only have function definitions
 	AST_Function_Definition *ast_function = parse_ast_function(lexer);
-	ast.push_back(ast_function);
+	ast->push_back(ast_function);
     }
     return ast;
 }

@@ -67,22 +67,6 @@ enum Token_Type {
 };
 
 
-inline bool is_literal(Token *tok)
-{
-    return (tok->type >= 3 && tok->type <= 5);
-}
-
-inline bool is_unary_op(Token *tok)
-{
-    return (tok->type >= 200 && tok->type < 300);
-}
-
-inline bool is_binary_op(Token *tok)
-{
-    return (tok->type >= 300);
-}
-
-
 // partial types
 // (for raw strings, before having a determined token)
 
@@ -99,6 +83,23 @@ struct Token {
     int line_num;
     int position;
 };
+
+
+inline bool is_literal(Token *tok)
+{
+    return (tok->type >= 3 && tok->type <= 5);
+}
+
+inline bool is_unary_op(Token *tok)
+{
+    return (tok->type >= 200 && tok->type < 300);
+}
+
+inline bool is_binary_op(Token *tok)
+{
+    return (tok->type >= 300);
+}
+
 
 struct Lexer {
     std::string line;
@@ -143,7 +144,7 @@ inline Token* Lexer::peek_prev_token()
 
 inline void Lexer::move_to_next_token()
 {
-    if (curr_token_index + 1 >= tokens.size()) return NULL;
+    if (curr_token_index + 1 >= tokens.size()) return;
     curr_token_index++;
 }
 

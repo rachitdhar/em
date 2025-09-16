@@ -468,13 +468,3 @@ void perform_lexical_analysis(Lexer* lexer, const char* file_name)
 
     file.close();
 }
-
-
-int main()
-{
-    Lexer lexer;
-
-    perform_lexical_analysis(&lexer, "program.txt");
-    print_tokens(&lexer);
-    return 0;
-}

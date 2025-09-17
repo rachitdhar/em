@@ -67,11 +67,18 @@ std::unordered_map<Token_Type, Precedence> op_prec = {
 };
 
 
+// to print 2-space indentations
+inline void print_indentation(int indentation_level)
+{
+    for (int i = 0; i < 2 * indentation_level; i++) putchar(' ');
+}
+
+
 void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 {
     // depending on the indentation level
     // we will add spaces before printing
-    printf("%*s", indentation_level, "");
+    print_indentation(indentation_level);
 
     switch (ast_expr->expr_type) {
     case EXPR_IDENT: {
@@ -100,7 +107,7 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	auto expr = (AST_If_Expression*)ast_expr;
 	printf("<IF> (\n");
 	print_ast_expression(expr->condition, indentation_level + 1);
-	printf("%*s", indentation_level, "");
+	print_indentation(indentation_level);
 	printf(")\n");
 
 	for (AST_Expression *e : expr->block) {
@@ -108,7 +115,7 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	}
 
 	if (expr->else_block.size() > 0) {
-	    printf("%*s", indentation_level, "");
+	    print_indentation(indentation_level);
 	    printf("<ELSE>\n");
 	    for (AST_Expression *e : expr->else_block) {
 		print_ast_expression(e, indentation_level + 1);
@@ -122,7 +129,7 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	print_ast_expression(expr->init, indentation_level + 1);
 	print_ast_expression(expr->condition, indentation_level + 1);
 	print_ast_expression(expr->increment, indentation_level + 1);
-	printf("%*s", indentation_level, "");
+	print_indentation(indentation_level);
 	printf(")\n");
 
 	for (AST_Expression *e : expr->block) {
@@ -134,7 +141,7 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	auto expr = (AST_While_Expression*)ast_expr;
 	printf("<WHILE> (\n");
 	print_ast_expression(expr->condition, indentation_level + 1);
-	printf("%*s", indentation_level, "");
+	print_indentation(indentation_level);
 	printf(")\n");
 
 	for (AST_Expression *e : expr->block) {
@@ -150,14 +157,14 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
     case EXPR_BINARY: {
 	auto expr = (AST_Binary_Expression*)ast_expr;
 	if (expr->left != NULL) {
-	    print_ast_expression(expr->left, indentation_level + 1);
+	    print_ast_expression(expr->left, indentation_level);
 	}
 	if (expr->op != TOKEN_NONE) {
-	    printf("%*s", indentation_level + 1, "");
+	    print_indentation(indentation_level + 1);
 	    printf("<OP, Type : %d>\n", (int)expr->op);
 	}
 	if (expr->right != NULL) {
-	    print_ast_expression(expr->right, indentation_level + 1);
+	    print_ast_expression(expr->right, indentation_level);
 	}
 	break;
     }
@@ -168,7 +175,7 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	for (AST_Expression *e : expr->params) {
 	    print_ast_expression(e, indentation_level + 1);
 	}
-	printf("%*s", indentation_level, "");
+	print_indentation(indentation_level);
 	printf(")\n");
 	break;
     }
@@ -176,7 +183,7 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	auto expr = (AST_Return_Expression*)ast_expr;
 	printf("<RETURN> (\n");
 	print_ast_expression(expr->value, indentation_level + 1);
-	printf("%*s", indentation_level, "");
+	print_indentation(indentation_level);
 	printf(")\n");
 	break;
     }
@@ -210,7 +217,7 @@ inline void print_ast(std::vector<AST_Expression*> *ast)
 
 
 // get the line from the program file, using the line number
-std::string get_file_line(std::string file_name, int line_num)
+inline std::string get_file_line(std::string file_name, int line_num)
 {
     // NOTE: this is not the most optimal
     // looking solution. but since it is only
@@ -266,5 +273,13 @@ inline void throw_error__missing_delimiter(Lexer *lexer)
 {
     throw_parser_error("SYNTAX ERROR: Missing delimiter \';\' at the end of the statement.", lexer);
 }
+
+
+//                  Function definitions
+// ***********************************************************
+
+AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence);
+AST_Expression *parse_ast_expression(Lexer *lexer);
+std::vector<AST_Expression*> *parse_tokens(Lexer *lexer);
 
 #endif

@@ -241,6 +241,6 @@ inline void print_tokens(Lexer* lexer)
 
 //               Function definitions
 // **************************************************
-void perform_lexical_analysis(Lexer* lexer, const char* file_name);
+Lexer *perform_lexical_analysis(const char* file_name);
 
 #endif

@@ -102,10 +102,6 @@ evaluating many expressions.
 #include "parser.h"
 
 
-AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence);
-AST_Expression *parse_ast_expression(Lexer *lexer);
-
-
 
 void parse_ast_block(std::vector<AST_Expression*> &block, Lexer *lexer)
 {
@@ -535,6 +531,7 @@ inline AST_Expression *parse_primary_subexpression(Lexer *lexer, Token *tok)
     default:
 	throw_parser_error("SYNTAX ERROR (Parser): Failed to parse primary expression.", lexer);
     }
+    return NULL; // to prevent warnings (technically should never be reached)
 }
 
 
@@ -863,10 +860,9 @@ std::vector<AST_Expression*> *parse_tokens(Lexer *lexer)
 
 int main()
 {
-    Lexer lexer;
-    perform_lexical_analysis(&lexer, "program.txt");
+    Lexer *lexer = perform_lexical_analysis("program.txt");
 
-    auto *ast = parse_tokens(&lexer);
+    auto *ast = parse_tokens(lexer);
     print_ast(ast);
     return 0;
 }

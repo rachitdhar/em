@@ -453,8 +453,10 @@ void generate_tokens(Lexer* lexer)
 }
 
 // reads the file line by line and generates tokens
-void perform_lexical_analysis(Lexer* lexer, const char* file_name)
+Lexer *perform_lexical_analysis(const char* file_name)
 {
+    auto *lexer = new Lexer;
+
     std::ifstream file(file_name);
     if (!file.is_open()) {
 	fprintf(stderr, "ERROR: Could not find the file");
@@ -469,4 +471,5 @@ void perform_lexical_analysis(Lexer* lexer, const char* file_name)
     }
 
     file.close();
+    return lexer;
 }

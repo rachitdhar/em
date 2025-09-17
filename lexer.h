@@ -10,14 +10,16 @@
 
 
 enum Token_Type {
-    TOKEN_IDENTIFIER = 0,          // abcd  sdf2324  dfs_23fs56df
-    TOKEN_KEYWORD = 1,
-    TOKEN_DATA_TYPE = 2,
-    TOKEN_NUMERIC_LITERAL = 3,     // 23434 12.656
-    TOKEN_CHAR_LITERAL = 4,        // 'A'
-    TOKEN_STRING_LITERAL = 5,      // "fds..."
-    TOKEN_SEPARATOR = 6,           // ,
-    TOKEN_DELIMITER = 7,           // ;
+    TOKEN_NONE = 0,                // NO TOKEN ASSIGNED (not a real token)
+
+    TOKEN_IDENTIFIER = 1,          // abcd  sdf2324  dfs_23fs56df
+    TOKEN_KEYWORD = 2,
+    TOKEN_DATA_TYPE = 3,
+    TOKEN_NUMERIC_LITERAL = 4,     // 23434 12.656
+    TOKEN_CHAR_LITERAL = 5,        // 'A'
+    TOKEN_STRING_LITERAL = 6,      // "fds..."
+    TOKEN_SEPARATOR = 7,           // ,
+    TOKEN_DELIMITER = 8,           // ;
 
     /* brackets */
     TOKEN_LEFT_BRACE = 100,    // {
@@ -78,7 +80,7 @@ enum Partial_Token_Type {
 
 struct Token {
     std::string val;
-    Token_Type type;
+    Token_Type type = TOKEN_NONE;
 
     int line_num;
     int position;
@@ -87,7 +89,7 @@ struct Token {
 
 inline bool is_literal(Token *tok)
 {
-    return (tok->type >= 3 && tok->type <= 5);
+    return (tok->type >= 4 && tok->type <= 6);
 }
 
 inline bool is_unary_op(Token *tok)
@@ -102,6 +104,7 @@ inline bool is_binary_op(Token *tok)
 
 
 struct Lexer {
+    std::string file_name;
     std::string line;
     int line_num = 0;
 
@@ -154,6 +157,7 @@ inline void Lexer::move_to_next_token()
 
 const std::string DATA_TYPES[] = {
     "void",
+    "bool",
     "int",
     "float",
     "char",

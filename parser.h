@@ -59,6 +59,7 @@ std::unordered_map<Token_Type, Precedence> op_prec = {
     {TOKEN_INCREMENT,       PREC_UNARY},
     {TOKEN_DECREMENT,       PREC_UNARY},
     {TOKEN_IDENTIFIER,      PREC_PRIMARY},
+    {TOKEN_DATA_TYPE,       PREC_PRIMARY},
     {TOKEN_NUMERIC_LITERAL, PREC_PRIMARY},
     {TOKEN_CHAR_LITERAL,    PREC_PRIMARY},
     {TOKEN_STRING_LITERAL,  PREC_PRIMARY},
@@ -74,7 +75,7 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 
     switch (ast_expr->expr_type) {
     case EXPR_IDENT: {
-	printf("<IDENT, %s>\n", ((AST_Identifier*)ast_expr)->name);
+	printf("<IDENT, %s>\n", ((AST_Identifier*)ast_expr)->name.c_str());
 	break;
     }
     case EXPR_LITERAL: {
@@ -83,12 +84,12 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
     }
     case EXPR_FUNC_DEF: {
 	auto expr = (AST_Function_Definition*)ast_expr;
-	printf("<FUNC, %s> (", expr->function_name);
+	printf("<FUNC, %s> (", expr->function_name.c_str());
 
 	for (Function_Parameter *param : expr->params) {
-	    printf("[%s %s]", param->type, param->name);
+	    printf("[%s %s]", param->type.c_str(), param->name.c_str());
 	}
-	printf(") -> (%s)\n", expr->return_type);
+	printf(") -> (%s)\n", expr->return_type.c_str());
 
 	for (AST_Expression *e : expr->block) {
 	    print_ast_expression(e, indentation_level + 1);
@@ -99,6 +100,7 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	auto expr = (AST_If_Expression*)ast_expr;
 	printf("<IF> (\n");
 	print_ast_expression(expr->condition, indentation_level + 1);
+	printf("%*s", indentation_level, "");
 	printf(")\n");
 
 	for (AST_Expression *e : expr->block) {
@@ -106,6 +108,7 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	}
 
 	if (expr->else_block.size() > 0) {
+	    printf("%*s", indentation_level, "");
 	    printf("<ELSE>\n");
 	    for (AST_Expression *e : expr->else_block) {
 		print_ast_expression(e, indentation_level + 1);
@@ -119,6 +122,7 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	print_ast_expression(expr->init, indentation_level + 1);
 	print_ast_expression(expr->condition, indentation_level + 1);
 	print_ast_expression(expr->increment, indentation_level + 1);
+	printf("%*s", indentation_level, "");
 	printf(")\n");
 
 	for (AST_Expression *e : expr->block) {
@@ -130,6 +134,7 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	auto expr = (AST_While_Expression*)ast_expr;
 	printf("<WHILE> (\n");
 	print_ast_expression(expr->condition, indentation_level + 1);
+	printf("%*s", indentation_level, "");
 	printf(")\n");
 
 	for (AST_Expression *e : expr->block) {
@@ -139,7 +144,7 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
     }
     case EXPR_DECL: {
 	auto expr = (AST_Declaration*)ast_expr;
-	printf("<DECL, [%s %s]>\n", expr->data_type, expr->variable_name);
+	printf("<DECL, [%s %s]>\n", expr->data_type.c_str(), expr->variable_name.c_str());
 	break;
     }
     case EXPR_BINARY: {
@@ -147,7 +152,10 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	if (expr->left != NULL) {
 	    print_ast_expression(expr->left, indentation_level + 1);
 	}
-	printf(" <OP, Type : %d>\n", (int)expr->op);
+	if (expr->op != TOKEN_NONE) {
+	    printf("%*s", indentation_level + 1, "");
+	    printf("<OP, Type : %d>\n", (int)expr->op);
+	}
 	if (expr->right != NULL) {
 	    print_ast_expression(expr->right, indentation_level + 1);
 	}
@@ -155,11 +163,12 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
     }
     case EXPR_FUNC_CALL: {
 	auto expr = (AST_Function_Call*)ast_expr;
-	printf("<CALL, %s> (\n", expr->function_name);
+	printf("<CALL, %s> (\n", expr->function_name.c_str());
 
 	for (AST_Expression *e : expr->params) {
 	    print_ast_expression(e, indentation_level + 1);
 	}
+	printf("%*s", indentation_level, "");
 	printf(")\n");
 	break;
     }
@@ -167,11 +176,12 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	auto expr = (AST_Return_Expression*)ast_expr;
 	printf("<RETURN> (\n");
 	print_ast_expression(expr->value, indentation_level + 1);
+	printf("%*s", indentation_level, "");
 	printf(")\n");
 	break;
     }
     case EXPR_JUMP: {
-	printf("<JUMP, %s>\n", ((AST_Jump_Expression*)ast_expr)->jump_type);
+	printf("<JUMP, %s>\n", ((AST_Jump_Expression*)ast_expr)->jump_type.c_str());
 	break;
     }
     default: {
@@ -189,12 +199,31 @@ inline void print_ast(std::vector<AST_Expression*> *ast)
     int top_expression_num = 1;
     for (AST_Expression *ast_expr : *ast) {
 	// printing an expression tree
-	printf("AST Top Expression :: %d\n\n", top_expression_num);
+	printf("AST Top Expression :: %d\n", top_expression_num);
+	printf("***************************\n\n");
 
 	print_ast_expression(ast_expr, 0);
 	printf("\n");
 	top_expression_num++;
     }
+}
+
+
+// get the line from the program file, using the line number
+std::string get_file_line(std::string file_name, int line_num)
+{
+    // NOTE: this is not the most optimal
+    // looking solution. but since it is only
+    // being used to display error messages,
+    // I am letting it be like this for now.
+
+    std::ifstream file(file_name.c_str());
+    std::string line;
+
+    for (int i = 0; i < line_num; ++i) std::getline(file, line);
+    std::getline(file, line);
+
+    return line;
 }
 
 
@@ -209,11 +238,18 @@ void throw_parser_error(const char *message, Lexer *lexer)
 
     Token *tok = lexer->peek(0);
     if (tok == NULL) {
-      fprintf(stderr, "\nFATAL (Parser): Could not find current token.");
+	fprintf(stderr, "\nFATAL (Parser): Could not find current token.");
 	exit(1);
     }
 
-    printf(" [line %d, position %d]", tok->line_num, tok->position);
+    printf(" [line %d, position %d]\n\n", tok->line_num, tok->position);
+
+    // display the line where error occurred
+    std::string line = get_file_line(lexer->file_name, tok->line_num - 1);
+
+    printf("\t%s\n", line.c_str());
+    printf("\t%*c\n", tok->position, '^'); // to mark (using ^) the position of the error
+
     exit(1);
 }
 

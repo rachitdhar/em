@@ -461,6 +461,8 @@ void perform_lexical_analysis(Lexer* lexer, const char* file_name)
 	exit(1);
     }
 
+    lexer->file_name = file_name;
+
     while (std::getline(file, lexer->line)) {
 	lexer->line_num++;
 	generate_tokens(lexer);

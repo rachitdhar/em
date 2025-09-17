@@ -110,9 +110,9 @@ struct AST_Declaration : AST_Expression {
 struct AST_Binary_Expression : AST_Expression {
     AST_Binary_Expression(): AST_Expression(EXPR_BINARY) {}
 
-    Token_Type op;
-    AST_Expression *left;
-    AST_Expression *right;
+    Token_Type op = TOKEN_NONE;
+    AST_Expression *left = NULL;
+    AST_Expression *right = NULL;
 };
 
 

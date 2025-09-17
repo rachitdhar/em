@@ -133,15 +133,14 @@ void parse_ast_block(std::vector<AST_Expression*> &block, Lexer *lexer)
     }
 
     while (tok->type != TOKEN_RIGHT_BRACE) {
+	AST_Expression *expr = parse_ast_expression(lexer);
+	block.push_back(expr);
+
 	tok = lexer->get_next_token();
 	if (tok == NULL) {
 	    throw_parser_error("SYNTAX ERROR: Missing \'}\' from scope.", lexer);
 	}
-
-	AST_Expression *expr = parse_ast_expression(lexer);
-	block.push_back(expr);
     }
-    tok = lexer->get_next_token();
 }
 
 
@@ -186,7 +185,7 @@ inline AST_If_Expression *parse_ast_if_expression(Lexer *lexer)
     parse_ast_block(ast_if->block, lexer);
 
     // check whether there is an else block as well
-    tok = lexer->peek(0);
+    tok = lexer->get_next_token();
     if (tok != NULL && tok->val == "else") {
 	tok = lexer->get_next_token();
 	if (tok == NULL) {
@@ -195,6 +194,9 @@ inline AST_If_Expression *parse_ast_if_expression(Lexer *lexer)
 
 	// parse else block
 	parse_ast_block(ast_if->else_block, lexer);
+	if (lexer->get_next_token() == NULL) {
+	    throw_parser_error("SYNTAX ERROR: Missing \'}\' from function.", lexer);
+	}
     }
     return ast_if;
 }
@@ -278,6 +280,9 @@ inline AST_For_Expression *parse_ast_for_expression(Lexer *lexer)
 
     // parse the block
     parse_ast_block(ast_for->block, lexer);
+    if (lexer->get_next_token() == NULL) {
+	throw_parser_error("SYNTAX ERROR: Missing \'}\' from function.", lexer);
+    }
 
     return ast_for;
 }
@@ -322,6 +327,9 @@ inline AST_While_Expression *parse_ast_while_expression(Lexer *lexer)
 
     // parse while block
     parse_ast_block(ast_while->block, lexer);
+    if (lexer->get_next_token() == NULL) {
+	throw_parser_error("SYNTAX ERROR: Missing \'}\' from function.", lexer);
+    }
 
     return ast_while;
 }
@@ -519,6 +527,7 @@ inline AST_Expression *parse_primary_subexpression(Lexer *lexer, Token *tok)
 {
     switch (tok->type) {
     case TOKEN_IDENTIFIER: return parse_ast_identifier(lexer);
+    case TOKEN_DATA_TYPE: return parse_ast_declaration(lexer);
     case TOKEN_CHAR_LITERAL:
     case TOKEN_NUMERIC_LITERAL:
     case TOKEN_STRING_LITERAL: return parse_ast_literal(lexer);
@@ -550,6 +559,9 @@ AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression 
 	Token *op = lexer->peek_next_token();
 
 	if (op == NULL) {
+	    throw_error__missing_delimiter(lexer);
+	}
+	if (op->type == TOKEN_DELIMITER) {
 	    curr_expression->right = tok_expr;
 	    break;
 	}
@@ -607,6 +619,7 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
 	curr_expression->left = tok_expr;
 
 	tok = lexer->get_next_token();
+	if (tok != NULL && tok->type == TOKEN_DELIMITER) break;
 	if (tok == NULL || !is_binary_op(tok)) {
 	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
 	}
@@ -620,6 +633,9 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
 	Token *op = lexer->peek_next_token();
 
 	if (op == NULL) {
+	    throw_error__missing_delimiter(lexer);
+	}
+	if (op->type == TOKEN_DELIMITER) {
 	    curr_expression->right = tok_expr;
 	    break;
 	}
@@ -835,11 +851,12 @@ std::vector<AST_Expression*> *parse_tokens(Lexer *lexer)
 
     // TODO: Handle global variables
 
-    while (lexer->peek(0) != NULL) {
+    do {
 	// at the outermost, we only have function definitions
 	AST_Function_Definition *ast_function = parse_ast_function(lexer);
 	ast->push_back(ast_function);
-    }
+    } while (lexer->get_next_token() != NULL);
+
     return ast;
 }
 

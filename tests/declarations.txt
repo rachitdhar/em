@@ -1,9 +1,0 @@
-
-int main(char c, int k)
-{
-	int x;
-	float y;
-
-	char c = 'a';
-	return 0;
-}

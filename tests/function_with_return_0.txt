@@ -1,8 +1,0 @@
-
-int func_alpha(char c, int m) {
-    return 0;
-}
-
-void main(bool b) {
-
-}

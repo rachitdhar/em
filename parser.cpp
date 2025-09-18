@@ -160,15 +160,9 @@ inline AST_If_Expression *parse_ast_if_expression(Lexer *lexer)
     }
 
     // parse the expression
-    AST_Expression *condition = parse_ast_subexpression(lexer, PREC_MIN);
+    AST_Expression *condition = parse_ast_subexpression(lexer, PREC_MIN, TOKEN_RIGHT_PAREN);
 
-    tok = lexer->get_next_token();
-    if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Incomplete \'if\' statement encountered.", lexer);
-    }
-    if (tok->type != TOKEN_RIGHT_PAREN) {
-	throw_parser_error("SYNTAX ERROR: Missing \')\' from if statement condition.", lexer);
-    }
+
     tok = lexer->get_next_token();
     if (tok == NULL) {
 	throw_parser_error("SYNTAX ERROR: Incomplete \'if\' statement encountered.", lexer);
@@ -181,8 +175,9 @@ inline AST_If_Expression *parse_ast_if_expression(Lexer *lexer)
     parse_ast_block(ast_if->block, lexer);
 
     // check whether there is an else block as well
-    tok = lexer->get_next_token();
+    tok = lexer->peek_next_token();
     if (tok != NULL && tok->val == "else") {
+	lexer->move_to_next_token();
 	tok = lexer->get_next_token();
 	if (tok == NULL) {
 	    throw_parser_error("SYNTAX ERROR: Incomplete \'else\' statement encountered.", lexer);
@@ -221,11 +216,6 @@ inline AST_For_Expression *parse_ast_for_expression(Lexer *lexer)
     AST_Expression *init = NULL;
     if (tok->type != TOKEN_DELIMITER) {
 	init = parse_ast_subexpression(lexer, PREC_MIN);
-
-	tok = lexer->get_next_token();
-	if (tok == NULL || tok->type != TOKEN_DELIMITER) {
-	    throw_parser_error("SYNTAX ERROR: Missing \';\' after \'for\' expression initialization.", lexer);
-	}
     }
 
     tok = lexer->get_next_token();
@@ -239,11 +229,6 @@ inline AST_For_Expression *parse_ast_for_expression(Lexer *lexer)
     AST_Expression *condition = NULL;
     if (tok->type != TOKEN_DELIMITER) {
 	condition = parse_ast_subexpression(lexer, PREC_MIN);
-
-	tok = lexer->get_next_token();
-	if (tok == NULL || tok->type != TOKEN_DELIMITER) {
-	    throw_parser_error("SYNTAX ERROR: Missing \';\' after \'for\' expression condition.", lexer);
-	}
     }
 
     tok = lexer->get_next_token();
@@ -255,13 +240,8 @@ inline AST_For_Expression *parse_ast_for_expression(Lexer *lexer)
 
     // parse the increment
     AST_Expression *increment = NULL;
-    if (tok->type != TOKEN_DELIMITER) {
-	increment = parse_ast_subexpression(lexer, PREC_MIN);
-    }
-
-    tok = lexer->get_next_token();
-    if (tok == NULL || tok->type != TOKEN_RIGHT_PAREN) {
-	throw_parser_error("SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
+    if (tok->type != TOKEN_RIGHT_PAREN) {
+	increment = parse_ast_subexpression(lexer, PREC_MIN, TOKEN_RIGHT_PAREN);
     }
 
     tok = lexer->get_next_token();
@@ -304,15 +284,9 @@ inline AST_While_Expression *parse_ast_while_expression(Lexer *lexer)
     }
 
     // parse the expression
-    AST_Expression *condition = parse_ast_subexpression(lexer, PREC_MIN);
+    AST_Expression *condition = parse_ast_subexpression(lexer, PREC_MIN, TOKEN_RIGHT_PAREN);
 
-    tok = lexer->get_next_token();
-    if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Incomplete \'while\' statement encountered.", lexer);
-    }
-    if (tok->type != TOKEN_RIGHT_PAREN) {
-	throw_parser_error("SYNTAX ERROR: Missing \')\' from if statement condition.", lexer);
-    }
+
     tok = lexer->get_next_token();
     if (tok == NULL) {
 	throw_parser_error("SYNTAX ERROR: Incomplete \'while\' statement encountered.", lexer);
@@ -355,11 +329,6 @@ inline AST_Return_Expression *parse_ast_return_expression(Lexer *lexer)
     } else {
 	AST_Expression *expr = parse_ast_subexpression(lexer, PREC_MIN);
 	ast_return->value = expr;
-
-	tok = lexer->peek(0);
-	if (tok == NULL || tok->type != TOKEN_DELIMITER) {
-	    throw_error__missing_delimiter(lexer);
-	}
     }
     return ast_return;
 }
@@ -409,20 +378,26 @@ inline AST_Function_Call *parse_ast_function_call(Lexer *lexer)
 
     tok = lexer->get_next_token();
 
-    while (tok->type != TOKEN_RIGHT_PAREN) {
-	AST_Expression *arg_expr = parse_ast_expression(lexer);
+    /*
+    here's the thing. to parse expressions we need a stopping
+    token. but arguments could stop at either ',' or ')'. So we can
+    first try to count the number of separators (i.e. ',').
+    */
+
+    int num_separators = 0, i = 0;
+    while (1) {
+	if (lexer->peek(i) == NULL) throw_error__incomplete_func_call(lexer);
+	if (lexer->peek(i)->type == TOKEN_SEPARATOR) num_separators++;
+	else if (lexer->peek(i)->type == TOKEN_RIGHT_PAREN) break;
+	i++;
+    }
+
+    for (int arg_num = 0; arg_num < num_separators + 1; arg_num++) {
+	AST_Expression *arg_expr = parse_ast_subexpression(lexer, PREC_MIN, num_separators > 0 ? TOKEN_SEPARATOR : TOKEN_RIGHT_PAREN);
 	ast_call->params.push_back(arg_expr);
 
-	tok = lexer->get_next_token();
-	if (tok == NULL) {
-	    throw_parser_error("SYNTAX ERROR: Incomplete function call expression.", lexer);
-	}
-	if (tok->type == TOKEN_SEPARATOR) {
-	    tok = lexer->get_next_token();
-	    if (tok == NULL) {
-		throw_parser_error("SYNTAX ERROR: Incomplete function call expression.", lexer);
-	    }
-	}
+	num_separators--;
+	lexer->move_to_next_token();
     }
     return ast_call;
 }
@@ -507,12 +482,7 @@ inline AST_Expression *parse_ast_parenthesized_expression(Lexer *lexer)
 	throw_parser_error("SYNTAX ERROR: Missing expression after \'(\'.", lexer);
     }
 
-    AST_Expression *expr = parse_ast_expression(lexer);
-
-    tok = lexer->get_next_token();
-    if (tok == NULL || tok->type != TOKEN_RIGHT_PAREN) {
-	throw_parser_error("SYNTAX ERROR: Missing \')\' after expression.", lexer);
-    }
+    AST_Expression *expr = parse_ast_subexpression(lexer, PREC_MIN, TOKEN_RIGHT_PAREN);
     return expr;
 }
 
@@ -535,7 +505,7 @@ inline AST_Expression *parse_primary_subexpression(Lexer *lexer, Token *tok)
 }
 
 
-AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression *left, Precedence curr_precedence)
+AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression *left, Precedence curr_precedence, Token_Type stops_at = TOKEN_DELIMITER)
 {
     auto *curr_expression = new AST_Binary_Expression;
 
@@ -556,9 +526,9 @@ AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression 
 	Token *op = lexer->peek_next_token();
 
 	if (op == NULL) {
-	    throw_error__missing_delimiter(lexer);
+	    throw_parser_error("SYNTAX ERROR: Missing delimiter at the end of expression.", lexer);
 	}
-	if (op->type == TOKEN_DELIMITER) {
+	if (op->type == stops_at) {
 	    curr_expression->right = tok_expr;
 	    break;
 	}
@@ -568,7 +538,7 @@ AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression 
 
 	Precedence new_prec = op_prec[op->type];
 	if (new_prec > curr_precedence) {
-	    curr_expression->right = parse_ast_subexpression(lexer, new_prec);
+	    curr_expression->right = parse_ast_subexpression(lexer, new_prec, stops_at);
 	    break;
 	}
 
@@ -587,8 +557,13 @@ AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression 
 //
 // (this block of the code handles the increasing precedence scenario,
 // and makes use of a call to parse_decreasing_precedence for handling
-// the decreasing precedence cases)
-AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence)
+// the decreasing precedence cases).
+//
+// stops_at :
+// tells which token comes right after the end of this expression.
+// We need this to know when to stop reading further. By default it is ';',
+// but it can also be a ')' (or certain other characters too...)
+AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence, Token_Type stops_at)
 {
     /*
     The idea is that parsing in accordance with operator
@@ -616,7 +591,7 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
 	curr_expression->left = tok_expr;
 
 	tok = lexer->get_next_token();
-	if (tok != NULL && tok->type == TOKEN_DELIMITER) break;
+	if (tok != NULL && tok->type == stops_at) break;
 	if (tok == NULL || !is_binary_op(tok)) {
 	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
 	}
@@ -630,9 +605,9 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
 	Token *op = lexer->peek_next_token();
 
 	if (op == NULL) {
-	    throw_error__missing_delimiter(lexer);
+	    throw_parser_error("SYNTAX ERROR: Missing delimiter at the end of expression.", lexer);
 	}
-	if (op->type == TOKEN_DELIMITER) {
+	if (op->type == stops_at) {
 	    curr_expression->right = tok_expr;
 	    break;
 	}

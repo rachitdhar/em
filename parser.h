@@ -234,6 +234,16 @@ inline std::string get_file_line(std::string file_name, int line_num)
 }
 
 
+// get leading whitespace from a string (line)
+inline std::string get_leading_whitespace(std::string line)
+{
+    size_t pos = line.find_first_not_of(" \t\n\r\f\v");
+
+    std::string leading_ws = (pos != std::string::npos) ? line.substr(0, pos) : line;
+    return leading_ws;
+}
+
+
 // to provide an error message, with error source information
 // and then terminate the program execution.
 void throw_parser_error(const char *message, Lexer *lexer)
@@ -253,9 +263,11 @@ void throw_parser_error(const char *message, Lexer *lexer)
 
     // display the line where error occurred
     std::string line = get_file_line(lexer->file_name, tok->line_num - 1);
+    std::string leading_ws = get_leading_whitespace(line);
+    int error_pointer_pos = tok->position + 1 - leading_ws.size();
 
     printf("\t%s\n", line.c_str());
-    printf("\t%*c\n", tok->position, '^'); // to mark (using ^) the position of the error
+    printf("\t%s%*c\n", leading_ws.c_str(), error_pointer_pos, '^'); // to mark (using ^) the position of the error
 
     exit(1);
 }
@@ -275,10 +287,16 @@ inline void throw_error__missing_delimiter(Lexer *lexer)
 }
 
 
+inline void throw_error__incomplete_func_call(Lexer *lexer)
+{
+    throw_parser_error("SYNTAX ERROR: Incomplete function call expression.", lexer);
+}
+
+
 //                  Function definitions
 // ***********************************************************
 
-AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence);
+AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence, Token_Type stops_at = TOKEN_DELIMITER);
 AST_Expression *parse_ast_expression(Lexer *lexer);
 std::vector<AST_Expression*> *parse_tokens(Lexer *lexer);
 

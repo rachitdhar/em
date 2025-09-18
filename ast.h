@@ -75,7 +75,7 @@ struct AST_Function_Definition : AST_Expression {
 struct AST_If_Expression : AST_Expression {
     AST_If_Expression(): AST_Expression(EXPR_IF) {}
 
-    AST_Expression *condition;
+    AST_Expression *condition = NULL;
     std::vector<AST_Expression*> block;
     std::vector<AST_Expression*> else_block;
 };
@@ -84,9 +84,9 @@ struct AST_If_Expression : AST_Expression {
 struct AST_For_Expression : AST_Expression {
     AST_For_Expression(): AST_Expression(EXPR_FOR) {}
 
-    AST_Expression *init;
-    AST_Expression *condition;
-    AST_Expression *increment;
+    AST_Expression *init = NULL;
+    AST_Expression *condition = NULL;
+    AST_Expression *increment = NULL;
     std::vector<AST_Expression*> block;
 };
 
@@ -94,7 +94,7 @@ struct AST_For_Expression : AST_Expression {
 struct AST_While_Expression : AST_Expression {
     AST_While_Expression(): AST_Expression(EXPR_WHILE) {}
 
-    AST_Expression *condition;
+    AST_Expression *condition = NULL;
     std::vector<AST_Expression*> block;
 };
 
@@ -127,7 +127,7 @@ struct AST_Function_Call : AST_Expression {
 struct AST_Return_Expression : AST_Expression {
     AST_Return_Expression(): AST_Expression(EXPR_RETURN) {}
 
-    AST_Expression *value;
+    AST_Expression *value = NULL;
 };
 
 

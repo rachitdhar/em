@@ -78,90 +78,115 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 {
     // depending on the indentation level
     // we will add spaces before printing
-    print_indentation(indentation_level);
 
     switch (ast_expr->expr_type) {
     case EXPR_IDENT: {
+	print_indentation(indentation_level);
 	printf("<IDENT, %s>\n", ((AST_Identifier*)ast_expr)->name.c_str());
 	break;
     }
     case EXPR_LITERAL: {
+	print_indentation(indentation_level);
 	printf("<LITERAL>\n");
 	break;
     }
     case EXPR_FUNC_DEF: {
-	auto expr = (AST_Function_Definition*)ast_expr;
+	auto *expr = (AST_Function_Definition*)ast_expr;
+	print_indentation(indentation_level);
 	printf("<FUNC, %s> (", expr->function_name.c_str());
 
 	for (Function_Parameter *param : expr->params) {
 	    printf("[%s %s]", param->type.c_str(), param->name.c_str());
 	}
-	printf(") -> (%s)\n", expr->return_type.c_str());
+	printf(") -> (%s) {\n", expr->return_type.c_str());
 
 	for (AST_Expression *e : expr->block) {
 	    print_ast_expression(e, indentation_level + 1);
 	}
+	print_indentation(indentation_level);
+	printf("}\n");
 	break;
     }
     case EXPR_IF: {
-	auto expr = (AST_If_Expression*)ast_expr;
+	auto *expr = (AST_If_Expression*)ast_expr;
+	print_indentation(indentation_level);
 	printf("<IF> (\n");
 	print_ast_expression(expr->condition, indentation_level + 1);
 	print_indentation(indentation_level);
-	printf(")\n");
+	printf(") {\n");
 
 	for (AST_Expression *e : expr->block) {
 	    print_ast_expression(e, indentation_level + 1);
 	}
+	print_indentation(indentation_level);
+	printf("}\n");
 
 	if (expr->else_block.size() > 0) {
 	    print_indentation(indentation_level);
-	    printf("<ELSE>\n");
+	    printf("<ELSE> {\n");
 	    for (AST_Expression *e : expr->else_block) {
 		print_ast_expression(e, indentation_level + 1);
 	    }
+	    print_indentation(indentation_level);
+	    printf("}\n");
 	}
 	break;
     }
     case EXPR_FOR: {
-	auto expr = (AST_For_Expression*)ast_expr;
-	printf("<FOR> (\n");
-	print_ast_expression(expr->init, indentation_level + 1);
-	print_ast_expression(expr->condition, indentation_level + 1);
-	print_ast_expression(expr->increment, indentation_level + 1);
+	auto *expr = (AST_For_Expression*)ast_expr;
 	print_indentation(indentation_level);
-	printf(")\n");
+	printf("<FOR> (\n");
+	if (expr->init != NULL) print_ast_expression(expr->init, indentation_level + 1);
+	if (expr->condition != NULL) print_ast_expression(expr->condition, indentation_level + 1);
+	if (expr->increment != NULL) print_ast_expression(expr->increment, indentation_level + 1);
+	print_indentation(indentation_level);
+	printf(") {\n");
 
 	for (AST_Expression *e : expr->block) {
 	    print_ast_expression(e, indentation_level + 1);
 	}
+	print_indentation(indentation_level);
+	printf("}\n");
 	break;
     }
     case EXPR_WHILE: {
-	auto expr = (AST_While_Expression*)ast_expr;
+	auto *expr = (AST_While_Expression*)ast_expr;
+	print_indentation(indentation_level);
 	printf("<WHILE> (\n");
 	print_ast_expression(expr->condition, indentation_level + 1);
 	print_indentation(indentation_level);
-	printf(")\n");
+	printf(") {\n");
 
 	for (AST_Expression *e : expr->block) {
 	    print_ast_expression(e, indentation_level + 1);
 	}
+	print_indentation(indentation_level);
+	printf("}\n");
 	break;
     }
     case EXPR_DECL: {
-	auto expr = (AST_Declaration*)ast_expr;
+	auto *expr = (AST_Declaration*)ast_expr;
+	print_indentation(indentation_level);
 	printf("<DECL, [%s %s]>\n", expr->data_type.c_str(), expr->variable_name.c_str());
 	break;
     }
     case EXPR_BINARY: {
-	auto expr = (AST_Binary_Expression*)ast_expr;
+	auto *expr = (AST_Binary_Expression*)ast_expr;
+	if (expr->op != TOKEN_NONE) {
+	    print_indentation(indentation_level);
+	    printf("<OP, Type : %d> (\n", (int)expr->op);
+	    if (expr->left != NULL) {
+		print_ast_expression(expr->left, indentation_level + 1);
+	    }
+	    if (expr->right != NULL) {
+		print_ast_expression(expr->right, indentation_level + 1);
+	    }
+	    print_indentation(indentation_level);
+	    printf(")\n");
+	    break;
+	}
 	if (expr->left != NULL) {
 	    print_ast_expression(expr->left, indentation_level);
-	}
-	if (expr->op != TOKEN_NONE) {
-	    print_indentation(indentation_level + 1);
-	    printf("<OP, Type : %d>\n", (int)expr->op);
 	}
 	if (expr->right != NULL) {
 	    print_ast_expression(expr->right, indentation_level);
@@ -169,7 +194,8 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	break;
     }
     case EXPR_FUNC_CALL: {
-	auto expr = (AST_Function_Call*)ast_expr;
+	auto *expr = (AST_Function_Call*)ast_expr;
+	print_indentation(indentation_level);
 	printf("<CALL, %s> (\n", expr->function_name.c_str());
 
 	for (AST_Expression *e : expr->params) {
@@ -180,14 +206,19 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	break;
     }
     case EXPR_RETURN: {
-	auto expr = (AST_Return_Expression*)ast_expr;
-	printf("<RETURN> (\n");
-	print_ast_expression(expr->value, indentation_level + 1);
+	auto *expr = (AST_Return_Expression*)ast_expr;
 	print_indentation(indentation_level);
+	printf("<RETURN> (");
+	if (expr->value != NULL) {
+	    printf("\n");
+	    print_ast_expression(expr->value, indentation_level + 1);
+	    print_indentation(indentation_level);
+	}
 	printf(")\n");
 	break;
     }
     case EXPR_JUMP: {
+	print_indentation(indentation_level);
 	printf("<JUMP, %s>\n", ((AST_Jump_Expression*)ast_expr)->jump_type.c_str());
 	break;
     }
@@ -206,8 +237,7 @@ inline void print_ast(std::vector<AST_Expression*> *ast)
     int top_expression_num = 1;
     for (AST_Expression *ast_expr : *ast) {
 	// printing an expression tree
-	printf("AST Top Expression :: %d\n", top_expression_num);
-	printf("***************************\n\n");
+	printf("************** :: %d :: **************\n\n", top_expression_num);
 
 	print_ast_expression(ast_expr, 0);
 	printf("\n");
@@ -290,6 +320,11 @@ inline void throw_error__missing_delimiter(Lexer *lexer)
 inline void throw_error__incomplete_func_call(Lexer *lexer)
 {
     throw_parser_error("SYNTAX ERROR: Incomplete function call expression.", lexer);
+}
+
+inline void throw_error__used_delimiter_in_a_non_statement(Lexer *lexer)
+{
+    throw_parser_error("SYNTAX ERROR: Invalid expression. Used \';\' in an expression that is not a statement.", lexer);
 }
 
 

@@ -482,6 +482,9 @@ inline AST_Expression *parse_ast_parenthesized_expression(Lexer *lexer)
     }
 
     AST_Expression *expr = parse_ast_subexpression(lexer, PREC_MIN, TOKEN_RIGHT_PAREN);
+    if (lexer->get_next_token() == NULL) {
+	throw_error__missing_delimiter(lexer);
+    }
     return expr;
 }
 
@@ -513,7 +516,7 @@ AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression 
 
 	Token *tok = lexer->get_next_token();
 	if (tok == NULL || !is_binary_op(tok)) {
-	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.1", lexer);
+	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
 	}
 	curr_expression->op = tok->type;
 
@@ -535,7 +538,7 @@ AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression 
 	    throw_error__used_delimiter_in_a_non_statement(lexer);
 	}
 	if (!is_binary_op(op)) {
-	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.2", lexer);
+	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
 	}
 
 	Precedence new_prec = op_prec[op->type];
@@ -582,26 +585,27 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
     auto *expr = new AST_Binary_Expression;
     auto *curr_expression = expr;
 
-    while (1) {
-	Token *tok = lexer->peek(0);
-	if (tok == NULL) throw_error__missing_delimiter(lexer);
-	if (tok->type == stops_at) break;
-	if (tok->type == TOKEN_DELIMITER) { // in case stops_at is not ';', but we encounter a ';' anyways
-	    throw_error__used_delimiter_in_a_non_statement(lexer);
-	}
-	if (op_prec[tok->type] != PREC_PRIMARY) {
-	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
-	}
-	AST_Expression *tok_expr = parse_primary_subexpression(lexer, tok);
-	curr_expression->left = tok_expr;
+    Token *tok = lexer->peek(0);
+    if (tok == NULL) throw_error__missing_delimiter(lexer);
+    if (tok->type == stops_at) return NULL;
+    if (tok->type == TOKEN_DELIMITER) {
+	// in case stops_at is not ';', but we encounter a ';' anyways
+	throw_error__used_delimiter_in_a_non_statement(lexer);
+    }
+    if (op_prec[tok->type] != PREC_PRIMARY) {
+	throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
+    }
+    AST_Expression *tok_expr = parse_primary_subexpression(lexer, tok);
+    curr_expression->left = tok_expr;
 
+    while (1) {
 	tok = lexer->peek(0);
 	if (tok != NULL && tok->type == stops_at) break;
 	if (tok != NULL && tok->type == TOKEN_DELIMITER) {
 	    throw_error__used_delimiter_in_a_non_statement(lexer);
 	}
 	if (tok == NULL || !is_binary_op(tok)) {
-	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.3", lexer);
+	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
 	}
 	curr_expression->op = tok->type;
 
@@ -623,18 +627,19 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
 	    throw_error__used_delimiter_in_a_non_statement(lexer);
 	}
 	if (!is_binary_op(op)) {
-	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.4", lexer);
+	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
 	}
 
 	Precedence new_prec = op_prec[op->type];
 	if (new_prec < curr_precedence) {
 	    curr_expression->right = tok_expr;
-	    parse_decreasing_precedence(lexer, curr_expression, new_prec); // TODO: is this correct?
+	    parse_decreasing_precedence(lexer, curr_expression, new_prec, stops_at); // TODO: is this correct?
 	    break;
 	}
 
 	curr_expression->right = new AST_Binary_Expression;
 	curr_expression = (AST_Binary_Expression*)curr_expression->right;
+	curr_expression->left = tok_expr;
 	curr_precedence = new_prec;
     }
     return expr;

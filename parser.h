@@ -222,6 +222,17 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	printf("<JUMP, %s>\n", ((AST_Jump_Expression*)ast_expr)->jump_type.c_str());
 	break;
     }
+    case EXPR_BLOCK: {
+	auto *expr = (AST_Block_Expression*)ast_expr;
+	print_indentation(indentation_level);
+	printf("{\n");
+	for (AST_Expression *e : expr->block) {
+	    print_ast_expression(e, indentation_level + 1);
+	}
+	print_indentation(indentation_level);
+	printf("}\n");
+	break;
+    }
     default: {
 	fprintf(stderr, "ERROR: Failed to print AST expression.");
 	exit(1);

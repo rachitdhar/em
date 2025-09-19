@@ -676,6 +676,18 @@ AST_Expression *parse_ast_expression(Lexer *lexer)
 
     Token *tok = lexer->peek();
 
+    // Before we get to any of the standard possibilities
+    // there is one unique case that might occur.
+    // It is possible that a scope is created using '{'.
+    // In that case we will have to form a block expression
+
+    if (tok->type == TOKEN_LEFT_BRACE) {
+	auto *ast_block = new AST_Block_Expression;
+
+	parse_ast_block(ast_block->block, lexer);
+	return ast_block;
+    }
+
     //     POSSIBILITY 1 : starts with a keyword
 
     //     if ( <expression> ) <block>
@@ -834,6 +846,26 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer)
 }
 
 
+// parse global declarations (with or without initialization)
+AST_Expression *parse_ast_global_declaration(Lexer *lexer)
+{
+    AST_Declaration *ast_decl = parse_ast_declaration(lexer);
+
+    if (lexer->peek()->type == TOKEN_ASSIGN) {
+	auto *ast_binary = new AST_Binary_Expression;
+	ast_binary->left = ast_decl;
+	ast_binary->op = TOKEN_ASSIGN;
+
+	if (lexer->get_next_token() == NULL) {
+	    throw_parser_error("SYNTAX ERROR: Missing expression after \'=\' in global variable initialization.", lexer);
+	}
+	ast_binary->right = parse_ast_subexpression(lexer, PREC_MIN);
+	return ast_binary;
+    }
+    return ast_decl;
+}
+
+
 std::vector<AST_Expression*> *parse_tokens(Lexer *lexer)
 {
     if (lexer->tokens.size() == 0) {
@@ -842,12 +874,28 @@ std::vector<AST_Expression*> *parse_tokens(Lexer *lexer)
 
     auto *ast = new std::vector<AST_Expression*>; // abstract syntax tree initialized
 
-    // TODO: Handle global variables
-
     do {
 	// at the outermost, we only have function definitions
-	AST_Function_Definition *ast_function = parse_ast_function(lexer);
-	ast->push_back(ast_function);
+	// or global declarations
+
+	// both declarations and function definitions start with
+	// <data_type> <identifier>. so the difference is at the
+	// third token.
+
+	// TODO : this does not handle pointers/arrays
+
+	Token *tok = lexer->peek(2);
+	if (tok == NULL) {
+	    throw_parser_error("SYNTAX ERROR: Incomplete top-level expression encountered.", lexer);
+	}
+
+	if (tok->type == TOKEN_LEFT_PAREN) {
+	    AST_Function_Definition *ast_function = parse_ast_function(lexer);
+	    ast->push_back(ast_function);
+	} else {
+	    auto *global_decl = parse_ast_global_declaration(lexer);
+	    ast->push_back(global_decl);
+	}
     } while (lexer->get_next_token() != NULL);
 
     return ast;

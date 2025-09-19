@@ -20,7 +20,8 @@ enum Expression_Type {
     EXPR_BINARY,
     EXPR_FUNC_CALL,
     EXPR_RETURN,
-    EXPR_JUMP
+    EXPR_JUMP,
+    EXPR_BLOCK
 };
 
 
@@ -135,6 +136,15 @@ struct AST_Jump_Expression : AST_Expression {
     AST_Jump_Expression(): AST_Expression(EXPR_JUMP) {}
 
     std::string jump_type;
+};
+
+
+// for scoped expression blocks
+// (other than the ones attached to if/for/while/functions...)
+struct AST_Block_Expression : AST_Expression {
+    AST_Block_Expression(): AST_Expression(EXPR_BLOCK) {}
+
+    std::vector<AST_Expression*> block;
 };
 
 #endif

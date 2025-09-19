@@ -108,7 +108,7 @@ void parse_ast_block(std::vector<AST_Expression*> &block, Lexer *lexer)
     // one possibility is that this is not a block
     // and just a single statement/expression
 
-    if (lexer->peek(0)->type != TOKEN_LEFT_BRACE) {
+    if (lexer->peek()->type != TOKEN_LEFT_BRACE) {
 	AST_Expression *expr = parse_ast_expression(lexer);
 	block.push_back(expr);
 	return;
@@ -351,7 +351,7 @@ inline AST_Function_Call *parse_ast_function_call(Lexer *lexer)
 
     auto ast_call = new AST_Function_Call;
 
-    Token *tok = lexer->peek(0);
+    Token *tok = lexer->peek();
     ast_call->function_name = tok->val;
 
     /*
@@ -402,7 +402,7 @@ inline AST_Expression *parse_ast_identifier(Lexer *lexer)
     // if we find a '(', we will assume that the
     // identifier is a function name
 
-    Token *tok = lexer->peek(0);
+    Token *tok = lexer->peek();
     Token *next = lexer->peek_next_token();
     if (next == NULL) {
 	throw_error__missing_delimiter(lexer);
@@ -427,7 +427,7 @@ inline AST_Declaration *parse_ast_declaration(Lexer *lexer)
     //     <data_type> <identifier>
 
     auto *ast_decl = new AST_Declaration;
-    Token *tok = lexer->peek(0);
+    Token *tok = lexer->peek();
     ast_decl->data_type = tok->val;
 
     tok = lexer->get_next_token();
@@ -446,7 +446,7 @@ inline AST_Declaration *parse_ast_declaration(Lexer *lexer)
 inline AST_Literal *parse_ast_literal(Lexer *lexer)
 {
     auto *ast_literal = new AST_Literal;
-    Token *tok = lexer->peek(0);
+    Token *tok = lexer->peek();
 
     if (tok->type == TOKEN_NUMERIC_LITERAL) {
       // it is either an int or a float
@@ -514,9 +514,9 @@ AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression 
     while (1) {
 	curr_expression->left = left;
 
-	Token *tok = lexer->get_next_token();
+	Token *tok = lexer->peek();
 	if (tok == NULL || !is_binary_op(tok)) {
-	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
+	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.1", lexer);
 	}
 	curr_expression->op = tok->type;
 
@@ -525,7 +525,7 @@ AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression 
 	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
 	}
 	AST_Expression *tok_expr = parse_primary_subexpression(lexer, tok);
-	Token *op = lexer->peek(0);
+	Token *op = lexer->peek();
 
 	if (op == NULL) {
 	    throw_parser_error("SYNTAX ERROR: Missing delimiter at the end of expression.", lexer);
@@ -538,7 +538,7 @@ AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression 
 	    throw_error__used_delimiter_in_a_non_statement(lexer);
 	}
 	if (!is_binary_op(op)) {
-	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
+	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.2", lexer);
 	}
 
 	Precedence new_prec = op_prec[op->type];
@@ -584,8 +584,9 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
 
     auto *expr = new AST_Binary_Expression;
     auto *curr_expression = expr;
+    AST_Binary_Expression *prev_expression = NULL;
 
-    Token *tok = lexer->peek(0);
+    Token *tok = lexer->peek();
     if (tok == NULL) throw_error__missing_delimiter(lexer);
     if (tok->type == stops_at) return NULL;
     if (tok->type == TOKEN_DELIMITER) {
@@ -599,13 +600,13 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
     curr_expression->left = tok_expr;
 
     while (1) {
-	tok = lexer->peek(0);
+	tok = lexer->peek();
 	if (tok != NULL && tok->type == stops_at) break;
 	if (tok != NULL && tok->type == TOKEN_DELIMITER) {
 	    throw_error__used_delimiter_in_a_non_statement(lexer);
 	}
 	if (tok == NULL || !is_binary_op(tok)) {
-	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
+	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.3", lexer);
 	}
 	curr_expression->op = tok->type;
 
@@ -614,7 +615,7 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
 	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
 	}
 	tok_expr = parse_primary_subexpression(lexer, tok);
-	Token *op = lexer->peek(0);
+	Token *op = lexer->peek();
 
 	if (op == NULL) {
 	    throw_parser_error("SYNTAX ERROR: Missing delimiter at the end of expression.", lexer);
@@ -627,16 +628,20 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
 	    throw_error__used_delimiter_in_a_non_statement(lexer);
 	}
 	if (!is_binary_op(op)) {
-	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
+	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.4", lexer);
 	}
 
 	Precedence new_prec = op_prec[op->type];
 	if (new_prec < curr_precedence) {
 	    curr_expression->right = tok_expr;
-	    parse_decreasing_precedence(lexer, curr_expression, new_prec, stops_at); // TODO: is this correct?
+	    auto *updated_expression = parse_decreasing_precedence(lexer, curr_expression, new_prec, stops_at);
+
+	    if (prev_expression == NULL) return updated_expression;
+	    prev_expression->right = updated_expression;
 	    break;
 	}
 
+	prev_expression = curr_expression;
 	curr_expression->right = new AST_Binary_Expression;
 	curr_expression = (AST_Binary_Expression*)curr_expression->right;
 	curr_expression->left = tok_expr;
@@ -669,7 +674,7 @@ AST_Expression *parse_ast_expression(Lexer *lexer)
     // a way to look through the tokens and figure out
     // the kind of expression.
 
-    Token *tok = lexer->peek(0);
+    Token *tok = lexer->peek();
 
     //     POSSIBILITY 1 : starts with a keyword
 
@@ -785,7 +790,7 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer)
     // <return_type> <name>(...) <block>|<expr>
 
     // return type
-    Token *tok_return_type = lexer->peek(0);
+    Token *tok_return_type = lexer->peek();
     if (tok_return_type->type != TOKEN_DATA_TYPE) {
 	throw_parser_error("SYNTAX ERROR: Invalid return type for function definition.", lexer);
     }

@@ -133,7 +133,7 @@ inline Token* Lexer::peek_next_token()
     return &(tokens[curr_token_index + 1]);
 }
 
-inline Token* Lexer::peek(int num_tokens_ahead)
+inline Token* Lexer::peek(int num_tokens_ahead = 0)
 {
     if (curr_token_index + num_tokens_ahead >= tokens.size()) return NULL;
     return &(tokens[curr_token_index + num_tokens_ahead]);

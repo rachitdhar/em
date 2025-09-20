@@ -30,6 +30,7 @@ enum Expression_Type {
     EXPR_FOR,
     EXPR_WHILE,
     EXPR_DECL,
+    EXPR_UNARY,
     EXPR_BINARY,
     EXPR_FUNC_CALL,
     EXPR_RETURN,
@@ -118,6 +119,15 @@ struct AST_Declaration : AST_Expression {
 
     Data_Type data_type;
     std::string variable_name;
+};
+
+
+struct AST_Unary_Expression : AST_Expression {
+    AST_Unary_Expression(): AST_Expression(EXPR_UNARY) {}
+
+    bool is_postfix = false;
+    Token_Type op = TOKEN_NONE;
+    AST_Expression *expr = NULL;
 };
 
 

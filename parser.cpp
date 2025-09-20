@@ -513,17 +513,53 @@ inline AST_Expression *parse_ast_parenthesized_expression(Lexer *lexer)
 // based on the type of token
 inline AST_Expression *parse_primary_subexpression(Lexer *lexer, Token *tok)
 {
+    // one possibility is that we start with a prefix unary operator
+    AST_Unary_Expression *ast_unary_prefix = NULL;
+
+    if (op_prec(tok->type) == PREC_UNARY) {
+	ast_unary_prefix = new AST_Unary_Expression;
+	ast_unary_prefix->op = tok->type;
+
+	tok = lexer->get_next_token();
+	if (tok == NULL) {
+	    throw_parser_error("SYNTAX ERROR: Unary prefix operator must be followed by an expression.", lexer);
+	}
+    }
+
+    AST_Expression *expr = NULL;
+
     switch (tok->type) {
-    case TOKEN_IDENTIFIER: return parse_ast_identifier(lexer);
-    case TOKEN_DATA_TYPE: return parse_ast_declaration(lexer);
+    case TOKEN_IDENTIFIER: expr = parse_ast_identifier(lexer); break;
+    case TOKEN_DATA_TYPE: expr = parse_ast_declaration(lexer); break;
     case TOKEN_CHAR_LITERAL:
     case TOKEN_NUMERIC_LITERAL:
-    case TOKEN_STRING_LITERAL: return parse_ast_literal(lexer);
-    case TOKEN_LEFT_PAREN: return parse_ast_parenthesized_expression(lexer);
+    case TOKEN_STRING_LITERAL: expr = parse_ast_literal(lexer); break;
+    case TOKEN_LEFT_PAREN: expr = parse_ast_parenthesized_expression(lexer); break;
     default:
 	throw_parser_error("SYNTAX ERROR (Parser): Failed to parse primary expression.", lexer);
     }
-    return NULL; // to prevent warnings (technically should never be reached)
+
+    if (ast_unary_prefix != NULL) {
+	ast_unary_prefix->expr = expr;
+    }
+
+    // in case the next token is a unary operator or postfix kind (i.e. ++ or --)
+    // we will apply that to the expression, and return that expression
+
+    Token *next = lexer->peek();
+    if (next->type == TOKEN_INCREMENT || next->type == TOKEN_DECREMENT) {
+	if (lexer->get_next_token() == NULL) {
+	    throw_error__missing_delimiter(lexer);
+	}
+
+	auto *ast_unary = new AST_Unary_Expression;
+	ast_unary->op = next->type;
+	ast_unary->expr = (ast_unary_prefix == NULL) ? expr : ast_unary_prefix;
+	ast_unary->is_postfix = true;
+	return ast_unary;
+    }
+
+    return (ast_unary_prefix == NULL) ? expr : ast_unary_prefix;
 }
 
 
@@ -541,7 +577,7 @@ AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression 
 	curr_expression->op = tok->type;
 
 	tok = lexer->get_next_token();
-	if (tok == NULL || op_prec(tok->type) != PREC_PRIMARY) {
+	if (tok == NULL || op_prec(tok->type) < PREC_UNARY) {
 	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
 	}
 	AST_Expression *tok_expr = parse_primary_subexpression(lexer, tok);
@@ -575,8 +611,6 @@ AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression 
     return curr_expression;
 }
 
-
-// TODO: to handle consecutive operators (eg: a++ - ++b;)
 
 // parses the subexpression
 //
@@ -613,7 +647,7 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
 	// in case stops_at is not ';', but we encounter a ';' anyways
 	throw_error__used_delimiter_in_a_non_statement(lexer);
     }
-    if (op_prec(tok->type) != PREC_PRIMARY) {
+    if (op_prec(tok->type) < PREC_UNARY) {
 	throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
     }
     AST_Expression *tok_expr = parse_primary_subexpression(lexer, tok);
@@ -631,7 +665,7 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
 	curr_expression->op = tok->type;
 
 	tok = lexer->get_next_token();
-	if (tok == NULL || op_prec(tok->type) != PREC_PRIMARY) {
+	if (tok == NULL || op_prec(tok->type) < PREC_UNARY) {
 	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
 	}
 	tok_expr = parse_primary_subexpression(lexer, tok);

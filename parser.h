@@ -206,11 +206,28 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	printf("<DECL, [%s : Type %d]>\n", expr->variable_name.c_str(), expr->data_type);
 	break;
     }
+    case EXPR_UNARY: {
+	auto *expr = (AST_Unary_Expression*)ast_expr;
+	if (expr->op != TOKEN_NONE) {
+	    print_indentation(indentation_level);
+	    printf("<UNARY_OP (%s) : Type %d> (\n", (expr->is_postfix) ? "POST" : "PRE", (int)expr->op);
+	    if (expr->expr != NULL) {
+		print_ast_expression(expr->expr, indentation_level + 1);
+	    }
+	    print_indentation(indentation_level);
+	    printf(")\n");
+	    break;
+	}
+	if (expr->expr != NULL) {
+	    print_ast_expression(expr->expr, indentation_level);
+	}
+	break;
+    }
     case EXPR_BINARY: {
 	auto *expr = (AST_Binary_Expression*)ast_expr;
 	if (expr->op != TOKEN_NONE) {
 	    print_indentation(indentation_level);
-	    printf("<OP : Type %d> (\n", (int)expr->op);
+	    printf("<BINARY_OP : Type %d> (\n", (int)expr->op);
 	    if (expr->left != NULL) {
 		print_ast_expression(expr->left, indentation_level + 1);
 	    }

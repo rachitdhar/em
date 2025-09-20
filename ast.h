@@ -9,6 +9,19 @@
 #include "lexer.h"
 
 
+
+inline Data_Type type_map(const std::string& type)
+{
+    if (type == "void") return T_VOID;
+    if (type == "bool") return T_BOOL;
+    if (type == "int") return T_FLOAT;
+    if (type == "char") return T_CHAR;
+    if (type == "string") return T_STRING;
+
+    return T_VOID;
+}
+
+
 enum Expression_Type {
     EXPR_IDENT,
     EXPR_LITERAL,
@@ -40,7 +53,7 @@ struct AST_Expression {
 
 struct Function_Parameter {
     std::string name;
-    std::string type;
+    Data_Type type;
 };
 
 
@@ -66,7 +79,7 @@ struct AST_Literal : AST_Expression {
 struct AST_Function_Definition : AST_Expression {
     AST_Function_Definition(): AST_Expression(EXPR_FUNC_DEF) {}
 
-    std::string return_type;
+    Data_Type return_type;
     std::string function_name;
     std::vector<Function_Parameter*> params;
     std::vector<AST_Expression*> block;
@@ -103,7 +116,7 @@ struct AST_While_Expression : AST_Expression {
 struct AST_Declaration : AST_Expression {
     AST_Declaration(): AST_Expression(EXPR_DECL) {}
 
-    std::string data_type;
+    Data_Type data_type;
     std::string variable_name;
 };
 

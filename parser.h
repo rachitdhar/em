@@ -7,7 +7,7 @@
 #define PARSER_H
 
 #include "ast.h"
-#include <unordered_map>
+
 
 
 // defining precedence levels
@@ -27,45 +27,81 @@ enum Precedence {
 
 
 // map the operators to their precedence
-std::unordered_map<Token_Type, Precedence> op_prec = {
-    {TOKEN_ASSIGN,          PREC_ASSIGNMENT},
-    {TOKEN_PLUSEQ,          PREC_ASSIGNMENT},
-    {TOKEN_MINUSEQ,         PREC_ASSIGNMENT},
-    {TOKEN_MULTIPLYEQ,      PREC_ASSIGNMENT},
-    {TOKEN_DIVIDEEQ,        PREC_ASSIGNMENT},
-    {TOKEN_MODEQ,           PREC_ASSIGNMENT},
-    {TOKEN_OREQ,            PREC_ASSIGNMENT},
-    {TOKEN_BIT_OREQ,        PREC_ASSIGNMENT},
-    {TOKEN_XOREQ,           PREC_ASSIGNMENT},
-    {TOKEN_ANDEQ,           PREC_ASSIGNMENT},
-    {TOKEN_BIT_ANDEQ,       PREC_ASSIGNMENT},
-    {TOKEN_OR,              PREC_OR},
-    {TOKEN_BIT_OR,          PREC_OR},
-    {TOKEN_XOR,             PREC_OR},
-    {TOKEN_AND,             PREC_AND},
-    {TOKEN_AMPERSAND,       PREC_AND},
-    {TOKEN_EQUAL,           PREC_EQUALITY},
-    {TOKEN_NOTEQ,           PREC_EQUALITY},
-    {TOKEN_LESS,            PREC_COMPARISON},
-    {TOKEN_LESSEQ,          PREC_COMPARISON},
-    {TOKEN_GREATER,         PREC_COMPARISON},
-    {TOKEN_GREATEREQ,       PREC_COMPARISON},
-    {TOKEN_PLUS,            PREC_ADDITIVE},
-    {TOKEN_MINUS,           PREC_ADDITIVE},
-    {TOKEN_STAR,            PREC_MULTIPLICATIVE},
-    {TOKEN_DIVIDE,          PREC_MULTIPLICATIVE},
-    {TOKEN_NOT,             PREC_UNARY},
-    {TOKEN_BIT_NOT,         PREC_UNARY},
-    {TOKEN_INCREMENT,       PREC_UNARY},
-    {TOKEN_DECREMENT,       PREC_UNARY},
-    {TOKEN_IDENTIFIER,      PREC_PRIMARY},
-    {TOKEN_DATA_TYPE,       PREC_PRIMARY},
-    {TOKEN_NUMERIC_LITERAL, PREC_PRIMARY},
-    {TOKEN_CHAR_LITERAL,    PREC_PRIMARY},
-    {TOKEN_STRING_LITERAL,  PREC_PRIMARY},
-    {TOKEN_LEFT_PAREN,      PREC_PRIMARY}
-};
+inline Precedence op_prec(Token_Type type)
+{
+    switch (type)
+    {
+	// Assignment operators
+    case TOKEN_ASSIGN:
+    case TOKEN_PLUSEQ:
+    case TOKEN_MINUSEQ:
+    case TOKEN_MULTIPLYEQ:
+    case TOKEN_DIVIDEEQ:
+    case TOKEN_MODEQ:
+    case TOKEN_OREQ:
+    case TOKEN_BIT_OREQ:
+    case TOKEN_XOREQ:
+    case TOKEN_ANDEQ:
+    case TOKEN_BIT_ANDEQ:
+	return PREC_ASSIGNMENT;
 
+	// OR operators
+    case TOKEN_OR:
+    case TOKEN_BIT_OR:
+    case TOKEN_XOR:
+	return PREC_OR;
+
+	// AND operators
+    case TOKEN_AND:
+    case TOKEN_AMPERSAND:
+	return PREC_AND;
+
+	// Equality operators
+    case TOKEN_EQUAL:
+    case TOKEN_NOTEQ:
+	return PREC_EQUALITY;
+
+	// Comparison operators
+    case TOKEN_LESS:
+    case TOKEN_LESSEQ:
+    case TOKEN_GREATER:
+    case TOKEN_GREATEREQ:
+	return PREC_COMPARISON;
+
+	// Additive operators
+    case TOKEN_PLUS:
+    case TOKEN_MINUS:
+	return PREC_ADDITIVE;
+
+	// Multiplicative operators
+    case TOKEN_STAR:
+    case TOKEN_DIVIDE:
+	return PREC_MULTIPLICATIVE;
+
+	// Unary operators
+    case TOKEN_NOT:
+    case TOKEN_BIT_NOT:
+    case TOKEN_INCREMENT:
+    case TOKEN_DECREMENT:
+	return PREC_UNARY;
+
+	// Primary tokens
+    case TOKEN_IDENTIFIER:
+    case TOKEN_DATA_TYPE:
+    case TOKEN_NUMERIC_LITERAL:
+    case TOKEN_CHAR_LITERAL:
+    case TOKEN_STRING_LITERAL:
+    case TOKEN_LEFT_PAREN:
+	return PREC_PRIMARY;
+
+    default:
+	return PREC_MIN;
+    }
+}
+
+
+//                      Error printing
+// ********************************************************
 
 // to print 2-space indentations
 inline void print_indentation(int indentation_level)
@@ -96,9 +132,9 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	printf("<FUNC, %s> (", expr->function_name.c_str());
 
 	for (Function_Parameter *param : expr->params) {
-	    printf("[%s %s]", param->type.c_str(), param->name.c_str());
+	    printf("[%s : Type %d]", param->name.c_str(), param->type);
 	}
-	printf(") -> (%s) {\n", expr->return_type.c_str());
+	printf(") -> (Type %d) {\n", expr->return_type);
 
 	for (AST_Expression *e : expr->block) {
 	    print_ast_expression(e, indentation_level + 1);
@@ -167,14 +203,14 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
     case EXPR_DECL: {
 	auto *expr = (AST_Declaration*)ast_expr;
 	print_indentation(indentation_level);
-	printf("<DECL, [%s %s]>\n", expr->data_type.c_str(), expr->variable_name.c_str());
+	printf("<DECL, [%s : Type %d]>\n", expr->variable_name.c_str(), expr->data_type);
 	break;
     }
     case EXPR_BINARY: {
 	auto *expr = (AST_Binary_Expression*)ast_expr;
 	if (expr->op != TOKEN_NONE) {
 	    print_indentation(indentation_level);
-	    printf("<OP, Type : %d> (\n", (int)expr->op);
+	    printf("<OP : Type %d> (\n", (int)expr->op);
 	    if (expr->left != NULL) {
 		print_ast_expression(expr->left, indentation_level + 1);
 	    }

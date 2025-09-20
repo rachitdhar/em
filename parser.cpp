@@ -325,7 +325,7 @@ inline AST_Return_Expression *parse_ast_return_expression(Lexer *lexer)
 }
 
 
-inline AST_Jump_Expression *parse_ast_jump_expression(Lexer *lexer, std::string jump_type)
+inline AST_Jump_Expression *parse_ast_jump_expression(Lexer *lexer, const std::string& jump_type)
 {
     // currently the token must be either a "break" or "continue"
     // so we will start from the next token
@@ -390,6 +390,12 @@ inline AST_Function_Call *parse_ast_function_call(Lexer *lexer)
 	num_separators--;
 	lexer->move_to_next_token();
     }
+
+    auto *symbol = new Symbol;
+    symbol->identifier = ast_call->function_name;
+    symbol->symbol_type = SYM_FUNCTION;
+    lexer->symbol_table.push(symbol);
+
     return ast_call;
 }
 
@@ -415,6 +421,12 @@ inline AST_Expression *parse_ast_identifier(Lexer *lexer)
     // if it is not a function call
     auto *ast_ident = new AST_Identifier;
     ast_ident->name = tok->val;
+
+    auto *symbol = new Symbol;
+    symbol->identifier = tok->val;
+    symbol->symbol_type = SYM_VARIABLE;
+    lexer->symbol_table.push(symbol);
+
     lexer->move_to_next_token();
 
     return ast_ident;
@@ -428,7 +440,7 @@ inline AST_Declaration *parse_ast_declaration(Lexer *lexer)
 
     auto *ast_decl = new AST_Declaration;
     Token *tok = lexer->peek();
-    ast_decl->data_type = tok->val;
+    ast_decl->data_type = type_map(tok->val);
 
     tok = lexer->get_next_token();
     if (tok == NULL || tok->type != TOKEN_IDENTIFIER) {
@@ -436,6 +448,14 @@ inline AST_Declaration *parse_ast_declaration(Lexer *lexer)
     }
 
     ast_decl->variable_name = tok->val;
+
+    auto *symbol = new Symbol;
+    symbol->identifier = tok->val;
+    symbol->symbol_type = SYM_VARIABLE;
+    symbol->is_declaration = true;
+    symbol->return_type = ast_decl->data_type;
+    lexer->symbol_table.push(symbol);
+
     if (lexer->get_next_token() == NULL) {
 	throw_error__missing_delimiter(lexer);
     }
@@ -521,7 +541,7 @@ AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression 
 	curr_expression->op = tok->type;
 
 	tok = lexer->get_next_token();
-	if (tok == NULL || op_prec[tok->type] != PREC_PRIMARY) {
+	if (tok == NULL || op_prec(tok->type) != PREC_PRIMARY) {
 	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
 	}
 	AST_Expression *tok_expr = parse_primary_subexpression(lexer, tok);
@@ -541,7 +561,7 @@ AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression 
 	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.2", lexer);
 	}
 
-	Precedence new_prec = op_prec[op->type];
+	Precedence new_prec = op_prec(op->type);
 	if (new_prec > curr_precedence) {
 	    curr_expression->right = parse_ast_subexpression(lexer, new_prec, stops_at);
 	    break;
@@ -593,7 +613,7 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
 	// in case stops_at is not ';', but we encounter a ';' anyways
 	throw_error__used_delimiter_in_a_non_statement(lexer);
     }
-    if (op_prec[tok->type] != PREC_PRIMARY) {
+    if (op_prec(tok->type) != PREC_PRIMARY) {
 	throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
     }
     AST_Expression *tok_expr = parse_primary_subexpression(lexer, tok);
@@ -611,7 +631,7 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
 	curr_expression->op = tok->type;
 
 	tok = lexer->get_next_token();
-	if (tok == NULL || op_prec[tok->type] != PREC_PRIMARY) {
+	if (tok == NULL || op_prec(tok->type) != PREC_PRIMARY) {
 	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
 	}
 	tok_expr = parse_primary_subexpression(lexer, tok);
@@ -631,7 +651,7 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
 	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.4", lexer);
 	}
 
-	Precedence new_prec = op_prec[op->type];
+	Precedence new_prec = op_prec(op->type);
 	if (new_prec < curr_precedence) {
 	    curr_expression->right = tok_expr;
 	    auto *updated_expression = parse_decreasing_precedence(lexer, curr_expression, new_prec, stops_at);
@@ -765,7 +785,7 @@ void parse_ast_function_params(AST_Function_Definition *ast_function, Lexer *lex
 	    throw_parser_error("SYNTAX ERROR: Invalid data type for function parameter.", lexer);
 	}
 	auto *function_param = new Function_Parameter;
-	function_param->type = tok->val;
+	function_param->type = type_map(tok->val);
 
 	tok = lexer->get_next_token();
 	if (tok == NULL) {
@@ -808,7 +828,7 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer)
     }
 
     auto *ast_function = new AST_Function_Definition;
-    ast_function->return_type = tok_return_type->val;
+    ast_function->return_type = type_map(tok_return_type->val);
 
     // function name
     Token *tok_name = lexer->get_next_token();
@@ -832,6 +852,18 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer)
     // reading function parameters (if they exist)
     // after this is completed, the current token is ')'
     parse_ast_function_params(ast_function, lexer);
+
+    auto *symbol = new Symbol;
+    symbol->identifier = ast_function->function_name;
+    symbol->symbol_type = SYM_FUNCTION;
+    symbol->is_declaration = true;
+    symbol->return_type = ast_function->return_type;
+    symbol->signature = new std::vector<Data_Type>();
+
+    for (auto *param : ast_function->params) {
+	symbol->signature->push_back(param->type);
+    }
+    lexer->symbol_table.push(symbol);
 
     // At the end of the function definition there are two possibilities
     //    1. We get a { --> this is a statement block

@@ -103,6 +103,68 @@ inline bool is_binary_op(Token *tok)
 }
 
 
+//                       Symbol Table
+// ********************************************************
+
+// to store at the parsing stage (in the ast)
+enum Data_Type {
+    T_UNIDENTIFIED,
+    T_VOID,
+    T_BOOL,
+    T_INT,
+    T_FLOAT,
+    T_CHAR,
+    T_STRING
+};
+
+/*
+a symbol table to store the information on
+variables and functions that are encountered
+during the parsing stage.
+
+This will be useful for:
+
+    (1) checking whether a variable being used
+    has been declared previously.
+
+    (2) whether a variable is not being redeclared.
+
+    (3) performing type checking (after parsing is complete)
+*/
+
+enum Symbol_Type {
+    SYM_VARIABLE,
+    SYM_FUNCTION
+};
+
+struct Symbol {
+    int level;
+    std::string identifier;
+    Symbol_Type symbol_type;
+    bool is_declaration = false;
+    Data_Type return_type = T_UNIDENTIFIED; // data_type in case of variables
+    std::vector<Data_Type> *signature = NULL; // param types (only for functions)
+};
+
+struct Symbol_Table {
+    std::vector<Symbol*> symbols;
+    void push(Symbol *symbol);
+};
+
+
+inline void Symbol_Table::push(Symbol *symbol)
+{
+    // check all conditions as to whether
+    // the insertion of this symbol is semantically
+    // valid, and then add it.
+
+    symbols.push_back(symbol);
+}
+
+
+//                           Lexer
+// ***********************************************************
+
 struct Lexer {
     std::string file_name;
     std::string line;
@@ -118,6 +180,8 @@ struct Lexer {
     Token *peek(int num_tokens_ahead);// returns a token (n) steps ahead
     Token *peek_prev_token();         // returns the prev token
     void move_to_next_token();        // moves to the next token
+
+    Symbol_Table symbol_table;        // to store symbols during parsing
 };
 
 
@@ -217,7 +281,7 @@ inline void make_token_as_per_ptok(Lexer* lexer, std::string& curr, Partial_Toke
 }
 
 // to print error messages
-inline void throw_error(const char *message, std::string line, int line_num, int pos)
+inline void throw_error(const char *message, const std::string& line, int line_num, int pos)
 {
     fprintf(stderr, message);
     printf(" [line %d, position %d]\n\n", line_num, pos);

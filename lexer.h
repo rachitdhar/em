@@ -49,6 +49,10 @@ enum Token_Type {
     TOKEN_GREATER,             // >
     TOKEN_LESSEQ,              // <=
     TOKEN_GREATEREQ,           // >=
+    TOKEN_LSHIFT,              // <<
+    TOKEN_RSHIFT,              // >>
+    TOKEN_LSHIFT_EQ,           // <<=
+    TOKEN_RSHIFT_EQ,           // >>=
     TOKEN_ASSIGN,              // =
     TOKEN_EQUAL,               // ==
     TOKEN_NOTEQ,               // !=

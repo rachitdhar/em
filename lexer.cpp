@@ -1,4 +1,6 @@
+//
 // Lexer.cpp
+//
 
 #include "lexer.h"
 
@@ -345,7 +347,7 @@ void generate_tokens(Lexer* lexer)
 		lexer->tokens.push_back(Token{"%", TOKEN_MOD, lexer->line_num, pos});
 		break;
 	    }
-	    /* (< <=) */
+	    /* (< <= << <<=) */
 	    case '<': {
 		pos++;
 		char next = lexer->line[pos];
@@ -354,11 +356,20 @@ void generate_tokens(Lexer* lexer)
 		    lexer->tokens.push_back(Token{"<=", TOKEN_LESSEQ, lexer->line_num, pos});
 		    pos++;
 		    break;
+		} else if (next && next == '<') {
+		    next = lexer->line[++pos];
+		    if (next && next == '=') {
+			lexer->tokens.push_back(Token{"<<=", TOKEN_LSHIFT_EQ, lexer->line_num, pos});
+			pos++;
+			break;
+		    }
+		    lexer->tokens.push_back(Token{"<<", TOKEN_LSHIFT, lexer->line_num, pos});
+		    break;
 		}
 		lexer->tokens.push_back(Token{"<", TOKEN_LESS, lexer->line_num, pos});
 		break;
 	    }
-	    /* (> >=) */
+	    /* (> >= >> >>=) */
 	    case '>': {
 		pos++;
 		char next = lexer->line[pos];
@@ -366,6 +377,15 @@ void generate_tokens(Lexer* lexer)
 		if (next && next == '=') {
 		    lexer->tokens.push_back(Token{">=", TOKEN_GREATEREQ, lexer->line_num, pos});
 		    pos++;
+		    break;
+		} else if (next && next == '>') {
+		    next = lexer->line[++pos];
+		    if (next && next == '=') {
+			lexer->tokens.push_back(Token{">>=", TOKEN_RSHIFT_EQ, lexer->line_num, pos});
+			pos++;
+			break;
+		    }
+		    lexer->tokens.push_back(Token{">>", TOKEN_RSHIFT, lexer->line_num, pos});
 		    break;
 		}
 		lexer->tokens.push_back(Token{">", TOKEN_GREATER, lexer->line_num, pos});

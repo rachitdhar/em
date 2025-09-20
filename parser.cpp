@@ -341,9 +341,6 @@ inline AST_Jump_Expression *parse_ast_jump_expression(Lexer *lexer, const std::s
 }
 
 
-// TODO: to handle subexpression parsing when a separator (,) is present at the end instead of delimiter.
-// This is needed for handling the function arguments.
-
 inline AST_Function_Call *parse_ast_function_call(Lexer *lexer)
 {
     // currently the token must be at the function name (i.e., an identifier)

@@ -7,6 +7,7 @@
 #define AST_H
 
 #include "lexer.h"
+#include "llvm.h"
 
 
 
@@ -49,6 +50,8 @@ struct AST_Expression {
     // to ensure that in case a derived struct is deleted,
     // the derived struct's destructor is called
     virtual ~AST_Expression() = default;
+
+    virtual llvm::Value* codegen() = 0;
 };
 
 

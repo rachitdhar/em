@@ -13,13 +13,29 @@
 
 inline Data_Type type_map(const std::string& type)
 {
-    if (type == "void") return T_VOID;
-    if (type == "bool") return T_BOOL;
-    if (type == "int") return T_FLOAT;
-    if (type == "char") return T_CHAR;
+    if (type == "void")   return T_VOID;
+    if (type == "bool")   return T_BOOL;
+    if (type == "int")    return T_INT;
+    if (type == "float")  return T_FLOAT;
+    if (type == "char")   return T_CHAR;
     if (type == "string") return T_STRING;
 
     return T_VOID;
+}
+
+
+inline llvm::Type *llvm_type_map(const Data_Type type)
+{
+    switch (type) {
+        case T_INT:    return llvm::Type::getInt32Ty(_context);
+        case T_FLOAT:  return llvm::Type::getFloatTy(_context);
+        case T_BOOL:   return llvm::Type::getInt1Ty(_context);
+        case T_CHAR:   return llvm::Type::getInt8Ty(_context);
+        case T_STRING: return llvm::Type::getInt8PtrTy(_context);
+        case T_VOID:   return llvm::Type::getVoidTy(_context);
+        default:
+            return nullptr;
+    }
 }
 
 
@@ -172,5 +188,64 @@ struct AST_Block_Expression : AST_Expression {
 
     std::vector<AST_Expression*> block;
 };
+
+
+//                codegen helper functions
+// *****************************************************
+
+llvm::Value* codegen__logical_and(AST_Expression* left, AST_Expression* right) {
+    llvm::Function* f = _builder.GetInsertBlock()->getParent();
+
+    llvm::BasicBlock* andright = llvm::BasicBlock::Create(_context, "andright", f);
+    llvm::BasicBlock* andend = llvm::BasicBlock::Create(_context, "andend", f);
+
+    // evaluate left
+    llvm::Value* L = left->codegen();
+    if (!L) return nullptr;
+
+    _builder.CreateCondBr(L, andright, andend);
+
+    // right block
+    _builder.SetInsertPoint(andright);
+    llvm::Value* R = right->codegen();
+    if (!R) return nullptr;
+    _builder.CreateBr(andend);
+
+    // end block
+    _builder.SetInsertPoint(andend);
+    llvm::PHINode* PN = _builder.CreatePHI(llvm::Type::getInt1Ty(_context), 2, "andtmp");
+    PN->addIncoming(llvm::ConstantInt::getFalse(_context), _builder.GetInsertBlock()->getPrevNode());
+    PN->addIncoming(R, andright);
+
+    return PN;
+}
+
+
+llvm::Value* codegen__logical_or(AST_Expression* left, AST_Expression* right) {
+    llvm::Function* f = _builder.GetInsertBlock()->getParent();
+
+    llvm::BasicBlock* orright = llvm::BasicBlock::Create(_context, "orright", f);
+    llvm::BasicBlock* orend = llvm::BasicBlock::Create(_context, "orend", f);
+
+    // evaluate left
+    llvm::Value* L = left->codegen();
+    if (!L) return nullptr;
+
+    _builder.CreateCondBr(L, orend, orright);
+
+    // right block
+    _builder.SetInsertPoint(orright);
+    llvm::Value* R = right->codegen();
+    if (!R) return nullptr;
+    _builder.CreateBr(orend);
+
+    // end block
+    _builder.SetInsertPoint(orend);
+    llvm::PHINode* PN = _builder.CreatePHI(llvm::Type::getInt1Ty(_context), 2, "ortmp");
+    PN->addIncoming(llvm::ConstantInt::getTrue(_context), _builder.GetInsertBlock()->getPrevNode());
+    PN->addIncoming(R, orright);
+
+    return PN;
+}
 
 #endif

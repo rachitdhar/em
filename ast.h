@@ -55,6 +55,11 @@ enum Expression_Type {
     EXPR_BLOCK
 };
 
+enum Jump_Type {
+    J_BREAK,
+    J_CONTINUE
+};
+
 
 struct AST_Expression {
     Expression_Type expr_type = EXPR_IDENT;
@@ -67,7 +72,7 @@ struct AST_Expression {
     // the derived struct's destructor is called
     virtual ~AST_Expression() = default;
 
-    virtual llvm::Value* codegen() = 0;
+    virtual llvm::Value *generate_ir() = 0;
 };
 
 
@@ -81,11 +86,15 @@ struct AST_Identifier : AST_Expression {
     AST_Identifier(): AST_Expression(EXPR_IDENT) {}
 
     std::string name;
+
+    llvm::Value *generate_ir_pointer(); // for handling lvalues
 };
 
 
 struct AST_Literal : AST_Expression {
     AST_Literal(): AST_Expression(EXPR_LITERAL) {}
+
+    Data_Type type;
 
     union {
 	int i;
@@ -177,7 +186,7 @@ struct AST_Return_Expression : AST_Expression {
 struct AST_Jump_Expression : AST_Expression {
     AST_Jump_Expression(): AST_Expression(EXPR_JUMP) {}
 
-    std::string jump_type;
+    Jump_Type jump_type;
 };
 
 
@@ -190,62 +199,72 @@ struct AST_Block_Expression : AST_Expression {
 };
 
 
-//                codegen helper functions
+//                ir_generator helper functions
 // *****************************************************
 
-llvm::Value* codegen__logical_and(AST_Expression* left, AST_Expression* right) {
+llvm::Value* generate_ir__logical_and(AST_Expression* left, AST_Expression* right) {
     llvm::Function* f = _builder.GetInsertBlock()->getParent();
 
     llvm::BasicBlock* andright = llvm::BasicBlock::Create(_context, "andright", f);
     llvm::BasicBlock* andend = llvm::BasicBlock::Create(_context, "andend", f);
 
     // evaluate left
-    llvm::Value* L = left->codegen();
+    llvm::Value* L = left->generate_ir();
     if (!L) return nullptr;
 
     _builder.CreateCondBr(L, andright, andend);
 
     // right block
     _builder.SetInsertPoint(andright);
-    llvm::Value* R = right->codegen();
+    llvm::Value* R = right->generate_ir();
     if (!R) return nullptr;
     _builder.CreateBr(andend);
 
     // end block
     _builder.SetInsertPoint(andend);
-    llvm::PHINode* PN = _builder.CreatePHI(llvm::Type::getInt1Ty(_context), 2, "andtmp");
-    PN->addIncoming(llvm::ConstantInt::getFalse(_context), _builder.GetInsertBlock()->getPrevNode());
-    PN->addIncoming(R, andright);
+    llvm::PHINode* phi_node = _builder.CreatePHI(llvm::Type::getInt1Ty(_context), 2, "andtmp");
+    phi_node->addIncoming(llvm::ConstantInt::getFalse(_context), _builder.GetInsertBlock()->getPrevNode());
+    phi_node->addIncoming(R, andright);
 
-    return PN;
+    return phi_node;
 }
 
 
-llvm::Value* codegen__logical_or(AST_Expression* left, AST_Expression* right) {
+llvm::Value* generate_ir__logical_or(AST_Expression* left, AST_Expression* right) {
     llvm::Function* f = _builder.GetInsertBlock()->getParent();
 
     llvm::BasicBlock* orright = llvm::BasicBlock::Create(_context, "orright", f);
     llvm::BasicBlock* orend = llvm::BasicBlock::Create(_context, "orend", f);
 
     // evaluate left
-    llvm::Value* L = left->codegen();
+    llvm::Value* L = left->generate_ir();
     if (!L) return nullptr;
 
     _builder.CreateCondBr(L, orend, orright);
 
     // right block
     _builder.SetInsertPoint(orright);
-    llvm::Value* R = right->codegen();
+    llvm::Value* R = right->generate_ir();
     if (!R) return nullptr;
     _builder.CreateBr(orend);
 
     // end block
     _builder.SetInsertPoint(orend);
-    llvm::PHINode* PN = _builder.CreatePHI(llvm::Type::getInt1Ty(_context), 2, "ortmp");
-    PN->addIncoming(llvm::ConstantInt::getTrue(_context), _builder.GetInsertBlock()->getPrevNode());
-    PN->addIncoming(R, orright);
+    llvm::PHINode* phi_node = _builder.CreatePHI(llvm::Type::getInt1Ty(_context), 2, "ortmp");
+    phi_node->addIncoming(llvm::ConstantInt::getTrue(_context), _builder.GetInsertBlock()->getPrevNode());
+    phi_node->addIncoming(R, orright);
 
-    return PN;
+    return phi_node;
 }
+
+
+// to print an error message, for errors that occur
+// during the LLVM IR generation process.
+void throw_ir_error(const char *message)
+{
+    fprintf(stderr, "IR ERROR: %s", message);
+    exit(1);
+}
+
 
 #endif

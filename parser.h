@@ -271,8 +271,9 @@ void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 	break;
     }
     case EXPR_JUMP: {
+	auto *expr = (AST_Jump_Expression*)ast_expr;
 	print_indentation(indentation_level);
-	printf("<JUMP, %s>\n", ((AST_Jump_Expression*)ast_expr)->jump_type.c_str());
+	printf("<JUMP, %s>\n", expr->jump_type == J_BREAK ? "break" : "continue");
 	break;
     }
     case EXPR_BLOCK: {

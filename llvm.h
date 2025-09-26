@@ -17,9 +17,14 @@ to help describe what IR instructions are meant to be generated.
 #include "llvm/IR/Module.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/raw_ostream.h"
+#include <unordered_map>
 
 
 
 llvm::LLVMContext _context;                   // holds global LLVM state
 llvm::Module _module("_module", _context);    // container for functions/vars
 llvm::IRBuilder<> _builder(_context);         // helper to generate instructions
+
+
+// declaring a symbol table needed during IR generation
+std::unordered_map<std::string, llvm::Value*> llvm_symbol_table;

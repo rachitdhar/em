@@ -331,7 +331,7 @@ inline AST_Jump_Expression *parse_ast_jump_expression(Lexer *lexer, const std::s
     // so we will start from the next token
 
     auto *ast_jump = new AST_Jump_Expression;
-    ast_jump->jump_type = jump_type;
+    ast_jump->jump_type = jump_type == "break" ? J_BREAK : J_CONTINUE;
 
     Token *tok = lexer->get_next_token();
     if (tok == NULL || tok->type != TOKEN_DELIMITER) {
@@ -470,13 +470,17 @@ inline AST_Literal *parse_ast_literal(Lexer *lexer)
 
       if (tok->val.find('.') != std::string::npos) {
 	  ast_literal->value.f = std::stof(tok->val);
+	  ast_literal->type = T_FLOAT;
       } else {
 	  ast_literal->value.i = std::stoi(tok->val);
+	  ast_literal->type = T_INT;
       }
     } else if (tok->type == TOKEN_CHAR_LITERAL) {
 	ast_literal->value.c = tok->val[0];
+	ast_literal->type = T_CHAR;
     } else {
 	ast_literal->value.s = &(tok->val);
+	ast_literal->type = T_STRING;
     }
 
     if (lexer->get_next_token() == NULL) {

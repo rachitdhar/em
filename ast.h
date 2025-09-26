@@ -24,21 +24,6 @@ inline Data_Type type_map(const std::string& type)
 }
 
 
-inline llvm::Type *llvm_type_map(const Data_Type type)
-{
-    switch (type) {
-        case T_INT:    return llvm::Type::getInt32Ty(_context);
-        case T_FLOAT:  return llvm::Type::getFloatTy(_context);
-        case T_BOOL:   return llvm::Type::getInt1Ty(_context);
-        case T_CHAR:   return llvm::Type::getInt8Ty(_context);
-        case T_STRING: return llvm::Type::getInt8PtrTy(_context);
-        case T_VOID:   return llvm::Type::getVoidTy(_context);
-        default:
-            return nullptr;
-    }
-}
-
-
 enum Expression_Type {
     EXPR_IDENT,
     EXPR_LITERAL,
@@ -72,7 +57,11 @@ struct AST_Expression {
     // the derived struct's destructor is called
     virtual ~AST_Expression() = default;
 
-    virtual llvm::Value *generate_ir() = 0;
+    virtual llvm::Value *generate_ir(
+        llvm::LLVMContext *_context,
+        llvm::IRBuilder<> *_builder,
+        llvm::Module *_module
+    ) = 0;
 };
 
 
@@ -197,74 +186,5 @@ struct AST_Block_Expression : AST_Expression {
 
     std::vector<AST_Expression*> block;
 };
-
-
-//                ir_generator helper functions
-// *****************************************************
-
-llvm::Value* generate_ir__logical_and(AST_Expression* left, AST_Expression* right) {
-    llvm::Function* f = _builder.GetInsertBlock()->getParent();
-
-    llvm::BasicBlock* andright = llvm::BasicBlock::Create(_context, "andright", f);
-    llvm::BasicBlock* andend = llvm::BasicBlock::Create(_context, "andend", f);
-
-    // evaluate left
-    llvm::Value* L = left->generate_ir();
-    if (!L) return nullptr;
-
-    _builder.CreateCondBr(L, andright, andend);
-
-    // right block
-    _builder.SetInsertPoint(andright);
-    llvm::Value* R = right->generate_ir();
-    if (!R) return nullptr;
-    _builder.CreateBr(andend);
-
-    // end block
-    _builder.SetInsertPoint(andend);
-    llvm::PHINode* phi_node = _builder.CreatePHI(llvm::Type::getInt1Ty(_context), 2, "andtmp");
-    phi_node->addIncoming(llvm::ConstantInt::getFalse(_context), _builder.GetInsertBlock()->getPrevNode());
-    phi_node->addIncoming(R, andright);
-
-    return phi_node;
-}
-
-
-llvm::Value* generate_ir__logical_or(AST_Expression* left, AST_Expression* right) {
-    llvm::Function* f = _builder.GetInsertBlock()->getParent();
-
-    llvm::BasicBlock* orright = llvm::BasicBlock::Create(_context, "orright", f);
-    llvm::BasicBlock* orend = llvm::BasicBlock::Create(_context, "orend", f);
-
-    // evaluate left
-    llvm::Value* L = left->generate_ir();
-    if (!L) return nullptr;
-
-    _builder.CreateCondBr(L, orend, orright);
-
-    // right block
-    _builder.SetInsertPoint(orright);
-    llvm::Value* R = right->generate_ir();
-    if (!R) return nullptr;
-    _builder.CreateBr(orend);
-
-    // end block
-    _builder.SetInsertPoint(orend);
-    llvm::PHINode* phi_node = _builder.CreatePHI(llvm::Type::getInt1Ty(_context), 2, "ortmp");
-    phi_node->addIncoming(llvm::ConstantInt::getTrue(_context), _builder.GetInsertBlock()->getPrevNode());
-    phi_node->addIncoming(R, orright);
-
-    return phi_node;
-}
-
-
-// to print an error message, for errors that occur
-// during the LLVM IR generation process.
-void throw_ir_error(const char *message)
-{
-    fprintf(stderr, "IR ERROR: %s", message);
-    exit(1);
-}
-
 
 #endif

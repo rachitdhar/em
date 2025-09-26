@@ -966,13 +966,3 @@ std::vector<AST_Expression*> *parse_tokens(Lexer *lexer)
 
     return ast;
 }
-
-
-int main()
-{
-    Lexer *lexer = perform_lexical_analysis("program.txt");
-
-    auto *ast = parse_tokens(lexer);
-    print_ast(ast);
-    return 0;
-}

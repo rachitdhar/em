@@ -110,7 +110,7 @@ inline void print_indentation(int indentation_level)
 }
 
 
-void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
+inline void print_ast_expression(AST_Expression *ast_expr, int indentation_level)
 {
     // depending on the indentation level
     // we will add spaces before printing
@@ -341,7 +341,7 @@ inline std::string get_leading_whitespace(std::string line)
 
 // to provide an error message, with error source information
 // and then terminate the program execution.
-void throw_parser_error(const char *message, Lexer *lexer)
+inline void throw_parser_error(const char *message, Lexer *lexer)
 {
     fprintf(stderr, message);
 

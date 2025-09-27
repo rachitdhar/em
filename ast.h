@@ -58,10 +58,10 @@ struct AST_Expression {
     virtual ~AST_Expression() = default;
 
     virtual llvm::Value *generate_ir(
-        llvm::LLVMContext *_context,
+        llvm::LLVMContext& _context,
         llvm::IRBuilder<> *_builder,
         llvm::Module *_module
-    ) = 0;
+	) { return nullptr; }
 };
 
 
@@ -77,6 +77,12 @@ struct AST_Identifier : AST_Expression {
     std::string name;
 
     llvm::Value *generate_ir_pointer(); // for handling lvalues
+
+    llvm::Value *generate_ir(
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module
+    ) override;
 };
 
 
@@ -91,6 +97,12 @@ struct AST_Literal : AST_Expression {
 	char c;
 	std::string *s; // storing the address of the string
     } value;
+
+    llvm::Value *generate_ir(
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module
+    ) override;
 };
 
 
@@ -101,6 +113,12 @@ struct AST_Function_Definition : AST_Expression {
     std::string function_name;
     std::vector<Function_Parameter*> params;
     std::vector<AST_Expression*> block;
+
+    llvm::Value *generate_ir(
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module
+    ) override;
 };
 
 
@@ -110,6 +128,12 @@ struct AST_If_Expression : AST_Expression {
     AST_Expression *condition = NULL;
     std::vector<AST_Expression*> block;
     std::vector<AST_Expression*> else_block;
+
+    llvm::Value *generate_ir(
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module
+    ) override;
 };
 
 
@@ -120,6 +144,12 @@ struct AST_For_Expression : AST_Expression {
     AST_Expression *condition = NULL;
     AST_Expression *increment = NULL;
     std::vector<AST_Expression*> block;
+
+    llvm::Value *generate_ir(
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module
+    ) override;
 };
 
 
@@ -128,6 +158,12 @@ struct AST_While_Expression : AST_Expression {
 
     AST_Expression *condition = NULL;
     std::vector<AST_Expression*> block;
+
+    llvm::Value *generate_ir(
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module
+    ) override;
 };
 
 
@@ -136,6 +172,12 @@ struct AST_Declaration : AST_Expression {
 
     Data_Type data_type;
     std::string variable_name;
+
+    llvm::Value *generate_ir(
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module
+    ) override;
 };
 
 
@@ -145,6 +187,12 @@ struct AST_Unary_Expression : AST_Expression {
     bool is_postfix = false;
     Token_Type op = TOKEN_NONE;
     AST_Expression *expr = NULL;
+
+    llvm::Value *generate_ir(
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module
+    ) override;
 };
 
 
@@ -154,6 +202,12 @@ struct AST_Binary_Expression : AST_Expression {
     Token_Type op = TOKEN_NONE;
     AST_Expression *left = NULL;
     AST_Expression *right = NULL;
+
+    llvm::Value *generate_ir(
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module
+    ) override;
 };
 
 
@@ -162,6 +216,12 @@ struct AST_Function_Call : AST_Expression {
 
     std::string function_name;
     std::vector<AST_Expression*> params;
+
+    llvm::Value *generate_ir(
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module
+    ) override;
 };
 
 
@@ -169,6 +229,12 @@ struct AST_Return_Expression : AST_Expression {
     AST_Return_Expression(): AST_Expression(EXPR_RETURN) {}
 
     AST_Expression *value = NULL;
+
+    llvm::Value *generate_ir(
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module
+    ) override;
 };
 
 
@@ -176,6 +242,12 @@ struct AST_Jump_Expression : AST_Expression {
     AST_Jump_Expression(): AST_Expression(EXPR_JUMP) {}
 
     Jump_Type jump_type;
+
+    llvm::Value *generate_ir(
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module
+    ) override;
 };
 
 
@@ -185,6 +257,12 @@ struct AST_Block_Expression : AST_Expression {
     AST_Block_Expression(): AST_Expression(EXPR_BLOCK) {}
 
     std::vector<AST_Expression*> block;
+
+    llvm::Value *generate_ir(
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module
+    ) override;
 };
 
 #endif

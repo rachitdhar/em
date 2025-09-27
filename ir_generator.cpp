@@ -31,13 +31,9 @@ is hardware architecture independent).
 //   generate_ir_pointer() -> returns the address of the "expression" (variable)
 //
 // this only applies for lvalue expressions (identifiers)
-inline llvm::Value *AST_Identifier::generate_ir_pointer(
-    llvm::LLVMContext *_context,
-    llvm::IRBuilder<> *_builder,
-    llvm::Module *_module
-)
+inline llvm::Value *AST_Identifier::generate_ir_pointer()
 {
-    llvm::Value *val_addr = llvm_symbol_table[variable_name];
+    llvm::Value *val_addr = llvm_symbol_table[name];
     if (!val_addr) {
 	throw_ir_error("Undefined identifier encountered.");
     }
@@ -46,19 +42,23 @@ inline llvm::Value *AST_Identifier::generate_ir_pointer(
 
 
 inline llvm::Value *AST_Identifier::generate_ir(
-    llvm::LLVMContext *_context,
+    llvm::LLVMContext& _context,
     llvm::IRBuilder<> *_builder,
     llvm::Module *_module
 )
 {
     // returns the value contained in a particular variable
     llvm::Value *val_addr = generate_ir_pointer();
-    return _builder->CreateLoad(val_addr->getType()->getPointerElementType(), val_addr, name.c_str());
+    return _builder->CreateLoad(
+        llvm::dyn_cast<llvm::PointerType>(val_addr->getType()),
+        val_addr,
+        name.c_str()
+    );
 }
 
 
 inline llvm::Value *AST_Literal::generate_ir(
-    llvm::LLVMContext *_context,
+    llvm::LLVMContext& _context,
     llvm::IRBuilder<> *_builder,
     llvm::Module *_module
 )
@@ -70,22 +70,23 @@ inline llvm::Value *AST_Literal::generate_ir(
     case T_STRING: return _builder->CreateGlobalStringPtr(*(value.s));
     default: throw_ir_error("Unidentified literal type encountered.");
     }
+    return nullptr; // added to prevent warnings (should never reach here)
 }
 
 
 inline llvm::Value *AST_Function_Definition::generate_ir(
-    llvm::LLVMContext *_context,
+    llvm::LLVMContext& _context,
     llvm::IRBuilder<> *_builder,
     llvm::Module *_module
 )
 {
     // get the llvm return type
-    llvm::Type *llvm_return_type = llvm_type_map(return_type);
+  llvm::Type *llvm_return_type = llvm_type_map(return_type, _context);
 
     // get the llvm parameter types
     std::vector<llvm::Type*> llvm_param_types;
     for (auto* param : params) {
-	llvm_param_types.push_back(llvm_type_map(param->type));
+      llvm_param_types.push_back(llvm_type_map(param->type, _context));
     }
 
     llvm::FunctionType* f_type = llvm::FunctionType::get(llvm_return_type, llvm_param_types, false);
@@ -105,7 +106,7 @@ inline llvm::Value *AST_Function_Definition::generate_ir(
 	// in order to do this, we can create a temporary builder, set its
 	// insertion point to the entry, and insert the instructions there,
 	// without affecting the global builder.
-        llvm::IRBuilder<> tmp_builder(*_context);
+        llvm::IRBuilder<> tmp_builder(_context);
 
         tmp_builder.SetInsertPoint(
 	&_builder->GetInsertBlock()->getParent()->getEntryBlock(),
@@ -126,7 +127,7 @@ inline llvm::Value *AST_Function_Definition::generate_ir(
 
     // emit body
     for (auto* expr : block) {
-        if (!expr->generate_ir()) return nullptr;
+	if (!expr->generate_ir(_context, _builder, _module)) return nullptr;
     }
 
     // if return type is void, add a return void instruction
@@ -144,13 +145,13 @@ inline llvm::Value *AST_Function_Definition::generate_ir(
 
 
 inline llvm::Value *AST_If_Expression::generate_ir(
-    llvm::LLVMContext *_context,
+    llvm::LLVMContext& _context,
     llvm::IRBuilder<> *_builder,
     llvm::Module *_module
 )
 {
     // %ifcond = icmp ne i32 %x, 0
-    llvm::Value *_condition = condition->generate_ir();
+    llvm::Value *_condition = condition->generate_ir(_context, _builder, _module);
     if (!_condition) return nullptr;
 
     _condition = _builder->CreateICmpNE(
@@ -162,7 +163,7 @@ inline llvm::Value *AST_If_Expression::generate_ir(
     // create labels (then:, else:, and ifend:)
     llvm::Function *_f = _builder->GetInsertBlock()->getParent();
 
-    llvm::BasicBlock *_then = llvm::BasicBlock::Create(_context, "then", f);
+    llvm::BasicBlock *_then = llvm::BasicBlock::Create(_context, "then", _f);
     llvm::BasicBlock *_else  = llvm::BasicBlock::Create(_context, "else");
     llvm::BasicBlock *_ifend = llvm::BasicBlock::Create(_context, "ifend");
 
@@ -172,22 +173,22 @@ inline llvm::Value *AST_If_Expression::generate_ir(
     // emit instructions for _then block
     _builder->SetInsertPoint(_then);
     for (auto *expr : block) {
-        if (!expr->generate_ir()) return nullptr;
+        if (!expr->generate_ir(_context, _builder, _module)) return nullptr;
     }
     _builder->CreateBr(_ifend);
     _then = _builder->GetInsertBlock();
 
     // emit instructions for _else block
-    _f->getBasicBlockList().push_back(_else);
+    _else->insertInto(_f);
     _builder->SetInsertPoint(_else);
     for (auto *expr : else_block) {
-        if (!expr->generate_ir()) return nullptr;
+        if (!expr->generate_ir(_context, _builder, _module)) return nullptr;
     }
     _builder->CreateBr(_ifend);
     _else = _builder->GetInsertBlock();
 
     // emit _ifend label (marks the termination of the if statement)
-    _f->getBasicBlockList().push_back(_ifend);
+    _ifend->insertInto(_f);
     _builder->SetInsertPoint(_ifend);
 
     return nullptr;  // if statement returns no value
@@ -195,7 +196,7 @@ inline llvm::Value *AST_If_Expression::generate_ir(
 
 
 inline llvm::Value *AST_For_Expression::generate_ir(
-    llvm::LLVMContext *_context,
+    llvm::LLVMContext& _context,
     llvm::IRBuilder<> *_builder,
     llvm::Module *_module
 )
@@ -203,7 +204,7 @@ inline llvm::Value *AST_For_Expression::generate_ir(
     llvm::Function *f = _builder->GetInsertBlock()->getParent();
 
     // emit init
-    if (init) init->generate_ir();
+    if (init) init->generate_ir(_context, _builder, _module);
 
     llvm::BasicBlock *_forcond = llvm::BasicBlock::Create(_context, "forcond", f);
     llvm::BasicBlock *_forbody = llvm::BasicBlock::Create(_context, "forbody");
@@ -214,7 +215,8 @@ inline llvm::Value *AST_For_Expression::generate_ir(
     _builder->CreateBr(_forcond);
 
     _builder->SetInsertPoint(_forcond);
-    llvm::Value *_condition = condition ? condition->generate_ir() : nullptr;
+    llvm::Value *_condition = condition
+    ? condition->generate_ir(_context, _builder, _module) : nullptr;
 
     if (_condition) {
         _condition = _builder->CreateICmpNE(
@@ -229,32 +231,32 @@ inline llvm::Value *AST_For_Expression::generate_ir(
     _builder->CreateCondBr(_condition, _forbody, _forend);
 
     auto *terminals = new Loop_Terminals;
-    terminals->loop_condition = _condition;
+    terminals->loop_condition = _forcond;
     terminals->loop_end = _forend;
     loop_terminals.push(terminals);
 
     // emit body
-    f->getBasicBlockList().push_back(_forbody);
+    _forbody->insertInto(f);
     _builder->SetInsertPoint(_forbody);
 
     for (auto *expr : block) {
-        if (!expr->generate_ir()) return nullptr;
+        if (!expr->generate_ir(_context, _builder, _module)) return nullptr;
     }
 
     // after the body, jump to increment
     _builder->CreateBr(_forinc);
 
     // increment
-    f->getBasicBlockList().push_back(_forinc);
+    _forinc->insertInto(f);
     _builder->SetInsertPoint(_forinc);
 
-    if (increment) increment->generate_ir();
+    if (increment) increment->generate_ir(_context, _builder, _module);
 
     // jump back to condition
     _builder->CreateBr(_forcond);
 
     // for end
-    f->getBasicBlockList().push_back(_forend);
+    _forend->insertInto(f);
     _builder->SetInsertPoint(_forend);
 
     loop_terminals.pop();
@@ -263,7 +265,7 @@ inline llvm::Value *AST_For_Expression::generate_ir(
 
 
 inline llvm::Value *AST_While_Expression::generate_ir(
-    llvm::LLVMContext *_context,
+    llvm::LLVMContext& _context,
     llvm::IRBuilder<> *_builder,
     llvm::Module *_module
 )
@@ -274,16 +276,16 @@ inline llvm::Value *AST_While_Expression::generate_ir(
 
     llvm::Function* f = _builder->GetInsertBlock()->getParent();
 
-    llvm::BasicBlock* _condition  = llvm::BasicBlock::Create(_context, "whilecond", f);
+    llvm::BasicBlock* _whilecond  = llvm::BasicBlock::Create(_context, "whilecond", f);
     llvm::BasicBlock* _body  = llvm::BasicBlock::Create(_context, "whilebody");
     llvm::BasicBlock* _whileend = llvm::BasicBlock::Create(_context, "whileend");
 
     // jump to condition block first
-    _builder->CreateBr(_condition);
+    _builder->CreateBr(_whilecond);
 
     // emit condition
-    _builder->SetInsertPoint(_condition);
-    llvm::Value* _condition = condition->generate_ir();
+    _builder->SetInsertPoint(_whilecond);
+    llvm::Value* _condition = condition->generate_ir(_context, _builder, _module);
     if (!_condition) return nullptr;
 
     _condition = _builder->CreateICmpNE(
@@ -293,7 +295,7 @@ inline llvm::Value *AST_While_Expression::generate_ir(
     );
 
     auto *terminals = new Loop_Terminals;
-    terminals->loop_condition = _condition;
+    terminals->loop_condition = _whilecond;
     terminals->loop_end = _whileend;
     loop_terminals.push(terminals);
 
@@ -301,19 +303,19 @@ inline llvm::Value *AST_While_Expression::generate_ir(
     _builder->CreateCondBr(_condition, _body, _whileend);
 
     // emit body
-    f->getBasicBlockList().push_back(_body);
+    _body->insertInto(f);
     _builder->SetInsertPoint(_body);
 
     for (auto* expr : block) {
-        if (!expr->generate_ir()) return nullptr;
+        if (!expr->generate_ir(_context, _builder, _module)) return nullptr;
     }
 
     // jump back to condition
-    _builder->CreateBr(_condition);
+    _builder->CreateBr(_whilecond);
     _body = _builder->GetInsertBlock();
 
     // _whileend (for termination)
-    f->getBasicBlockList().push_back(_whileend);
+    _whileend->insertInto(f);
     _builder->SetInsertPoint(_whileend);
 
     loop_terminals.pop();
@@ -322,7 +324,7 @@ inline llvm::Value *AST_While_Expression::generate_ir(
 
 
 inline llvm::Value *AST_Declaration::generate_ir(
-    llvm::LLVMContext *_context,
+    llvm::LLVMContext& _context,
     llvm::IRBuilder<> *_builder,
     llvm::Module *_module
 )
@@ -330,11 +332,11 @@ inline llvm::Value *AST_Declaration::generate_ir(
     llvm::Function *f = _builder->GetInsertBlock()->getParent();
 
     // create alloca at the beginning of the entry block
-    llvm::IRBuilder<> tmp_builder(*_context);
+    llvm::IRBuilder<> tmp_builder(_context);
     llvm::BasicBlock &_entry = f->getEntryBlock();
     tmp_builder.SetInsertPoint(&_entry, _entry.begin());
 
-    llvm::Type *var_type = llvm_type_map(data_type);
+    llvm::Type *var_type = llvm_type_map(data_type, _context);
     llvm::AllocaInst *_alloca = tmp_builder.CreateAlloca(var_type, nullptr, variable_name);
 
     // store it in the symbol table
@@ -344,12 +346,12 @@ inline llvm::Value *AST_Declaration::generate_ir(
 
 
 inline llvm::Value *AST_Unary_Expression::generate_ir(
-    llvm::LLVMContext *_context,
+    llvm::LLVMContext& _context,
     llvm::IRBuilder<> *_builder,
     llvm::Module *_module
 )
 {
-    llvm::Value* val = expr->generate_ir();
+    llvm::Value* val = expr->generate_ir(_context, _builder, _module);
 
     switch (op) {
     case TOKEN_NOT: {
@@ -374,7 +376,11 @@ inline llvm::Value *AST_Unary_Expression::generate_ir(
 
         llvm::Value *val_addr = ((AST_Identifier*)expr)->generate_ir_pointer();
         llvm::Value *old_val =
-	_builder->CreateLoad(val_addr->getType()->getPointerElementType(), val_addr, "oldtmp");
+	_builder->CreateLoad(
+	    llvm::dyn_cast<llvm::PointerType>(val_addr->getType()),
+	    val_addr,
+	    "oldtmp"
+	);
 
         int delta = (op == TOKEN_INCREMENT) ? 1 : -1;
         llvm::Value *one = llvm::ConstantInt::get(old_val->getType(), delta);
@@ -385,11 +391,12 @@ inline llvm::Value *AST_Unary_Expression::generate_ir(
     }
     default: throw_ir_error("Invalid unary operator encountered.");
     }
+    return nullptr; // added to prevent warnings (should never reach here)
 }
 
 
 inline llvm::Value *AST_Binary_Expression::generate_ir(
-    llvm::LLVMContext *_context,
+    llvm::LLVMContext& _context,
     llvm::IRBuilder<> *_builder,
     llvm::Module *_module
 )
@@ -407,13 +414,13 @@ inline llvm::Value *AST_Binary_Expression::generate_ir(
 	the right expression if needed)
     */
 
-    if (op == TOKEN_AND) return generate_ir__logical_and(left, right);
-    if (op == TOKEN_OR) return generate_ir__logical_or(left, right);
+    if (op == TOKEN_AND) return generate_ir__logical_and(left, right, _context, _builder, _module);
+    if (op == TOKEN_OR) return generate_ir__logical_or(left, right, _context, _builder, _module);
 
-    llvm::Value* L = left->generate_ir();
+    llvm::Value* L = left->generate_ir(_context, _builder, _module);
     if (!L) return nullptr;
 
-    llvm::Value* R = right->generate_ir();
+    llvm::Value* R = right->generate_ir(_context, _builder, _module);
     if (!R) return nullptr;
 
     // For other logical / bitwise operations
@@ -449,7 +456,7 @@ inline llvm::Value *AST_Binary_Expression::generate_ir(
         return R;
     }
 
-    llvm::Value *tmp = _builder->CreateLoad(L->getType()->getPointerElementType(), L);
+    llvm::Value *tmp = _builder->CreateLoad(llvm::dyn_cast<llvm::PointerType>(L->getType()), L);
     llvm::Value *res;
 
     switch (op) {
@@ -474,7 +481,7 @@ inline llvm::Value *AST_Binary_Expression::generate_ir(
 
 
 inline llvm::Value *AST_Function_Call::generate_ir(
-    llvm::LLVMContext *_context,
+    llvm::LLVMContext& _context,
     llvm::IRBuilder<> *_builder,
     llvm::Module *_module
 )
@@ -488,7 +495,7 @@ inline llvm::Value *AST_Function_Call::generate_ir(
     // generate instructions for each argument
     std::vector<llvm::Value*> args;
     for (auto* param : params) {
-        llvm::Value* arg_val = param->generate_ir();
+        llvm::Value* arg_val = param->generate_ir(_context, _builder, _module);
         if (!arg_val) return nullptr;
         args.push_back(arg_val);
     }
@@ -499,13 +506,13 @@ inline llvm::Value *AST_Function_Call::generate_ir(
 
 
 inline llvm::Value *AST_Return_Expression::generate_ir(
-    llvm::LLVMContext *_context,
+    llvm::LLVMContext& _context,
     llvm::IRBuilder<> *_builder,
     llvm::Module *_module
 )
 {
     if (value) {
-        llvm::Value *val = value->generate_ir();
+        llvm::Value *val = value->generate_ir(_context, _builder, _module);
         if (!val) return nullptr;
         return _builder->CreateRet(val); // ret <value>
     }
@@ -514,7 +521,7 @@ inline llvm::Value *AST_Return_Expression::generate_ir(
 
 
 inline llvm::Value *AST_Jump_Expression::generate_ir(
-    llvm::LLVMContext *_context,
+    llvm::LLVMContext& _context,
     llvm::IRBuilder<> *_builder,
     llvm::Module *_module
 )
@@ -544,7 +551,7 @@ inline llvm::Value *AST_Jump_Expression::generate_ir(
 
 
 inline llvm::Value *AST_Block_Expression::generate_ir(
-    llvm::LLVMContext *_context,
+    llvm::LLVMContext& _context,
     llvm::IRBuilder<> *_builder,
     llvm::Module *_module
 )
@@ -552,7 +559,7 @@ inline llvm::Value *AST_Block_Expression::generate_ir(
     llvm::Value *prev = nullptr;
 
     for (auto* expr : block) {
-        prev = expr->generate_ir();
+        prev = expr->generate_ir(_context, _builder, _module);
         if (!prev) return nullptr;
     }
     return nullptr; // scoped-expressions don't return any value
@@ -564,7 +571,7 @@ inline llvm::Value *AST_Block_Expression::generate_ir(
 // this emits the llvm IR into the module.
 void emit_llvm_ir(
     std::vector<AST_Expression*> *ast,
-    llvm::LLVMContext *_context,
+    llvm::LLVMContext& _context,
     llvm::IRBuilder<> *_builder,
     llvm::Module *_module
 ) {
@@ -573,7 +580,7 @@ void emit_llvm_ir(
     }
 
     // verify the LLVM IR generated
-    llvm::verifyModule(*module, &llvm::errs());
+    llvm::verifyModule(*_module, &llvm::errs());
 }
 
 
@@ -581,7 +588,7 @@ void emit_llvm_ir(
 void write_llvm_ir_to_file(const char *llvm_file_name, llvm::Module *_module)
 {
     std::error_code EC;
-    llvm::raw_fd_ostream output_file(llvm_file_name, EC, llvm::sys::fs::OF_None);
+    llvm::raw_fd_ostream output_file(llvm_file_name, EC);
     _module->print(output_file, nullptr);
 }
 
@@ -595,7 +602,7 @@ int main()
     llvm::Module _module("_module", _context); // container for functions/vars
     llvm::IRBuilder<> _builder(_context);      // helper to generate instructions
 
-    emit_llvm_ir(ast, &_context, &_builder, &_module);
+    emit_llvm_ir(ast, _context, &_builder, &_module);
 
     std::string llvm_file_name = lexer->file_name + ".ll";
     write_llvm_ir_to_file(llvm_file_name.c_str(), &_module);

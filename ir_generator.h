@@ -40,14 +40,14 @@ struct Loop_Terminals {
 std::stack<Loop_Terminals*> loop_terminals;
 
 
-inline llvm::Type *llvm_type_map(const Data_Type type)
+inline llvm::Type *llvm_type_map(const Data_Type type, llvm::LLVMContext& _context)
 {
     switch (type) {
         case T_INT:    return llvm::Type::getInt32Ty(_context);
         case T_FLOAT:  return llvm::Type::getFloatTy(_context);
         case T_BOOL:   return llvm::Type::getInt1Ty(_context);
         case T_CHAR:   return llvm::Type::getInt8Ty(_context);
-        case T_STRING: return llvm::Type::getInt8PtrTy(_context);
+        case T_STRING: return llvm::Type::getInt8Ty(_context)->getPointerTo();
         case T_VOID:   return llvm::Type::getVoidTy(_context);
         default:
             return nullptr;
@@ -55,56 +55,68 @@ inline llvm::Type *llvm_type_map(const Data_Type type)
 }
 
 
-llvm::Value* generate_ir__logical_and(AST_Expression* left, AST_Expression* right) {
-    llvm::Function* f = _builder.GetInsertBlock()->getParent();
+llvm::Value* generate_ir__logical_and(
+    AST_Expression* left,
+    AST_Expression* right,
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module
+) {
+    llvm::Function* f = _builder->GetInsertBlock()->getParent();
 
     llvm::BasicBlock* andright = llvm::BasicBlock::Create(_context, "andright", f);
     llvm::BasicBlock* andend = llvm::BasicBlock::Create(_context, "andend", f);
 
     // evaluate left
-    llvm::Value* L = left->generate_ir();
+    llvm::Value* L = left->generate_ir(_context, _builder, _module);
     if (!L) return nullptr;
 
-    _builder.CreateCondBr(L, andright, andend);
+    _builder->CreateCondBr(L, andright, andend);
 
     // right block
-    _builder.SetInsertPoint(andright);
-    llvm::Value* R = right->generate_ir();
+    _builder->SetInsertPoint(andright);
+    llvm::Value* R = right->generate_ir(_context, _builder, _module);
     if (!R) return nullptr;
-    _builder.CreateBr(andend);
+    _builder->CreateBr(andend);
 
     // end block
-    _builder.SetInsertPoint(andend);
-    llvm::PHINode* phi_node = _builder.CreatePHI(llvm::Type::getInt1Ty(_context), 2, "andtmp");
-    phi_node->addIncoming(llvm::ConstantInt::getFalse(_context), _builder.GetInsertBlock()->getPrevNode());
+    _builder->SetInsertPoint(andend);
+    llvm::PHINode* phi_node = _builder->CreatePHI(llvm::Type::getInt1Ty(_context), 2, "andtmp");
+    phi_node->addIncoming(llvm::ConstantInt::getFalse(_context), _builder->GetInsertBlock()->getPrevNode());
     phi_node->addIncoming(R, andright);
 
     return phi_node;
 }
 
 
-llvm::Value* generate_ir__logical_or(AST_Expression* left, AST_Expression* right) {
-    llvm::Function* f = _builder.GetInsertBlock()->getParent();
+llvm::Value* generate_ir__logical_or(
+    AST_Expression* left,
+    AST_Expression* right,
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module
+) {
+    llvm::Function* f = _builder->GetInsertBlock()->getParent();
 
     llvm::BasicBlock* orright = llvm::BasicBlock::Create(_context, "orright", f);
     llvm::BasicBlock* orend = llvm::BasicBlock::Create(_context, "orend", f);
 
     // evaluate left
-    llvm::Value* L = left->generate_ir();
+    llvm::Value* L = left->generate_ir(_context, _builder, _module);
     if (!L) return nullptr;
 
-    _builder.CreateCondBr(L, orend, orright);
+    _builder->CreateCondBr(L, orend, orright);
 
     // right block
-    _builder.SetInsertPoint(orright);
-    llvm::Value* R = right->generate_ir();
+    _builder->SetInsertPoint(orright);
+    llvm::Value* R = right->generate_ir(_context, _builder, _module);
     if (!R) return nullptr;
-    _builder.CreateBr(orend);
+    _builder->CreateBr(orend);
 
     // end block
-    _builder.SetInsertPoint(orend);
-    llvm::PHINode* phi_node = _builder.CreatePHI(llvm::Type::getInt1Ty(_context), 2, "ortmp");
-    phi_node->addIncoming(llvm::ConstantInt::getTrue(_context), _builder.GetInsertBlock()->getPrevNode());
+    _builder->SetInsertPoint(orend);
+    llvm::PHINode* phi_node = _builder->CreatePHI(llvm::Type::getInt1Ty(_context), 2, "ortmp");
+    phi_node->addIncoming(llvm::ConstantInt::getTrue(_context), _builder->GetInsertBlock()->getPrevNode());
     phi_node->addIncoming(R, orright);
 
     return phi_node;

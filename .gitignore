@@ -41,9 +41,6 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
-# For build output
-out/
-
 # User-specific files
 *.rsuser
 *.suo

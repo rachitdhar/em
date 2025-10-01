@@ -108,6 +108,10 @@ inline llvm::Value *AST_Function_Definition::generate_ir(
 	// without affecting the global builder.
         llvm::IRBuilder<> tmp_builder(_context);
 
+	if (_builder->GetInsertBlock() == nullptr) {
+	    throw_ir_error("(FATAL) Cannot find parent IR block.");
+	}
+
         tmp_builder.SetInsertPoint(
 	&_builder->GetInsertBlock()->getParent()->getEntryBlock(),
         _builder->GetInsertBlock()->getParent()->getEntryBlock().begin()
@@ -160,6 +164,10 @@ inline llvm::Value *AST_If_Expression::generate_ir(
     "ifcond"
     );
 
+    if (_builder->GetInsertBlock() == nullptr) {
+	throw_ir_error("(FATAL) Cannot find parent IR block.");
+    }
+
     // create labels (then:, else:, and ifend:)
     llvm::Function *_f = _builder->GetInsertBlock()->getParent();
 
@@ -201,6 +209,10 @@ inline llvm::Value *AST_For_Expression::generate_ir(
     llvm::Module *_module
 )
 {
+    if (_builder->GetInsertBlock() == nullptr) {
+	throw_ir_error("(FATAL) Cannot find parent IR block.");
+    }
+
     llvm::Function *f = _builder->GetInsertBlock()->getParent();
 
     // emit init
@@ -274,6 +286,10 @@ inline llvm::Value *AST_While_Expression::generate_ir(
     // while condition, while body,
     // and the while end
 
+    if (_builder->GetInsertBlock() == nullptr) {
+	throw_ir_error("(FATAL) Cannot find parent IR block.");
+    }
+
     llvm::Function* f = _builder->GetInsertBlock()->getParent();
 
     llvm::BasicBlock* _whilecond  = llvm::BasicBlock::Create(_context, "whilecond", f);
@@ -329,6 +345,10 @@ inline llvm::Value *AST_Declaration::generate_ir(
     llvm::Module *_module
 )
 {
+    if (_builder->GetInsertBlock() == nullptr) {
+	throw_ir_error("(FATAL) Cannot find parent IR block.");
+    }
+
     llvm::Function *f = _builder->GetInsertBlock()->getParent();
 
     // create alloca at the beginning of the entry block
@@ -486,6 +506,10 @@ inline llvm::Value *AST_Function_Call::generate_ir(
     llvm::Module *_module
 )
 {
+    if (_builder->GetInsertBlock() == nullptr) {
+	throw_ir_error("(FATAL) Cannot find parent IR block.");
+    }
+
     // find the function in the module
     llvm::Function* callee = _module->getFunction(function_name);
     if (!callee) {
@@ -542,6 +566,10 @@ inline llvm::Value *AST_Jump_Expression::generate_ir(
     default: throw_ir_error("Invalid jump type encountered.");
     }
 
+    if (_builder->GetInsertBlock() == nullptr) {
+	throw_ir_error("(FATAL) Cannot find parent IR block.");
+    }
+
     llvm::Function* f = _builder->GetInsertBlock()->getParent();
     auto *jumpend = llvm::BasicBlock::Create(_context, "jumpend", f);
     _builder->SetInsertPoint(jumpend);
@@ -596,15 +624,19 @@ void write_llvm_ir_to_file(const char *llvm_file_name, llvm::Module *_module)
 int main()
 {
     Lexer *lexer = perform_lexical_analysis("program.txt");
+    printf("lexical analysis ... done\n");
     auto *ast = parse_tokens(lexer);
+    printf("parsing ... done\n");
 
     llvm::LLVMContext _context;                // holds global LLVM state
     llvm::Module _module("_module", _context); // container for functions/vars
     llvm::IRBuilder<> _builder(_context);      // helper to generate instructions
 
     emit_llvm_ir(ast, _context, &_builder, &_module);
+    printf("llvm emit ... done\n");
 
     std::string llvm_file_name = lexer->file_name + ".ll";
     write_llvm_ir_to_file(llvm_file_name.c_str(), &_module);
+    printf("*** .ll created successfully ***\n");
     return 0;
 }

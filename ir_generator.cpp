@@ -81,7 +81,7 @@ inline llvm::Value *AST_Function_Definition::generate_ir(
 )
 {
     // get the llvm return type
-  llvm::Type *llvm_return_type = llvm_type_map(return_type, _context);
+    llvm::Type *llvm_return_type = llvm_type_map(return_type, _context);
 
     // get the llvm parameter types
     std::vector<llvm::Type*> llvm_param_types;
@@ -97,6 +97,10 @@ inline llvm::Value *AST_Function_Definition::generate_ir(
         _module
     );
 
+    // create the entry block
+    llvm::BasicBlock* function_entry = llvm::BasicBlock::Create(_context, "entry", _f);
+    _builder->SetInsertPoint(function_entry);
+
     // set parameter names and allocate storage
     int index = 0;
     for (auto& arg : _f->args()) {
@@ -107,16 +111,9 @@ inline llvm::Value *AST_Function_Definition::generate_ir(
 	// insertion point to the entry, and insert the instructions there,
 	// without affecting the global builder.
         llvm::IRBuilder<> tmp_builder(_context);
+        tmp_builder.SetInsertPoint(function_entry, function_entry->begin());
 
-	if (_builder->GetInsertBlock() == nullptr) {
-	    throw_ir_error("(FATAL) Cannot find parent IR block.");
-	}
-
-        tmp_builder.SetInsertPoint(
-	&_builder->GetInsertBlock()->getParent()->getEntryBlock(),
-        _builder->GetInsertBlock()->getParent()->getEntryBlock().begin()
-	);
-        llvm::AllocaInst* _alloca = tmp_builder.CreateAlloca(arg.getType(), nullptr, arg.getName());
+	llvm::AllocaInst* _alloca = tmp_builder.CreateAlloca(arg.getType(), nullptr, arg.getName());
 
         // store the initial parameter value
         _builder->CreateStore(&arg, _alloca);
@@ -125,19 +122,27 @@ inline llvm::Value *AST_Function_Definition::generate_ir(
 	llvm_symbol_table[std::string(arg.getName())] = _alloca;
     }
 
-    // entry block for function body
-    llvm::BasicBlock* function_entry = llvm::BasicBlock::Create(_context, "entry", _f);
-    _builder->SetInsertPoint(function_entry);
-
     // emit body
+    bool has_return_expression_in_block = false;
     for (auto* expr : block) {
-	if (!expr->generate_ir(_context, _builder, _module)) return nullptr;
+	if (expr != nullptr) {
+	    expr->generate_ir(_context, _builder, _module);
+
+	    // once return expression is encountered
+	    // the expressions after it can be ignored.
+	    if (expr->expr_type == EXPR_RETURN) {
+		has_return_expression_in_block = true;
+		break;
+	    }
+	}
     }
 
     // if return type is void, add a return void instruction
     // (for other types, the return expression should be present
     // in the block itself).
-    if (llvm_return_type->isVoidTy()) _builder->CreateRetVoid();
+    if (!has_return_expression_in_block && llvm_return_type->isVoidTy()) {
+	_builder->CreateRetVoid();
+    }
 
     // verify function
     if (llvm::verifyFunction(*_f, &llvm::errs())) {
@@ -165,7 +170,7 @@ inline llvm::Value *AST_If_Expression::generate_ir(
     );
 
     if (_builder->GetInsertBlock() == nullptr) {
-	throw_ir_error("(FATAL) Cannot find parent IR block.");
+	throw_ir_error("(FATAL) Cannot find parent IR block for \'if\' statement.");
     }
 
     // create labels (then:, else:, and ifend:)
@@ -210,7 +215,7 @@ inline llvm::Value *AST_For_Expression::generate_ir(
 )
 {
     if (_builder->GetInsertBlock() == nullptr) {
-	throw_ir_error("(FATAL) Cannot find parent IR block.");
+	throw_ir_error("(FATAL) Cannot find parent IR block for \'for\' statement.");
     }
 
     llvm::Function *f = _builder->GetInsertBlock()->getParent();
@@ -287,7 +292,7 @@ inline llvm::Value *AST_While_Expression::generate_ir(
     // and the while end
 
     if (_builder->GetInsertBlock() == nullptr) {
-	throw_ir_error("(FATAL) Cannot find parent IR block.");
+	throw_ir_error("(FATAL) Cannot find parent IR block for \'while\' statement.");
     }
 
     llvm::Function* f = _builder->GetInsertBlock()->getParent();
@@ -346,7 +351,7 @@ inline llvm::Value *AST_Declaration::generate_ir(
 )
 {
     if (_builder->GetInsertBlock() == nullptr) {
-	throw_ir_error("(FATAL) Cannot find parent IR block.");
+	throw_ir_error("(FATAL) Cannot find parent IR block for declaration.");
     }
 
     llvm::Function *f = _builder->GetInsertBlock()->getParent();
@@ -390,7 +395,7 @@ inline llvm::Value *AST_Unary_Expression::generate_ir(
 	// must be an lvalue, and we will need the address to it,
 	// instead of its direct value.
 
-	if (expr_type != EXPR_IDENT) {
+	if (expr->expr_type != EXPR_IDENT) {
 	    throw_ir_error("Cannot increment/decrement a non-lvalue expression).");
 	}
 
@@ -437,11 +442,15 @@ inline llvm::Value *AST_Binary_Expression::generate_ir(
     if (op == TOKEN_AND) return generate_ir__logical_and(left, right, _context, _builder, _module);
     if (op == TOKEN_OR) return generate_ir__logical_or(left, right, _context, _builder, _module);
 
-    llvm::Value* L = left->generate_ir(_context, _builder, _module);
-    if (!L) return nullptr;
-
-    llvm::Value* R = right->generate_ir(_context, _builder, _module);
-    if (!R) return nullptr;
+    llvm::Value *L = nullptr, *R = nullptr;
+    if (left != nullptr) {
+	L = left->generate_ir(_context, _builder, _module);
+    }
+    if (right != nullptr) {
+	R = right->generate_ir(_context, _builder, _module);
+    }
+    if (!L) return R;
+    else if (!R) return L;
 
     // For other logical / bitwise operations
     switch (op) {
@@ -507,7 +516,7 @@ inline llvm::Value *AST_Function_Call::generate_ir(
 )
 {
     if (_builder->GetInsertBlock() == nullptr) {
-	throw_ir_error("(FATAL) Cannot find parent IR block.");
+	throw_ir_error("(FATAL) Cannot find parent IR block for function call.");
     }
 
     // find the function in the module
@@ -567,7 +576,7 @@ inline llvm::Value *AST_Jump_Expression::generate_ir(
     }
 
     if (_builder->GetInsertBlock() == nullptr) {
-	throw_ir_error("(FATAL) Cannot find parent IR block.");
+	throw_ir_error("(FATAL) Cannot find parent IR block for jump statement.");
     }
 
     llvm::Function* f = _builder->GetInsertBlock()->getParent();
@@ -594,6 +603,71 @@ inline llvm::Value *AST_Block_Expression::generate_ir(
 }
 
 
+llvm::Value *generate_ir__global_declaration(
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module,
+    AST_Expression *expr
+) {
+    // either this is a binary expression with the (=) operator,
+    // or it is a simple declaration
+
+    switch (expr->expr_type) {
+    case EXPR_DECL: {
+	auto *decl = (AST_Declaration*)expr;
+
+        llvm::Type *var_type = llvm_type_map(decl->data_type, _context);
+        llvm::Constant *init = llvm::Constant::getNullValue(var_type);
+
+        auto *global = new llvm::GlobalVariable(
+            *_module,
+            var_type,
+            false,
+            llvm::GlobalValue::ExternalLinkage,
+            init,
+            decl->variable_name
+        );
+
+        llvm_symbol_table[decl->variable_name] = global;
+        return global;
+    }
+    case EXPR_BINARY: {
+	auto *bin = (AST_Binary_Expression*)expr;
+
+        if (bin->op != TOKEN_ASSIGN) {
+            throw_ir_error("Global declaration can only be of assignment type.");
+        }
+
+        // left branch must be a declaration
+        auto *decl = (AST_Declaration*)(bin->left);
+
+        llvm::Type *var_type = llvm_type_map(decl->data_type, _context);
+        llvm::Value *right_val = bin->right->generate_ir(_context, _builder, _module);
+        llvm::Constant *init = llvm::dyn_cast<llvm::Constant>(right_val);
+        if (!init) {
+            throw_ir_error("Global initializers must be constant expressions.");
+        }
+
+        auto *global = new llvm::GlobalVariable(
+            *_module,
+            var_type,
+            false,
+            llvm::GlobalValue::ExternalLinkage,
+            init,
+            decl->variable_name
+        );
+
+        llvm_symbol_table[decl->variable_name] = global;
+        return global;
+    }
+    default: {
+	throw_ir_error("Invalid top-level expression encountered.");
+    }
+    }
+    return nullptr;
+}
+
+
 // goes through each top-level expression in the AST
 // and runs the IR generation for each of them.
 // this emits the llvm IR into the module.
@@ -603,8 +677,16 @@ void emit_llvm_ir(
     llvm::IRBuilder<> *_builder,
     llvm::Module *_module
 ) {
+    // if a top-level expression is a non-function
+    // then it must be either a declaration, or a binary
+    // expression that has a declaration on the left side.
+    // these must be treated separately, to emit a global
+    // declaration LLVM instruction.
+
     for (AST_Expression *ast_expr : *ast) {
-	ast_expr->generate_ir(_context, _builder, _module);
+	if (ast_expr->expr_type != EXPR_FUNC_DEF) {
+	    generate_ir__global_declaration(_context, _builder, _module, ast_expr);
+	} else ast_expr->generate_ir(_context, _builder, _module);
     }
 
     // verify the LLVM IR generated
@@ -621,19 +703,20 @@ void write_llvm_ir_to_file(const char *llvm_file_name, llvm::Module *_module)
 }
 
 
-int main()
+int main(int argc, char **argv)
 {
     Lexer *lexer = perform_lexical_analysis("program.txt");
-    printf("lexical analysis ... done\n");
     auto *ast = parse_tokens(lexer);
-    printf("parsing ... done\n");
+
+    if (argc > 1 && strcmp(argv[1], "-parser_out") == 0) {
+	print_ast(ast);
+    }
 
     llvm::LLVMContext _context;                // holds global LLVM state
-    llvm::Module _module("_module", _context); // container for functions/vars
+    llvm::Module _module(lexer->file_name.c_str(), _context); // container for functions/vars
     llvm::IRBuilder<> _builder(_context);      // helper to generate instructions
 
     emit_llvm_ir(ast, _context, &_builder, &_module);
-    printf("llvm emit ... done\n");
 
     std::string llvm_file_name = lexer->file_name + ".ll";
     write_llvm_ir_to_file(llvm_file_name.c_str(), &_module);

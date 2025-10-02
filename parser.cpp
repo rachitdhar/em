@@ -939,6 +939,7 @@ std::vector<AST_Expression*> *parse_tokens(Lexer *lexer)
     }
 
     auto *ast = new std::vector<AST_Expression*>; // abstract syntax tree initialized
+    bool entry_point_exists = false;
 
     do {
 	// at the outermost, we only have function definitions
@@ -958,11 +959,17 @@ std::vector<AST_Expression*> *parse_tokens(Lexer *lexer)
 	if (tok->type == TOKEN_LEFT_PAREN) {
 	    AST_Function_Definition *ast_function = parse_ast_function(lexer);
 	    ast->push_back(ast_function);
+
+	    if (ast_function->function_name == "main") entry_point_exists = true;
 	} else {
 	    auto *global_decl = parse_ast_global_declaration(lexer);
 	    ast->push_back(global_decl);
 	}
     } while (lexer->get_next_token() != NULL);
+
+    if (!entry_point_exists) {
+	throw_parser_error("SYNTAX ERROR: No entry point (main) found.", lexer);
+    }
 
     return ast;
 }

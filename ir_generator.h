@@ -24,7 +24,16 @@ to help describe what IR instructions are meant to be generated.
 
 
 // declaring a symbol table needed during IR generation
-std::unordered_map<std::string, llvm::Value*> llvm_symbol_table;
+// apparently, we would need to store both the value as well
+// as the type (since LLVM only keeps a pointer to the allocated
+// memory, and does not seem to maintain type info).
+
+struct LLVM_Symbol_Info {
+    llvm::Value *val;
+    llvm::Type *type;
+};
+
+std::unordered_map<std::string, LLVM_Symbol_Info*> llvm_symbol_table;
 
 
 // defining a stack to store the pairs <LOOP_CONDITION, LOOP_END>
@@ -120,6 +129,36 @@ llvm::Value* generate_ir__logical_or(
     phi_node->addIncoming(R, orright);
 
     return phi_node;
+}
+
+
+// executes generate_ir for each expression inside
+// the block, and returns whether or not a return was
+// one of the expressions encountered.
+inline bool generate_block_ir(
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module,
+    std::vector<AST_Expression*>& block
+) {
+    for (auto* expr : block) {
+	if (expr) {
+	    expr->generate_ir(_context, _builder, _module);
+
+	    // once return expression is encountered
+	    // the expressions after it can be ignored.
+	    if (expr->expr_type == EXPR_RETURN) return true;
+	}
+    }
+    return false;
+}
+
+
+// For Debugging only
+// prints the llvm ir that has been emitted till now
+inline void print_ir(llvm::Module *_module)
+{
+    _module->print(llvm::outs(), nullptr);
 }
 
 

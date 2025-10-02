@@ -33,11 +33,11 @@ is hardware architecture independent).
 // this only applies for lvalue expressions (identifiers)
 inline llvm::Value *AST_Identifier::generate_ir_pointer()
 {
-    llvm::Value *val_addr = llvm_symbol_table[name];
-    if (!val_addr) {
+    auto it = llvm_symbol_table.find(name);
+    if (it == llvm_symbol_table.end() || !it->second->val) {
 	throw_ir_error("Undefined identifier encountered.");
     }
-    return val_addr;
+    return it->second->val; // a pointer to the identifier
 }
 
 
@@ -48,12 +48,13 @@ inline llvm::Value *AST_Identifier::generate_ir(
 )
 {
     // returns the value contained in a particular variable
-    llvm::Value *val_addr = generate_ir_pointer();
-    return _builder->CreateLoad(
-        llvm::dyn_cast<llvm::PointerType>(val_addr->getType()),
-        val_addr,
-        name.c_str()
-    );
+    auto it = llvm_symbol_table.find(name);
+    if (it == llvm_symbol_table.end()) {
+	throw_ir_error("Undefined identifier encountered.");
+    }
+
+    LLVM_Symbol_Info *sym_info = it->second;
+    return _builder->CreateLoad(sym_info->type, sym_info->val, name.c_str());
 }
 
 
@@ -67,7 +68,32 @@ inline llvm::Value *AST_Literal::generate_ir(
     case T_INT:    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(_builder->getContext()), value.i);
     case T_FLOAT:  return llvm::ConstantFP::get(llvm::Type::getFloatTy(_builder->getContext()), value.f);
     case T_CHAR:   return llvm::ConstantInt::get(llvm::Type::getInt8Ty(_builder->getContext()), value.c);
-    case T_STRING: return _builder->CreateGlobalStringPtr(*(value.s));
+    case T_STRING: {
+	// in LLVM, if a string literal is global, then it
+	// must be created as a constant. we need to thus
+	// check for that.
+
+	// for global string literal
+	if (!_builder->GetInsertBlock()) {
+	    // create an array of i8 with null terminator
+	    llvm::Constant *strConstant = llvm::ConstantDataArray::getString(_context, *(value.s), true);
+
+	    // create a global to hold the array
+	    auto *global_str = new llvm::GlobalVariable(
+	    *_module,
+	    strConstant->getType(),
+	    true, // isConstant
+	    llvm::GlobalValue::PrivateLinkage,
+	    strConstant,
+	    ".str"
+	    );
+
+	    global_str->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
+	    global_str->setAlignment(llvm::Align(1));
+	    return global_str;
+	}
+	return _builder->CreateGlobalStringPtr(*(value.s)); // local string literal
+    }
     default: throw_ir_error("Unidentified literal type encountered.");
     }
     return nullptr; // added to prevent warnings (should never reach here)
@@ -104,7 +130,8 @@ inline llvm::Value *AST_Function_Definition::generate_ir(
     // set parameter names and allocate storage
     int index = 0;
     for (auto& arg : _f->args()) {
-        arg.setName(params[index++]->name);
+	std::string param_name = params[index++]->name;
+        arg.setName(param_name);
 
         // we need to create an alloca in the entry block, for this parameter.
 	// in order to do this, we can create a temporary builder, set its
@@ -113,29 +140,18 @@ inline llvm::Value *AST_Function_Definition::generate_ir(
         llvm::IRBuilder<> tmp_builder(_context);
         tmp_builder.SetInsertPoint(function_entry, function_entry->begin());
 
-	llvm::AllocaInst* _alloca = tmp_builder.CreateAlloca(arg.getType(), nullptr, arg.getName());
+	llvm::AllocaInst* _alloca = tmp_builder.CreateAlloca(arg.getType(), nullptr, param_name);
 
         // store the initial parameter value
         _builder->CreateStore(&arg, _alloca);
 
 	// store in the symbol table
-	llvm_symbol_table[std::string(arg.getName())] = _alloca;
+	auto *sym_info = new LLVM_Symbol_Info{ _alloca, arg.getType() };
+	llvm_symbol_table[param_name] = sym_info;
     }
 
     // emit body
-    bool has_return_expression_in_block = false;
-    for (auto* expr : block) {
-	if (expr != nullptr) {
-	    expr->generate_ir(_context, _builder, _module);
-
-	    // once return expression is encountered
-	    // the expressions after it can be ignored.
-	    if (expr->expr_type == EXPR_RETURN) {
-		has_return_expression_in_block = true;
-		break;
-	    }
-	}
-    }
+    bool has_return_expression_in_block = generate_block_ir(_context, _builder, _module, block);
 
     // if return type is void, add a return void instruction
     // (for other types, the return expression should be present
@@ -146,6 +162,7 @@ inline llvm::Value *AST_Function_Definition::generate_ir(
 
     // verify function
     if (llvm::verifyFunction(*_f, &llvm::errs())) {
+	print_ir(_module);
 	throw_ir_error("Invalid function. Could not be verified.");
     }
 
@@ -177,27 +194,23 @@ inline llvm::Value *AST_If_Expression::generate_ir(
     llvm::Function *_f = _builder->GetInsertBlock()->getParent();
 
     llvm::BasicBlock *_then = llvm::BasicBlock::Create(_context, "then", _f);
-    llvm::BasicBlock *_else  = llvm::BasicBlock::Create(_context, "else");
-    llvm::BasicBlock *_ifend = llvm::BasicBlock::Create(_context, "ifend");
+    llvm::BasicBlock *_else  = llvm::BasicBlock::Create(_context, "else", _f);
+    llvm::BasicBlock *_ifend = llvm::BasicBlock::Create(_context, "ifend", _f);
 
     // create conditional branch
     _builder->CreateCondBr(_condition, _then, _else);
 
     // emit instructions for _then block
     _builder->SetInsertPoint(_then);
-    for (auto *expr : block) {
-        if (!expr->generate_ir(_context, _builder, _module)) return nullptr;
-    }
-    _builder->CreateBr(_ifend);
+    bool has_return_expression_in_block = generate_block_ir(_context, _builder, _module, block);
+    if (!has_return_expression_in_block) _builder->CreateBr(_ifend);
     _then = _builder->GetInsertBlock();
 
     // emit instructions for _else block
     _else->insertInto(_f);
     _builder->SetInsertPoint(_else);
-    for (auto *expr : else_block) {
-        if (!expr->generate_ir(_context, _builder, _module)) return nullptr;
-    }
-    _builder->CreateBr(_ifend);
+    has_return_expression_in_block = generate_block_ir(_context, _builder, _module, block);
+    if (!has_return_expression_in_block) _builder->CreateBr(_ifend);
     _else = _builder->GetInsertBlock();
 
     // emit _ifend label (marks the termination of the if statement)
@@ -224,9 +237,9 @@ inline llvm::Value *AST_For_Expression::generate_ir(
     if (init) init->generate_ir(_context, _builder, _module);
 
     llvm::BasicBlock *_forcond = llvm::BasicBlock::Create(_context, "forcond", f);
-    llvm::BasicBlock *_forbody = llvm::BasicBlock::Create(_context, "forbody");
-    llvm::BasicBlock *_forinc  = llvm::BasicBlock::Create(_context, "forinc");
-    llvm::BasicBlock *_forend = llvm::BasicBlock::Create(_context, "forend");
+    llvm::BasicBlock *_forbody = llvm::BasicBlock::Create(_context, "forbody", f);
+    llvm::BasicBlock *_forinc  = llvm::BasicBlock::Create(_context, "forinc", f);
+    llvm::BasicBlock *_forend = llvm::BasicBlock::Create(_context, "forend", f);
 
     // jump to condition check
     _builder->CreateBr(_forcond);
@@ -256,12 +269,10 @@ inline llvm::Value *AST_For_Expression::generate_ir(
     _forbody->insertInto(f);
     _builder->SetInsertPoint(_forbody);
 
-    for (auto *expr : block) {
-        if (!expr->generate_ir(_context, _builder, _module)) return nullptr;
-    }
+    bool has_return_expression_in_block = generate_block_ir(_context, _builder, _module, block);
 
     // after the body, jump to increment
-    _builder->CreateBr(_forinc);
+    if (!has_return_expression_in_block) _builder->CreateBr(_forinc);
 
     // increment
     _forinc->insertInto(f);
@@ -298,8 +309,8 @@ inline llvm::Value *AST_While_Expression::generate_ir(
     llvm::Function* f = _builder->GetInsertBlock()->getParent();
 
     llvm::BasicBlock* _whilecond  = llvm::BasicBlock::Create(_context, "whilecond", f);
-    llvm::BasicBlock* _body  = llvm::BasicBlock::Create(_context, "whilebody");
-    llvm::BasicBlock* _whileend = llvm::BasicBlock::Create(_context, "whileend");
+    llvm::BasicBlock* _body  = llvm::BasicBlock::Create(_context, "whilebody", f);
+    llvm::BasicBlock* _whileend = llvm::BasicBlock::Create(_context, "whileend", f);
 
     // jump to condition block first
     _builder->CreateBr(_whilecond);
@@ -327,12 +338,10 @@ inline llvm::Value *AST_While_Expression::generate_ir(
     _body->insertInto(f);
     _builder->SetInsertPoint(_body);
 
-    for (auto* expr : block) {
-        if (!expr->generate_ir(_context, _builder, _module)) return nullptr;
-    }
+    bool has_return_expression_in_block = generate_block_ir(_context, _builder, _module, block);
 
     // jump back to condition
-    _builder->CreateBr(_whilecond);
+    if (!has_return_expression_in_block) _builder->CreateBr(_whilecond);
     _body = _builder->GetInsertBlock();
 
     // _whileend (for termination)
@@ -365,7 +374,8 @@ inline llvm::Value *AST_Declaration::generate_ir(
     llvm::AllocaInst *_alloca = tmp_builder.CreateAlloca(var_type, nullptr, variable_name);
 
     // store it in the symbol table
-    llvm_symbol_table[variable_name] = _alloca;
+    auto *sym_info = new LLVM_Symbol_Info{ _alloca, var_type };
+    llvm_symbol_table[variable_name] = sym_info;
     return _alloca;
 }
 
@@ -376,16 +386,16 @@ inline llvm::Value *AST_Unary_Expression::generate_ir(
     llvm::Module *_module
 )
 {
-    llvm::Value* val = expr->generate_ir(_context, _builder, _module);
-
     switch (op) {
     case TOKEN_NOT: {
 	// get a 0 having a type same as val
+	llvm::Value* val = expr->generate_ir(_context, _builder, _module);
         llvm::Value *zero = llvm::ConstantInt::get(val->getType(), 0);
         return _builder->CreateICmpEQ(val, zero, "nottmp");
     }
     case TOKEN_BIT_NOT: {
 	// get an integer with all bits set to 1, of the same type as val
+	llvm::Value* val = expr->generate_ir(_context, _builder, _module);
         llvm::Value *all_ones = llvm::ConstantInt::get(val->getType(), -1, true);
         return _builder->CreateXor(val, all_ones, "bnot");
     }
@@ -400,19 +410,17 @@ inline llvm::Value *AST_Unary_Expression::generate_ir(
 	}
 
         llvm::Value *val_addr = ((AST_Identifier*)expr)->generate_ir_pointer();
-        llvm::Value *old_val =
-	_builder->CreateLoad(
-	    llvm::dyn_cast<llvm::PointerType>(val_addr->getType()),
-	    val_addr,
-	    "oldtmp"
-	);
+	llvm::Value *val = expr->generate_ir(_context, _builder, _module);
+
+	if (val && val->getType()->isPointerTy())
+            val = _builder->CreateLoad(llvm::dyn_cast<llvm::PointerType>(val->getType()), val);
 
         int delta = (op == TOKEN_INCREMENT) ? 1 : -1;
-        llvm::Value *one = llvm::ConstantInt::get(old_val->getType(), delta);
-        llvm::Value *new_val = _builder->CreateAdd(old_val, one, "incdec");
+        llvm::Value *one = llvm::ConstantInt::get(val->getType(), delta);
+        llvm::Value *new_val = _builder->CreateAdd(val, one, "incdec");
 
         _builder->CreateStore(new_val, val_addr);
-	return (is_postfix) ? old_val : new_val;
+	return (is_postfix) ? val : new_val;
     }
     default: throw_ir_error("Invalid unary operator encountered.");
     }
@@ -442,36 +450,31 @@ inline llvm::Value *AST_Binary_Expression::generate_ir(
     if (op == TOKEN_AND) return generate_ir__logical_and(left, right, _context, _builder, _module);
     if (op == TOKEN_OR) return generate_ir__logical_or(left, right, _context, _builder, _module);
 
-    llvm::Value *L = nullptr, *R = nullptr;
-    if (left != nullptr) {
-	L = left->generate_ir(_context, _builder, _module);
-    }
-    if (right != nullptr) {
-	R = right->generate_ir(_context, _builder, _module);
-    }
-    if (!L) return R;
-    else if (!R) return L;
+    llvm::Value *L = nullptr, *Rval = nullptr;
+    if (left) {
+	// turns out this is not as simple as it looks.
+	// in case of assignments, if the left side is an identifier
+	// we don't want the value to be loaded, instead we just want
+	// the address of the identifier.
 
-    // For other logical / bitwise operations
-    switch (op) {
-        case TOKEN_PLUS:      return _builder->CreateAdd(L, R, "addtmp");
-        case TOKEN_MINUS:     return _builder->CreateSub(L, R, "subtmp");
-        case TOKEN_STAR:      return _builder->CreateMul(L, R, "multmp");
-        case TOKEN_DIVIDE:    return _builder->CreateSDiv(L, R, "divtmp");
-        case TOKEN_MOD:       return _builder->CreateSRem(L, R, "modtmp");
-        case TOKEN_LESS:      return _builder->CreateICmpSLT(L, R, "cmptmp");
-        case TOKEN_GREATER:   return _builder->CreateICmpSGT(L, R, "cmptmp");
-        case TOKEN_LESSEQ:    return _builder->CreateICmpSLE(L, R, "cmptmp");
-        case TOKEN_GREATEREQ: return _builder->CreateICmpSGE(L, R, "cmptmp");
-        case TOKEN_EQUAL:     return _builder->CreateICmpEQ(L, R, "cmptmp");
-        case TOKEN_NOTEQ:     return _builder->CreateICmpNE(L, R, "cmptmp");
-        case TOKEN_LSHIFT:    return _builder->CreateShl(L, R, "lshtmp");
-        case TOKEN_RSHIFT:    return _builder->CreateAShr(L, R, "rshtmp");
-        case TOKEN_BIT_OR:    return _builder->CreateOr(L, R, "ortmp");
-        case TOKEN_XOR:       return _builder->CreateXor(L, R, "xortmp");
-        case TOKEN_AMPERSAND: return _builder->CreateAnd(L, R, "andtmp");
-        default: break;
+	// so the solution to this is to just take in the pointer in
+	// case it is an identifier. then if we need to load it, we
+	// can do that manually wherever actually needed.
+
+	L = (left->expr_type == EXPR_IDENT)
+	? ((AST_Identifier*)left)->generate_ir_pointer()
+	: left->generate_ir(_context, _builder, _module);
     }
+    if (right) Rval = right->generate_ir(_context, _builder, _module);
+
+    if (!L) return Rval;
+    else if (!Rval) {
+	// we need to return the Lval here
+	return (left->expr_type == EXPR_IDENT)
+	? left->generate_ir(_context, _builder, _module)
+	: L;
+    }
+
 
     /*
     For Assignments:
@@ -481,31 +484,71 @@ inline llvm::Value *AST_Binary_Expression::generate_ir(
     */
 
     if (op == TOKEN_ASSIGN) {
-	_builder->CreateStore(R, L);
-        return R;
+        if (Rval && Rval->getType()->isPointerTy())
+            Rval = _builder->CreateLoad(llvm::dyn_cast<llvm::PointerType>(Rval->getType()), Rval);
+
+        _builder->CreateStore(Rval, L);  // here L must be an address
+        return Rval;
     }
 
-    llvm::Value *tmp = _builder->CreateLoad(llvm::dyn_cast<llvm::PointerType>(L->getType()), L);
-    llvm::Value *res;
+    // for compound assignments
+
+    llvm::Value *Lval = left->generate_ir(_context, _builder, _module);
+
+    if (Lval && Lval->getType()->isPointerTy())
+        Lval = _builder->CreateLoad(llvm::dyn_cast<llvm::PointerType>(Lval->getType()), Lval);
+    if (Rval && Rval->getType()->isPointerTy())
+        Rval = _builder->CreateLoad(llvm::dyn_cast<llvm::PointerType>(Rval->getType()), Rval);
+
+    llvm::Value *result = nullptr;
 
     switch (op) {
-    case TOKEN_PLUSEQ: res = _builder->CreateAdd(tmp, R, "addtmp"); break;
-    case TOKEN_MINUSEQ: res = _builder->CreateSub(tmp, R, "subtmp"); break;
-    case TOKEN_MULTIPLYEQ: res = _builder->CreateMul(tmp, R, "multmp"); break;
-    case TOKEN_DIVIDEEQ: res = _builder->CreateSDiv(tmp, R, "divtmp"); break;
-    case TOKEN_MODEQ: res = _builder->CreateSRem(tmp, R, "modtmp"); break;
-    case TOKEN_LSHIFT_EQ: res = _builder->CreateShl(tmp, R, "lshtmp"); break;
-    case TOKEN_RSHIFT_EQ: res = _builder->CreateAShr(tmp, R, "rshtmp"); break;
-    case TOKEN_ANDEQ: res = _builder->CreateAnd(tmp, R, "andtmp"); break;
-    case TOKEN_OREQ: res = _builder->CreateOr(tmp, R, "ortmp"); break;
-    case TOKEN_BIT_ANDEQ: res = _builder->CreateAnd(tmp, R, "andtmp"); break;
-    case TOKEN_BIT_OREQ: res = _builder->CreateOr(tmp, R, "ortmp"); break;
-    case TOKEN_XOREQ: res = _builder->CreateXor(tmp, R, "xortmp"); break;
+    case TOKEN_PLUSEQ:     result = _builder->CreateAdd(Lval, Rval, "addtmp"); break;
+    case TOKEN_MINUSEQ:    result = _builder->CreateSub(Lval, Rval, "subtmp"); break;
+    case TOKEN_MULTIPLYEQ: result = _builder->CreateMul(Lval, Rval, "multmp"); break;
+    case TOKEN_DIVIDEEQ:   result = _builder->CreateSDiv(Lval, Rval, "divtmp"); break;
+    case TOKEN_MODEQ:      result = _builder->CreateSRem(Lval, Rval, "modtmp"); break;
+    case TOKEN_LSHIFT_EQ:  result = _builder->CreateShl(Lval, Rval, "lshtmp"); break;
+    case TOKEN_RSHIFT_EQ:  result = _builder->CreateAShr(Lval, Rval, "rshtmp"); break;
+    case TOKEN_ANDEQ:      result = _builder->CreateAnd(Lval, Rval, "andtmp"); break;
+    case TOKEN_OREQ:       result = _builder->CreateOr(Lval, Rval, "ortmp"); break;
+    case TOKEN_BIT_ANDEQ:  result = _builder->CreateAnd(Lval, Rval, "andtmp"); break;
+    case TOKEN_BIT_OREQ:   result = _builder->CreateOr(Lval, Rval, "ortmp"); break;
+    case TOKEN_XOREQ:      result = _builder->CreateXor(Lval, Rval, "xortmp"); break;
     default: break;
     }
 
-    _builder->CreateStore(res, L);
-    return res;
+    // store the result back into original L (must be an address)
+    if (result) {
+	_builder->CreateStore(result, L);
+	return result;
+    }
+
+
+    // For other logical / bitwise operations
+    // In this case, both sides should be values
+
+    switch (op) {
+    case TOKEN_PLUS:      return _builder->CreateAdd(Lval, Rval, "addtmp");
+    case TOKEN_MINUS:     return _builder->CreateSub(Lval, Rval, "subtmp");
+    case TOKEN_STAR:      return _builder->CreateMul(Lval, Rval, "multmp");
+    case TOKEN_DIVIDE:    return _builder->CreateSDiv(Lval, Rval, "divtmp");
+    case TOKEN_MOD:       return _builder->CreateSRem(Lval, Rval, "modtmp");
+    case TOKEN_LESS:      return _builder->CreateICmpSLT(Lval, Rval, "cmptmp");
+    case TOKEN_GREATER:   return _builder->CreateICmpSGT(Lval, Rval, "cmptmp");
+    case TOKEN_LESSEQ:    return _builder->CreateICmpSLE(Lval, Rval, "cmptmp");
+    case TOKEN_GREATEREQ: return _builder->CreateICmpSGE(Lval, Rval, "cmptmp");
+    case TOKEN_EQUAL:     return _builder->CreateICmpEQ(Lval, Rval, "cmptmp");
+    case TOKEN_NOTEQ:     return _builder->CreateICmpNE(Lval, Rval, "cmptmp");
+    case TOKEN_LSHIFT:    return _builder->CreateShl(Lval, Rval, "lshtmp");
+    case TOKEN_RSHIFT:    return _builder->CreateAShr(Lval, Rval, "rshtmp");
+    case TOKEN_BIT_OR:    return _builder->CreateOr(Lval, Rval, "ortmp");
+    case TOKEN_XOR:       return _builder->CreateXor(Lval, Rval, "xortmp");
+    case TOKEN_AMPERSAND: return _builder->CreateAnd(Lval, Rval, "andtmp");
+    default: break;
+    }
+
+    return nullptr;
 }
 
 
@@ -544,12 +587,25 @@ inline llvm::Value *AST_Return_Expression::generate_ir(
     llvm::Module *_module
 )
 {
-    if (value) {
-        llvm::Value *val = value->generate_ir(_context, _builder, _module);
-        if (!val) return nullptr;
-        return _builder->CreateRet(val); // ret <value>
+    if (!value) return _builder->CreateRetVoid(); // ret void
+
+    llvm::Value *val = value->generate_ir(_context, _builder, _module);
+    if (!val) return nullptr;
+
+    // verify function return type is being matched
+    llvm::Type *retTy = _builder->GetInsertBlock()->getParent()->getReturnType();
+    if (val->getType() != retTy) {
+	// add cast if needed
+	if (val->getType()->isIntegerTy() && retTy->isIntegerTy()) {
+	    val = _builder->CreateIntCast(val, retTy, true, "retcast");
+	}
+	else {
+	    print_ir(_module);
+	    throw_ir_error("Return value type does not match the function return type.");
+	}
     }
-    return _builder->CreateRetVoid(); // ret void
+
+    return _builder->CreateRet(val); // ret <value>
 }
 
 
@@ -593,12 +649,7 @@ inline llvm::Value *AST_Block_Expression::generate_ir(
     llvm::Module *_module
 )
 {
-    llvm::Value *prev = nullptr;
-
-    for (auto* expr : block) {
-        prev = expr->generate_ir(_context, _builder, _module);
-        if (!prev) return nullptr;
-    }
+    generate_block_ir(_context, _builder, _module, block);
     return nullptr; // scoped-expressions don't return any value
 }
 
@@ -628,7 +679,8 @@ llvm::Value *generate_ir__global_declaration(
             decl->variable_name
         );
 
-        llvm_symbol_table[decl->variable_name] = global;
+	auto *sym_info = new LLVM_Symbol_Info{ global, var_type };
+        llvm_symbol_table[decl->variable_name] = sym_info;
         return global;
     }
     case EXPR_BINARY: {
@@ -657,7 +709,8 @@ llvm::Value *generate_ir__global_declaration(
             decl->variable_name
         );
 
-        llvm_symbol_table[decl->variable_name] = global;
+	auto *sym_info = new LLVM_Symbol_Info{ global, var_type };
+        llvm_symbol_table[decl->variable_name] = sym_info;
         return global;
     }
     default: {
@@ -708,7 +761,7 @@ int main(int argc, char **argv)
     Lexer *lexer = perform_lexical_analysis("program.txt");
     auto *ast = parse_tokens(lexer);
 
-    if (argc > 1 && strcmp(argv[1], "-parser_out") == 0) {
+    if (argc > 1 && strcmp(argv[1], "-pout") == 0) {
 	print_ast(ast);
     }
 

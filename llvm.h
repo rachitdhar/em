@@ -11,4 +11,13 @@
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/raw_ostream.h"
 
+/* for running LLVM backend */
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/TargetParser/Host.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/MC/TargetRegistry.h"
+
 #endif

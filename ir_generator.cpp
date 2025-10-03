@@ -22,6 +22,10 @@ is hardware architecture independent).
 #include "ir_generator.h"
 
 
+std::unordered_map<std::string, LLVM_Symbol_Info*> llvm_symbol_table;
+std::stack<Loop_Terminals*> loop_terminals;
+
+
 
 // for variables, we can return two kinds of quantities
 // either we could directly return its value, or we could
@@ -754,26 +758,4 @@ void write_llvm_ir_to_file(const char *llvm_file_name, llvm::Module *_module)
     std::error_code EC;
     llvm::raw_fd_ostream output_file(llvm_file_name, EC);
     _module->print(output_file, nullptr);
-}
-
-
-int main(int argc, char **argv)
-{
-    Lexer *lexer = perform_lexical_analysis("program.txt");
-    auto *ast = parse_tokens(lexer);
-
-    if (argc > 1 && strcmp(argv[1], "-pout") == 0) {
-	print_ast(ast);
-    }
-
-    llvm::LLVMContext _context;                // holds global LLVM state
-    llvm::Module _module(lexer->file_name.c_str(), _context); // container for functions/vars
-    llvm::IRBuilder<> _builder(_context);      // helper to generate instructions
-
-    emit_llvm_ir(ast, _context, &_builder, &_module);
-
-    std::string llvm_file_name = lexer->file_name + ".ll";
-    write_llvm_ir_to_file(llvm_file_name.c_str(), &_module);
-    printf("*** .ll created successfully ***\n");
-    return 0;
 }

@@ -33,7 +33,7 @@ struct LLVM_Symbol_Info {
     llvm::Type *type;
 };
 
-std::unordered_map<std::string, LLVM_Symbol_Info*> llvm_symbol_table;
+extern std::unordered_map<std::string, LLVM_Symbol_Info*> llvm_symbol_table;
 
 
 // defining a stack to store the pairs <LOOP_CONDITION, LOOP_END>
@@ -46,7 +46,7 @@ struct Loop_Terminals {
     llvm::BasicBlock *loop_end;
 };
 
-std::stack<Loop_Terminals*> loop_terminals;
+extern std::stack<Loop_Terminals*> loop_terminals;
 
 
 inline llvm::Type *llvm_type_map(const Data_Type type, llvm::LLVMContext& _context)
@@ -77,7 +77,9 @@ inline void throw_ir_error(const char *message)
 // prints the llvm ir that has been emitted till now
 inline void print_ir(llvm::Module *_module)
 {
+    printf("***************** :: LLVM IR :: *****************\n\n");
     _module->print(llvm::outs(), nullptr);
+    printf("\n");
 }
 
 
@@ -206,5 +208,19 @@ inline bool generate_block_ir(
     }
     return false;
 }
+
+
+//                       Function declarations
+// ******************************************************************
+
+void emit_llvm_ir(
+    std::vector<AST_Expression*> *ast,
+    llvm::LLVMContext& _context,
+    llvm::IRBuilder<> *_builder,
+    llvm::Module *_module
+);
+
+void write_llvm_ir_to_file(const char *llvm_file_name, llvm::Module *_module);
+
 
 #endif

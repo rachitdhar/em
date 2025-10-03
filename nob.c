@@ -25,9 +25,10 @@ int main(int argc, char** argv) {
     nob_cmd_append(&cmd, "lexer.cpp");
     nob_cmd_append(&cmd, "parser.cpp");
     nob_cmd_append(&cmd, "ir_generator.cpp");
+    nob_cmd_append(&cmd, "main.cpp");
 
     nob_cmd_append(&cmd, "-o");
-    nob_cmd_append(&cmd, "compiler.exe");
+    nob_cmd_append(&cmd, "compiler");
 
     // include paths
     nob_cmd_append(&cmd, "-I");

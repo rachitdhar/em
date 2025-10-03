@@ -300,14 +300,12 @@ inline void print_ast_expression(AST_Expression *ast_expr, int indentation_level
 // (to print the abstract syntax tree)
 inline void print_ast(std::vector<AST_Expression*> *ast)
 {
-    int top_expression_num = 1;
+    printf("***************** :: PARSER OUTPUT (AST) :: *****************\n\n");
+
     for (AST_Expression *ast_expr : *ast) {
 	// printing an expression tree
-	printf("************** :: %d :: **************\n\n", top_expression_num);
-
 	print_ast_expression(ast_expr, 0);
 	printf("\n");
-	top_expression_num++;
     }
 }
 

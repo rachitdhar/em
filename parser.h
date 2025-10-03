@@ -91,6 +91,7 @@ inline Precedence op_prec(Token_Type type)
     case TOKEN_NUMERIC_LITERAL:
     case TOKEN_CHAR_LITERAL:
     case TOKEN_STRING_LITERAL:
+    case TOKEN_BOOL_LITERAL:
     case TOKEN_LEFT_PAREN:
 	return PREC_PRIMARY;
 
@@ -396,7 +397,7 @@ inline void throw_error__used_delimiter_in_a_non_statement(Lexer *lexer)
 //                  Function definitions
 // ***********************************************************
 
-AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence, Token_Type stops_at = TOKEN_DELIMITER);
+AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence, Token_Type stops_at = TOKEN_DELIMITER, AST_Expression *left = NULL);
 AST_Expression *parse_ast_expression(Lexer *lexer);
 std::vector<AST_Expression*> *parse_tokens(Lexer *lexer);
 

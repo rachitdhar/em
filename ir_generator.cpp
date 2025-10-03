@@ -65,6 +65,7 @@ inline llvm::Value *AST_Literal::generate_ir(
 )
 {
     switch (type) {
+    case T_BOOL:   return llvm::ConstantInt::get(llvm::Type::getInt1Ty(_builder->getContext()), value.b ? 1 : 0);
     case T_INT:    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(_builder->getContext()), value.i);
     case T_FLOAT:  return llvm::ConstantFP::get(llvm::Type::getFloatTy(_builder->getContext()), value.f);
     case T_CHAR:   return llvm::ConstantInt::get(llvm::Type::getInt8Ty(_builder->getContext()), value.c);

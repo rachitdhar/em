@@ -475,6 +475,9 @@ inline AST_Literal *parse_ast_literal(Lexer *lexer)
 	  ast_literal->value.i = std::stoi(tok->val);
 	  ast_literal->type = T_INT;
       }
+    } else if (tok->type == TOKEN_BOOL_LITERAL) {
+	ast_literal->value.b = tok->val == "true";
+	ast_literal->type = T_BOOL;
     } else if (tok->type == TOKEN_CHAR_LITERAL) {
 	ast_literal->value.c = tok->val[0];
 	ast_literal->type = T_CHAR;
@@ -533,6 +536,7 @@ inline AST_Expression *parse_primary_subexpression(Lexer *lexer, Token *tok)
     case TOKEN_DATA_TYPE: expr = parse_ast_declaration(lexer); break;
     case TOKEN_CHAR_LITERAL:
     case TOKEN_NUMERIC_LITERAL:
+    case TOKEN_BOOL_LITERAL:
     case TOKEN_STRING_LITERAL: expr = parse_ast_literal(lexer); break;
     case TOKEN_LEFT_PAREN: expr = parse_ast_parenthesized_expression(lexer); break;
     default:
@@ -599,7 +603,7 @@ AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression 
 
 	Precedence new_prec = op_prec(op->type);
 	if (new_prec > curr_precedence) {
-	    curr_expression->right = parse_ast_subexpression(lexer, new_prec, stops_at);
+	    curr_expression->right = parse_ast_subexpression(lexer, new_prec, stops_at, tok_expr);
 	    break;
 	}
 
@@ -622,7 +626,7 @@ AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression 
 // tells which token comes right after the end of this expression.
 // We need this to know when to stop reading further. By default it is ';',
 // but it can also be a ')' (or certain other characters too...)
-AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence, Token_Type stops_at)
+AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence, Token_Type stops_at, AST_Expression *left)
 {
     /*
     The idea is that parsing in accordance with operator
@@ -640,18 +644,25 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
     auto *curr_expression = expr;
     AST_Binary_Expression *prev_expression = NULL;
 
-    Token *tok = lexer->peek();
-    if (tok == NULL) throw_error__missing_delimiter(lexer);
-    if (tok->type == stops_at) return NULL;
-    if (tok->type == TOKEN_DELIMITER) {
-	// in case stops_at is not ';', but we encounter a ';' anyways
-	throw_error__used_delimiter_in_a_non_statement(lexer);
+    Token *tok;
+    AST_Expression *tok_expr;
+
+    if (left == NULL) {
+	tok = lexer->peek();
+	if (tok == NULL) throw_error__missing_delimiter(lexer);
+	if (tok->type == stops_at) return NULL;
+	if (tok->type == TOKEN_DELIMITER) {
+	    // in case stops_at is not ';', but we encounter a ';' anyways
+	    throw_error__used_delimiter_in_a_non_statement(lexer);
+	}
+	if (op_prec(tok->type) < PREC_UNARY) {
+	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
+	}
+	tok_expr = parse_primary_subexpression(lexer, tok);
+	curr_expression->left = tok_expr;
+    } else {
+	curr_expression->left = left;
     }
-    if (op_prec(tok->type) < PREC_UNARY) {
-	throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
-    }
-    AST_Expression *tok_expr = parse_primary_subexpression(lexer, tok);
-    curr_expression->left = tok_expr;
 
     while (1) {
 	tok = lexer->peek();

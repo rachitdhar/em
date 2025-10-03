@@ -88,6 +88,7 @@ struct AST_Literal : AST_Expression {
     Data_Type type;
 
     union {
+	bool b;
 	int i;
 	float f;
 	char c;

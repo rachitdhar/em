@@ -18,8 +18,9 @@ enum Token_Type {
     TOKEN_NUMERIC_LITERAL = 4,     // 23434 12.656
     TOKEN_CHAR_LITERAL = 5,        // 'A'
     TOKEN_STRING_LITERAL = 6,      // "fds..."
-    TOKEN_SEPARATOR = 7,           // ,
-    TOKEN_DELIMITER = 8,           // ;
+    TOKEN_BOOL_LITERAL = 7,        // true, false
+    TOKEN_SEPARATOR = 8,           // ,
+    TOKEN_DELIMITER = 9,           // ;
 
     /* brackets */
     TOKEN_LEFT_BRACE = 100,    // {
@@ -93,7 +94,7 @@ struct Token {
 
 inline bool is_literal(Token *tok)
 {
-    return (tok->type >= 4 && tok->type <= 6);
+    return (tok->type >= 4 && tok->type <= 7);
 }
 
 inline bool is_unary_op(Token *tok)
@@ -265,6 +266,11 @@ inline void make_token_as_per_ptok(Lexer* lexer, std::string& curr, Partial_Toke
 {
     if (ptok == PTOK_NUMERIC) {
 	lexer->tokens.push_back(Token{curr, TOKEN_NUMERIC_LITERAL, lexer->line_num, pos});
+	return;
+    }
+
+    if (curr == "true" || curr == "false") {
+	lexer->tokens.push_back(Token{curr, TOKEN_BOOL_LITERAL, lexer->line_num, pos});
 	return;
     }
 

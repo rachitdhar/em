@@ -13,6 +13,8 @@ Compile a file at a given path using:
 vanta <FILE_PATH>
 ```
 
+The file must have a .van extension.
+
 ## Flags
 
 We can add some compilation flags when compiling, as:

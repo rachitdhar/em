@@ -1,12 +1,16 @@
-# compiler
-A compiler.
+# Vanta (Programming Language)
+Compiler for the Vanta programming language, a systems programming language with a C-style syntax that emphasizes clean, simple and minimal features with high performance.
+
+This project was largely undertaken by me for fun and educational purposes, but it is semi-serious in the sense that it is a full-fledged compiler that can be used for real purposes.
+
+> **Note:** This project is still in early development.
 
 ## Usage
 
 Compile a file at a given path using:
 
 ```
-<compiler> <FILE_PATH>
+vanta <FILE_PATH>
 ```
 
 ## Flags
@@ -14,8 +18,8 @@ Compile a file at a given path using:
 We can add some compilation flags when compiling, as:
 
 ```
-<compiler> <FILE_PATH> ...
-                        ^ flags (optional)
+vanta <FILE_PATH> ...
+                   ^ flags (optional)
 ```
 
 Here are the flags that can be added, along with their purposes:

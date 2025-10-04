@@ -100,6 +100,14 @@ void print_benchmark_metrics(
 }
 
 
+// check the extension of a file (ext is to be passed without a dot)
+int has_extension(const char *file_name, const char *ext) {
+    const char *dot = strrchr(file_name, '.');
+    if (!dot || dot == file_name) return 0;
+    return strcmp(dot + 1, ext) == 0;
+}
+
+
 int main(int argc, char **argv)
 {
     // keeping track of the execution time for benchmarking metrics
@@ -117,6 +125,10 @@ int main(int argc, char **argv)
     }
 
     const char *file_name = argv[1];
+    if (!has_extension(file_name, "van")) {
+	fprintf(stderr, "ERROR: Invalid file type. File must have a .van extension.");
+	exit(1);
+    }
 
     Lexer *lexer = perform_lexical_analysis(file_name);
     auto *ast = parse_tokens(lexer);

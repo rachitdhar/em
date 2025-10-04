@@ -1,5 +1,30 @@
 # compiler
-A compiler (in development)
+A compiler.
+
+## Usage
+
+Compile a file at a given path using:
+
+```
+<compiler> <FILE_PATH>
+```
+
+## Flags
+
+We can add some compilation flags when compiling, as:
+
+```
+<compiler> <FILE_PATH> ...
+                        ^ flags (optional)
+```
+
+Here are the flags that can be added, along with their purposes:
+
+- **-pout** : Prints the Parser Output (structure of the AST)
+- **-llout** : Prints the LLVM IR generated
+- **-ll** : Generates a .ll file (LLVM IR) instead of an executable
+- **-asm** : Generates a .s file (Assembly) instead of an executable
+- **-benchmark** : Prints the performance metrics for the compilation process
 
 ## Compiling the Compiler + LLVM Linking
 
@@ -20,3 +45,21 @@ gives me the output:
 which contains the information needed regarding the include paths, compiler flags and library paths that are needed for linking LLVM during the compilation of my compiler.
 
 I am using nob to write the C script to compile my compiler. It uses the nob.h single header library (from Tsoding, inspired by his "No-Build" concept).
+
+Of course, this means before using nob, we must compile it too!
+
+```
+gcc nob.c -o nob
+```
+
+Then, to compile the compiler, just do:
+
+```
+./nob
+```
+
+To compile with debugging symbols, use the -debug flag:
+
+```
+./nob -debug
+```

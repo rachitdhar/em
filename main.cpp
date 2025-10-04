@@ -17,6 +17,7 @@ passed.
 */
 
 #include "ir_generator.h"
+#include <chrono>
 
 
 
@@ -79,9 +80,30 @@ void run_llvm_backend(llvm::Module *_module, const std::string &out_file_name, O
 }
 
 
+// displays the frontend, backend, and total elapsed times.
+void print_benchmark_metrics(
+    std::chrono::time_point<std::chrono::high_resolution_clock> frontend_start,
+    std::chrono::time_point<std::chrono::high_resolution_clock> frontend_end,
+    std::chrono::time_point<std::chrono::high_resolution_clock> backend_end
+) {
+    // calculating the elapsed time duration in seconds
+    std::chrono::duration<double> frontend_elapsed_time = frontend_end - frontend_start;
+    std::chrono::duration<double> backend_elapsed_time = backend_end - frontend_end;
+
+    printf("\n         Performance metrics\n");
+    printf("-------------------------------------\n");
+    printf("Frontend time elapsed: \t%.6f sec\n", frontend_elapsed_time.count());
+    printf("Backend time elapsed: \t%.6f sec\n", backend_elapsed_time.count());
+
+    double total_time = frontend_elapsed_time.count() + backend_elapsed_time.count();
+    printf("Total execution time: \t%.6f sec\n", total_time);
+}
+
 
 int main(int argc, char **argv)
 {
+    // keeping track of the execution time for benchmarking metrics
+    auto frontend_start = std::chrono::high_resolution_clock::now();
     /*
     The basic compilation command should be something like:
 
@@ -104,6 +126,10 @@ int main(int argc, char **argv)
     llvm::IRBuilder<> _builder(_context);      // helper to generate instructions
 
     emit_llvm_ir(ast, _context, &_builder, &_module);
+    auto frontend_end = std::chrono::high_resolution_clock::now();
+
+
+    bool show_benchmarking_metrics = false;
     bool make_output_file = true;
     Output_File_Type output_file_type = OBJ;
 
@@ -117,12 +143,18 @@ int main(int argc, char **argv)
 	    make_output_file = false;
 	}
 	else if (strcmp(argv[i], "-asm") == 0) output_file_type = ASM;
+	else if (strcmp(argv[i], "-benchmark") == 0) show_benchmarking_metrics = true;
     }
 
     if (make_output_file) {
 	std::string file_extension = output_file_type == OBJ ? ".o" : ".s";
 	std::string output_file_name = lexer->file_name + file_extension;
 	run_llvm_backend(&_module, output_file_name, output_file_type);
+    }
+    auto backend_end = std::chrono::high_resolution_clock::now();
+
+    if (show_benchmarking_metrics) {
+	print_benchmark_metrics(frontend_start, frontend_end, backend_end);
     }
 
     return 0;

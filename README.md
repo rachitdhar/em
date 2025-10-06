@@ -30,7 +30,36 @@ Here are the flags that can be added, along with their purposes:
 - **-llout** : Prints the LLVM IR generated
 - **-ll** : Generates a .ll file (LLVM IR) instead of an executable
 - **-asm** : Generates a .s file (Assembly) instead of an executable
+- **-cpu** : To specify the target CPU type. This must be followed by the CPU name
 - **-benchmark** : Prints the performance metrics for the compilation process
+
+The list of CPU types that can be set as targets using "-cpu", are:
+
+```
+x86-64
+cortex-m3
+cortex-m4
+cortex-m7
+cortex-a7
+cortex-a53
+cortex-a72
+cortex-a76
+cortex-a78
+cortex-x1
+apple-m1
+apple-m2
+neoverse-n1
+neoverse-v1
+neoverse-n2
+```
+
+If the "-cpu" flag is not specified, the cpu type of the host machine is determined by the compiler automatically at compile time.
+
+For example, in order to compile a program called "prog.van" and get the assembly for the x86-64 target, we will compile using the command:
+
+```
+vanta prog.van -asm -cpu x86-64
+```
 
 ## Compiling the Compiler + LLVM Linking
 

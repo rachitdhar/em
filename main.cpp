@@ -41,9 +41,47 @@ passed.
 
 enum Output_File_Type { OBJ, ASM };
 
+const std::string cpu_to_target[][2] = {
+    /* Windows/Linux x86 systems */
+    {"x86-64", "x86_64-unknown-linux-gnu"},
+
+    /* Embedded / microcontrollers (ARM 32-bit) */
+    {"cortex-m3", "armv7m-none-eabi"},
+    {"cortex-m4", "armv7em-none-eabi"},
+    {"cortex-m7", "armv7em-none-eabi"},
+
+    /* Raspberry Pi / ARM 64-bit */
+    {"cortex-a7", "armv7a-unknown-linux-gnueabihf"},  // Pi 2
+    {"cortex-a53", "aarch64-unknown-linux-gnu"},      // Pi 3
+    {"cortex-a72", "aarch64-unknown-linux-gnu"},      // Pi 4
+
+    /* Modern phones */
+    {"cortex-a76", "aarch64-unknown-linux-gnu"},
+    {"cortex-a78", "aarch64-unknown-linux-gnu"},
+    {"cortex-x1", "aarch64-unknown-linux-gnu"},
+
+    /* Apple */
+    {"apple-m1", "arm64-apple-darwin"},
+    {"apple-m2", "arm64-apple-darwin"},
+
+    /* Cloud ARM servers */
+    {"neoverse-n1", "aarch64-unknown-linux-gnu"},
+    {"neoverse-v1", "aarch64-unknown-linux-gnu"},
+    {"neoverse-n2", "aarch64-unknown-linux-gnu"}
+};
+
+const int num_cpu_types = sizeof(cpu_to_target) / sizeof(cpu_to_target[0]);
+
+
 
 // to generate the executable / assembly file for the particular target
-void run_llvm_backend(llvm::Module *_module, const std::string &out_file_name, Output_File_Type output_file_type) {
+void run_llvm_backend(
+    llvm::Module *_module,
+    const std::string &out_file_name,
+    Output_File_Type output_file_type,
+    std::string cpu_type,
+    std::string target_triple
+) {
     // initialize all targets
     llvm::InitializeAllTargetInfos();
     llvm::InitializeAllTargets();
@@ -52,7 +90,7 @@ void run_llvm_backend(llvm::Module *_module, const std::string &out_file_name, O
     llvm::InitializeAllAsmPrinters();
 
     std::string error;
-    std::string target_triple = llvm::sys::getDefaultTargetTriple();
+    if (target_triple == "") target_triple = llvm::sys::getDefaultTargetTriple();
     llvm::Triple triple(target_triple);
     _module->setTargetTriple(triple);
 
@@ -62,7 +100,7 @@ void run_llvm_backend(llvm::Module *_module, const std::string &out_file_name, O
         return;
     }
 
-    std::string cpu = "generic";
+    std::string cpu = cpu_type;
     std::string features = "";
 
     llvm::TargetOptions opt;
@@ -162,6 +200,7 @@ int main(int argc, char **argv)
     bool show_benchmarking_metrics = false;
     bool make_output_file = true;
     Output_File_Type output_file_type = OBJ;
+    std::string cpu_type;
 
     // handle the compiler flags (if any are provided by the user)
     for (int i = 2; i < argc; i++) {
@@ -174,12 +213,32 @@ int main(int argc, char **argv)
 	}
 	else if (strcmp(argv[i], "-asm") == 0) output_file_type = ASM;
 	else if (strcmp(argv[i], "-benchmark") == 0) show_benchmarking_metrics = true;
+	else if (strcmp(argv[i], "-cpu") == 0 && i < argc - 1) {
+	    cpu_type = argv[++i]; // reads the next argument as the cpu type
+	}
     }
+
+    std::string target_triple;
+    if (cpu_type != "") {
+	for (int i = 0; i < num_cpu_types; i++) {
+	    if (cpu_to_target[i][0] == cpu_type) {
+		target_triple = cpu_to_target[i][1];
+		break;
+	    }
+	}
+    }
+    if (target_triple == "") cpu_type = "generic";
 
     if (make_output_file) {
 	std::string file_extension = output_file_type == OBJ ? ".o" : ".s";
 	std::string output_file_name = lexer->file_name + file_extension;
-	run_llvm_backend(&_module, output_file_name, output_file_type);
+	run_llvm_backend(
+	    &_module,
+	    output_file_name,
+	    output_file_type,
+	    cpu_type,
+	    target_triple
+	);
     }
     auto backend_end = std::chrono::high_resolution_clock::now();
 

@@ -37,6 +37,8 @@ passed.
 #include "ir_generator.h"
 #include <chrono>
 
+#define LANGUAGE_FILE_EXTENSION "em"
+
 
 
 enum Output_File_Type { OBJ, ASM };
@@ -181,7 +183,7 @@ int main(int argc, char **argv)
     }
 
     const char *file_name = argv[1];
-    if (!has_extension(file_name, "van")) {
+    if (!has_extension(file_name, LANGUAGE_FILE_EXTENSION)) {
 	fprintf(stderr, "ERROR: Invalid file type. File must have a .van extension.");
 	exit(1);
     }

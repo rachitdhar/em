@@ -72,7 +72,9 @@ and this is NOT a continuation.
 
 
 // generates tokens for a line
-void generate_tokens(Lexer* lexer)
+// it returns a boolean telling whether we are inside a multiline comment
+// at the start of the next line
+bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 {
     int pos = 0;
     bool currently_reading_token = false;
@@ -83,6 +85,23 @@ void generate_tokens(Lexer* lexer)
 
     while (lexer->line[pos] && !encountered_comment) {
 	if (!currently_reading_token) {
+	    // if in a multiline comment, keep reading
+	    // until we reach '*/'
+
+	    if (inside_multiline_comment) {
+		while (lexer->line[pos]) {
+		    if (lexer->line[pos] == '*') {
+			pos++;
+			if (lexer->line[pos] && lexer->line[pos] == '/') {
+			    inside_multiline_comment = false;
+			    pos++;
+			    break;
+			}
+		    }
+		    pos++;
+		}
+	    }
+
 	    // skip whitespace
 	    while (
 	    lexer->line[pos] &&
@@ -315,7 +334,7 @@ void generate_tokens(Lexer* lexer)
 		lexer->tokens.push_back(Token{"*", TOKEN_STAR, lexer->line_num, pos});
 		break;
 	    }
-	    /* (/ /=) */
+	    /* (/ /= // /*) */
 	    case '/': {
 		pos++;
 		char next = lexer->line[pos];
@@ -329,6 +348,12 @@ void generate_tokens(Lexer* lexer)
 		    // (so the remaining line ahead will be ignored)
 
 		    encountered_comment = true;
+		    break;
+		} else if (next && next == '*') {
+		    // encountered a multi-line comment
+
+		    inside_multiline_comment = true;
+		    pos++;
 		    break;
 		}
 		lexer->tokens.push_back(Token{"/", TOKEN_DIVIDE, lexer->line_num, pos});
@@ -470,6 +495,8 @@ void generate_tokens(Lexer* lexer)
 
 	currently_reading_token = false; // to handle possible whitespace
     }
+
+    return inside_multiline_comment;
 }
 
 // reads the file line by line and generates tokens
@@ -484,10 +511,11 @@ Lexer *perform_lexical_analysis(const char* file_name)
     }
 
     lexer->file_name = file_name;
+    bool inside_multiline_comment = false;
 
     while (std::getline(file, lexer->line)) {
 	lexer->line_num++;
-	generate_tokens(lexer);
+	inside_multiline_comment = generate_tokens(lexer, inside_multiline_comment);
     }
 
     file.close();

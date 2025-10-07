@@ -1,5 +1,5 @@
-# Vanta (Programming Language)
-Compiler for the Vanta programming language, a systems programming language with a C-style syntax that emphasizes clean, simple and minimal features with high performance.
+# Em (Programming Language)
+Compiler for the Em programming language, a systems programming language with a C-style syntax that emphasizes clean, simple and minimal features with high performance.
 
 This project was largely undertaken by me for fun and educational purposes, but it is semi-serious in the sense that it is a full-fledged compiler that can be used for real purposes.
 
@@ -10,18 +10,18 @@ This project was largely undertaken by me for fun and educational purposes, but 
 Compile a file at a given path using:
 
 ```
-vanta <FILE_PATH>
+em <FILE_PATH>
 ```
 
-The file must have a .van extension.
+The file must have a .em extension.
 
 ## Flags
 
 We can add some compilation flags when compiling, as:
 
 ```
-vanta <FILE_PATH> ...
-                   ^ flags (optional)
+em <FILE_PATH> ...
+                ^ flags (optional)
 ```
 
 Here are the flags that can be added, along with their purposes:
@@ -55,10 +55,10 @@ neoverse-n2
 
 If the "-cpu" flag is not specified, the cpu type of the host machine is determined by the compiler automatically at compile time.
 
-For example, in order to compile a program called "prog.van" and get the assembly for the x86-64 target, we will compile using the command:
+For example, in order to compile a program called "prog.em" and get the assembly for the x86-64 target, we will compile using the command:
 
 ```
-vanta prog.van -asm -cpu x86-64
+em prog.em -asm -cpu x86-64
 ```
 
 ## Compiling the Compiler + LLVM Linking

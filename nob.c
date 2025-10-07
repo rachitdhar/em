@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
     nob_cmd_append(&cmd, "main.cpp");
 
     nob_cmd_append(&cmd, "-o");
-    nob_cmd_append(&cmd, "em");
+    nob_cmd_append(&cmd, "emc");
 
     // include paths
     nob_cmd_append(&cmd, "-I");

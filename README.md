@@ -7,10 +7,10 @@ This project was largely undertaken by me for fun and educational purposes, but 
 
 ## Usage
 
-Compile a file at a given path using:
+Compile a file at a given path using emc (the "Em compiler"):
 
 ```
-em <FILE_PATH>
+emc <FILE_PATH>
 ```
 
 The file must have a .em extension.
@@ -20,8 +20,8 @@ The file must have a .em extension.
 We can add some compilation flags when compiling, as:
 
 ```
-em <FILE_PATH> ...
-                ^ flags (optional)
+emc <FILE_PATH> ...
+                 ^ flags (optional)
 ```
 
 Here are the flags that can be added, along with their purposes:
@@ -58,7 +58,7 @@ If the "-cpu" flag is not specified, the cpu type of the host machine is determi
 For example, in order to compile a program called "prog.em" and get the assembly for the x86-64 target, we will compile using the command:
 
 ```
-em prog.em -asm -cpu x86-64
+emc prog.em -asm -cpu x86-64
 ```
 
 ## Compiling the Compiler + LLVM Linking

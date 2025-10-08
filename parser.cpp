@@ -436,6 +436,9 @@ inline AST_Declaration *parse_ast_declaration(Lexer *lexer)
 
     auto *ast_decl = new AST_Declaration;
     Token *tok = lexer->peek();
+    if (tok->type != TOKEN_DATA_TYPE) {
+	throw_parser_error("SYNTAX ERROR: Invalid declaration. Data type not specified for identifier.", lexer);
+    }
     ast_decl->data_type = type_map(tok->val);
 
     tok = lexer->get_next_token();

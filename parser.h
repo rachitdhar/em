@@ -358,7 +358,7 @@ inline void throw_parser_error(const char *message, Lexer *lexer)
     // display the line where error occurred
     std::string line = get_file_line(lexer->file_name, tok->line_num - 1);
     std::string leading_ws = get_leading_whitespace(line);
-    int error_pointer_pos = tok->position + 1 - leading_ws.size();
+    int error_pointer_pos = tok->position - leading_ws.size();
 
     printf("\t%s\n", line.c_str());
     printf("\t%s%*c\n", leading_ws.c_str(), error_pointer_pos, '^'); // to mark (using ^) the position of the error

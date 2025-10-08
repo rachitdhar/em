@@ -30,10 +30,19 @@
 
 (defun em-font-lock-keywords ()
   (list
+   ;; preprocessors
    `("# *[#a-zA-Z0-9_]+" . font-lock-preprocessor-face)
    `("#.*include \\(\\(<\\|\"\\).*\\(>\\|\"\\)\\)" . (1 font-lock-string-face))
+   ;; keywords
    `(,(regexp-opt (em-keywords) 'symbols) . font-lock-keyword-face)
-   `(,(regexp-opt (em-types) 'symbols) . font-lock-type-face)))
+   ;; types
+   `(,(regexp-opt (em-types) 'symbols) . font-lock-type-face)
+   ;; function names
+   '("\\b\\([A-Za-z_][A-Za-z0-9_]*\\)\\s-*(" 1 font-lock-function-name-face)
+   ;; identifier that follows a data type
+   `(,(concat "\\b\\(" (regexp-opt (em-types)) "\\)\\s-+\\([A-Za-z_][A-Za-z0-9_]*\\)\\b")
+     (1 font-lock-type-face)
+     (2 font-lock-variable-name-face))))
 
 (defun em--previous-non-empty-line ()
   (save-excursion

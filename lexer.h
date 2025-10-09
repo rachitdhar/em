@@ -7,6 +7,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 
 enum Token_Type {
@@ -135,6 +136,13 @@ This will be useful for:
     (2) whether a variable is not being redeclared.
 
     (3) performing type checking (after parsing is complete)
+
+in order to handle the scope, we will need to make
+use of a "stack" of symbol tables. whenever we enter a
+new nested scope, we will push a new entry into the stack,
+and upon leaving a scope, we will pop the top of the stack.
+since i am planning on iterating through this stack, i am not
+using a real stack, but instead a doubly linked list.
 */
 
 enum Symbol_Type {
@@ -143,7 +151,6 @@ enum Symbol_Type {
 };
 
 struct Symbol {
-    int level;
     std::string identifier;
     Symbol_Type symbol_type;
     bool is_declaration = false;
@@ -151,19 +158,90 @@ struct Symbol {
     std::vector<Data_Type> *signature = NULL; // param types (only for functions)
 };
 
+struct Scope {
+    struct Scope *parent = NULL;
+    struct Scope *child = NULL;
+    std::unordered_map<std::string, Symbol*> variables;
+};
+
 struct Symbol_Table {
-    std::vector<Symbol*> symbols;
-    void push(Symbol *symbol);
+    Scope *head_scope = NULL;
+    Scope *curr_scope = NULL;
+
+    std::unordered_map<std::string, Symbol*> global_variables;
+    std::unordered_map<std::string, Symbol*> functions;
+
+    void push();                  // pushes a new scope
+    void pop();                   // pops the topmost scope
+    void insert(Symbol *symbol);  // inserts a symbol into the current scope
+    bool exists(std::string name, Symbol_Type symbol_type); // checks if symbol exists
 };
 
 
-inline void Symbol_Table::push(Symbol *symbol)
+inline void Symbol_Table::push()
 {
-    // check all conditions as to whether
-    // the insertion of this symbol is semantically
-    // valid, and then add it.
+    auto *scope = new Scope;
 
-    symbols.push_back(symbol);
+    if (curr_scope == NULL) {
+	head_scope = scope;
+	curr_scope = scope;
+	return;
+    }
+
+    curr_scope->child = scope;
+    scope->parent = curr_scope;
+    curr_scope = scope;
+}
+
+inline void Symbol_Table::pop()
+{
+    if (curr_scope->child != NULL) fprintf(stderr, "ERROR (Fatal): Failed to exit a scope.");
+
+    // remove all symbols inside this scope
+    for (auto& it: curr_scope->variables) delete it.second;
+
+    Scope *parent = curr_scope->parent;
+
+    delete curr_scope;
+    if (parent != NULL) parent->child = NULL;
+    curr_scope = parent;
+}
+
+inline void Symbol_Table::insert(Symbol *symbol)
+{
+    if (symbol->symbol_type == SYM_VARIABLE) {
+	if (curr_scope == NULL) {
+	    global_variables[symbol->identifier] = symbol;
+	    return;
+	}
+	curr_scope->variables[symbol->identifier] = symbol;
+    } else {
+	functions[symbol->identifier] = symbol;
+    }
+}
+
+inline bool Symbol_Table::exists(std::string name, Symbol_Type symbol_type)
+{
+    // if it is a function, we just need to check the functions map
+    if (symbol_type == SYM_FUNCTION) {
+	return functions.find(name) != functions.end();
+    }
+
+    // first check global variables
+    if (global_variables.find(name) != global_variables.end()) return true;
+
+    // we will go backwards, starting from the innermost scope
+    // to find the symbol
+
+    auto *scope_to_search = curr_scope;
+
+    while (scope_to_search != NULL) {
+	auto it = scope_to_search->variables.find(name);
+	if (it != scope_to_search->variables.end()) return true;
+
+	scope_to_search = scope_to_search->parent;
+    }
+    return false;
 }
 
 

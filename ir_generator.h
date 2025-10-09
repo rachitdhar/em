@@ -16,9 +16,7 @@ to help describe what IR instructions are meant to be generated.
 #ifndef IR_GENERATOR_H
 #define IR_GENERATOR_H
 
-#include <unordered_map>
 #include <stack>
-
 #include "parser.h"
 
 

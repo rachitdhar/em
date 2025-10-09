@@ -123,6 +123,8 @@ void parse_ast_block(std::vector<AST_Expression*> &block, Lexer *lexer)
 	{ <expr_1>; <expr_2>; ... <expr_n>; }
     */
 
+    lexer->symbol_table.push(); // pushing a new scope into the symbol table
+
     Token *tok = lexer->get_next_token();
     if (tok == NULL) {
 	throw_parser_error("SYNTAX ERROR: Missing \'}\' from scope.", lexer);
@@ -137,6 +139,8 @@ void parse_ast_block(std::vector<AST_Expression*> &block, Lexer *lexer)
 	    throw_parser_error("SYNTAX ERROR: Missing \'}\' from scope.", lexer);
 	}
     }
+
+    lexer->symbol_table.pop(); // pop the current scope from the symbol table
 }
 
 
@@ -351,6 +355,10 @@ inline AST_Function_Call *parse_ast_function_call(Lexer *lexer)
     Token *tok = lexer->peek();
     ast_call->function_name = tok->val;
 
+    if (!lexer->symbol_table.exists(ast_call->function_name, SYM_FUNCTION)) {
+	throw_parser_error("SYNTAX ERROR: Undefined function encountered.", lexer);
+    }
+
     /*
     The argument structure is:
 
@@ -387,11 +395,6 @@ inline AST_Function_Call *parse_ast_function_call(Lexer *lexer)
 	lexer->move_to_next_token();
     }
 
-    auto *symbol = new Symbol;
-    symbol->identifier = ast_call->function_name;
-    symbol->symbol_type = SYM_FUNCTION;
-    lexer->symbol_table.push(symbol);
-
     return ast_call;
 }
 
@@ -418,10 +421,9 @@ inline AST_Expression *parse_ast_identifier(Lexer *lexer)
     auto *ast_ident = new AST_Identifier;
     ast_ident->name = tok->val;
 
-    auto *symbol = new Symbol;
-    symbol->identifier = tok->val;
-    symbol->symbol_type = SYM_VARIABLE;
-    lexer->symbol_table.push(symbol);
+    if (!lexer->symbol_table.exists(ast_ident->name, SYM_VARIABLE)) {
+	throw_parser_error("SYNTAX ERROR: Undeclared identifier encountered.", lexer);
+    }
 
     lexer->move_to_next_token();
 
@@ -448,12 +450,16 @@ inline AST_Declaration *parse_ast_declaration(Lexer *lexer)
 
     ast_decl->variable_name = tok->val;
 
+    if (lexer->symbol_table.exists(ast_decl->variable_name, SYM_VARIABLE)) {
+	throw_parser_error("SYNTAX ERROR: Invalid declaration. A variable with this name already exists in the current / parent scope.", lexer);
+    }
+
     auto *symbol = new Symbol;
     symbol->identifier = tok->val;
     symbol->symbol_type = SYM_VARIABLE;
     symbol->is_declaration = true;
     symbol->return_type = ast_decl->data_type;
-    lexer->symbol_table.push(symbol);
+    lexer->symbol_table.insert(symbol);
 
     if (lexer->get_next_token() == NULL) {
 	throw_error__missing_delimiter(lexer);
@@ -888,6 +894,10 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer)
     }
     ast_function->function_name = tok_name->val;
 
+    if (lexer->symbol_table.exists(ast_function->function_name, SYM_FUNCTION)) {
+	throw_parser_error("SYNTAX ERROR: Invalid function definition. Function with the same name already exists.", lexer);
+    }
+
     // left parenthesis
     Token *tok_left_paren = lexer->get_next_token();
     if (tok_left_paren == NULL) {
@@ -911,7 +921,7 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer)
     for (auto *param : ast_function->params) {
 	symbol->signature->push_back(param->type);
     }
-    lexer->symbol_table.push(symbol);
+    lexer->symbol_table.insert(symbol);
 
     // At the end of the function definition there are two possibilities
     //    1. We get a { --> this is a statement block
@@ -921,6 +931,7 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer)
     if (tok == NULL) {
 	throw_parser_error("SYNTAX ERROR: Function definition must be followed by a statement.", lexer);
     }
+
     parse_ast_block(ast_function->block, lexer);
     return ast_function;
 }

@@ -153,7 +153,7 @@ enum Symbol_Type {
 struct Symbol {
     std::string identifier;
     Symbol_Type symbol_type;
-    bool is_declaration = false;
+    bool is_declaration = true;
     Data_Type return_type = T_UNIDENTIFIED; // data_type in case of variables
     std::vector<Data_Type> *signature = NULL; // param types (only for functions)
 };
@@ -170,11 +170,13 @@ struct Symbol_Table {
 
     std::unordered_map<std::string, Symbol*> global_variables;
     std::unordered_map<std::string, Symbol*> functions;
+    std::unordered_map<std::string, Symbol*> function_prototypes;
 
     void push();                  // pushes a new scope
     void pop();                   // pops the topmost scope
     void insert(Symbol *symbol);  // inserts a symbol into the current scope
     bool exists(std::string name, Symbol_Type symbol_type); // checks if symbol exists
+    bool prototype_exists(std::string name); // tells whether a function prototype exists
 };
 
 
@@ -242,6 +244,11 @@ inline bool Symbol_Table::exists(std::string name, Symbol_Type symbol_type)
 	scope_to_search = scope_to_search->parent;
     }
     return false;
+}
+
+inline bool Symbol_Table::prototype_exists(std::string name)
+{
+    return function_prototypes.find(name) != function_prototypes.end();
 }
 
 

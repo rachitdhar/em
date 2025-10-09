@@ -123,8 +123,6 @@ void parse_ast_block(std::vector<AST_Expression*> &block, Lexer *lexer)
 	{ <expr_1>; <expr_2>; ... <expr_n>; }
     */
 
-    lexer->symbol_table.push(); // pushing a new scope into the symbol table
-
     Token *tok = lexer->get_next_token();
     if (tok == NULL) {
 	throw_parser_error("SYNTAX ERROR: Missing \'}\' from scope.", lexer);
@@ -139,8 +137,6 @@ void parse_ast_block(std::vector<AST_Expression*> &block, Lexer *lexer)
 	    throw_parser_error("SYNTAX ERROR: Missing \'}\' from scope.", lexer);
 	}
     }
-
-    lexer->symbol_table.pop(); // pop the current scope from the symbol table
 }
 
 
@@ -176,7 +172,9 @@ inline AST_If_Expression *parse_ast_if_expression(Lexer *lexer)
     ast_if->condition = condition;
 
     // parse if block
+    lexer->symbol_table.push(); // push a new scope into the symbol table
     parse_ast_block(ast_if->block, lexer);
+    lexer->symbol_table.pop(); // pop the current scope from the symbol table
 
     // check whether there is an else block as well
     tok = lexer->peek_next_token();
@@ -188,7 +186,9 @@ inline AST_If_Expression *parse_ast_if_expression(Lexer *lexer)
 	}
 
 	// parse else block
+	lexer->symbol_table.push();
 	parse_ast_block(ast_if->else_block, lexer);
+	lexer->symbol_table.pop();
     }
     return ast_if;
 }
@@ -256,7 +256,9 @@ inline AST_For_Expression *parse_ast_for_expression(Lexer *lexer)
     ast_for->increment = increment;
 
     // parse the block
+    lexer->symbol_table.push();
     parse_ast_block(ast_for->block, lexer);
+    lexer->symbol_table.pop();
 
     return ast_for;
 }
@@ -294,7 +296,9 @@ inline AST_While_Expression *parse_ast_while_expression(Lexer *lexer)
     ast_while->condition = condition;
 
     // parse while block
+    lexer->symbol_table.push();
     parse_ast_block(ast_while->block, lexer);
+    lexer->symbol_table.pop();
 
     return ast_while;
 }
@@ -355,7 +359,10 @@ inline AST_Function_Call *parse_ast_function_call(Lexer *lexer)
     Token *tok = lexer->peek();
     ast_call->function_name = tok->val;
 
-    if (!lexer->symbol_table.exists(ast_call->function_name, SYM_FUNCTION)) {
+    if (
+        !lexer->symbol_table.exists(ast_call->function_name, SYM_FUNCTION) &&
+	!lexer->symbol_table.prototype_exists(ast_call->function_name)
+    ) {
 	throw_parser_error("SYNTAX ERROR: Undefined function encountered.", lexer);
     }
 
@@ -373,6 +380,12 @@ inline AST_Function_Call *parse_ast_function_call(Lexer *lexer)
     // was the parse_ast_function_call() called in the first place.
 
     tok = lexer->get_next_token();
+
+    // if there are no arguments, just return this directly
+    if (tok->type == TOKEN_RIGHT_PAREN) {
+	lexer->move_to_next_token();
+	return ast_call;
+    }
 
     /*
     here's the thing. to parse expressions we need a stopping
@@ -457,7 +470,6 @@ inline AST_Declaration *parse_ast_declaration(Lexer *lexer)
     auto *symbol = new Symbol;
     symbol->identifier = tok->val;
     symbol->symbol_type = SYM_VARIABLE;
-    symbol->is_declaration = true;
     symbol->return_type = ast_decl->data_type;
     lexer->symbol_table.insert(symbol);
 
@@ -758,7 +770,9 @@ AST_Expression *parse_ast_expression(Lexer *lexer)
     if (tok->type == TOKEN_LEFT_BRACE) {
 	auto *ast_block = new AST_Block_Expression;
 
+	lexer->symbol_table.push();
 	parse_ast_block(ast_block->block, lexer);
+	lexer->symbol_table.pop();
 	return ast_block;
     }
 
@@ -850,6 +864,17 @@ void parse_ast_function_params(AST_Function_Definition *ast_function, Lexer *lex
 	}
 	function_param->name = tok->val;
 
+	if (lexer->symbol_table.exists(tok->val, SYM_VARIABLE)) {
+	    throw_parser_error("SYNTAX ERROR: Invalid parameter name. A variable with this name already exists.", lexer);
+	}
+
+	auto *symbol = new Symbol;
+	symbol->identifier = tok->val;
+	symbol->symbol_type = SYM_VARIABLE;
+	symbol->is_declaration = false;
+	symbol->return_type = function_param->type;
+	lexer->symbol_table.insert(symbol);
+
 	// add this param to the list of parameters
 	ast_function->params.push_back(function_param);
 
@@ -909,30 +934,43 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer)
 
     // reading function parameters (if they exist)
     // after this is completed, the current token is ')'
+    lexer->symbol_table.push(); // params will be considered to be within the function scope
     parse_ast_function_params(ast_function, lexer);
 
     auto *symbol = new Symbol;
     symbol->identifier = ast_function->function_name;
     symbol->symbol_type = SYM_FUNCTION;
-    symbol->is_declaration = true;
     symbol->return_type = ast_function->return_type;
     symbol->signature = new std::vector<Data_Type>();
 
     for (auto *param : ast_function->params) {
 	symbol->signature->push_back(param->type);
     }
-    lexer->symbol_table.insert(symbol);
 
     // At the end of the function definition there are two possibilities
     //    1. We get a { --> this is a statement block
     //    2. We get a single statement
+    //    3. We get a ; --> no statement --> so this whole thing is a function prototype
 
     Token *tok = lexer->get_next_token();
     if (tok == NULL) {
 	throw_parser_error("SYNTAX ERROR: Function definition must be followed by a statement.", lexer);
     }
+    if (tok->type == TOKEN_DELIMITER) {
+	// this is a function prototype
+	// we will have to add it in the prototypes map in our symbol table
 
-    parse_ast_block(ast_function->block, lexer);
+	if (lexer->symbol_table.prototype_exists(ast_function->function_name)) {
+	    throw_parser_error("SYNTAX ERROR: Function prototype with this name already exists.", lexer);
+	}
+	ast_function->is_prototype = true;
+	lexer->symbol_table.function_prototypes[ast_function->function_name] = symbol;
+    } else {
+	lexer->symbol_table.insert(symbol); // normal function symbol insertion
+	parse_ast_block(ast_function->block, lexer);
+    }
+
+    lexer->symbol_table.pop();
     return ast_function;
 }
 

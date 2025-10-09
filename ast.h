@@ -102,6 +102,8 @@ struct AST_Literal : AST_Expression {
 struct AST_Function_Definition : AST_Expression {
     AST_Function_Definition(): AST_Expression(EXPR_FUNC_DEF) {}
 
+    bool is_prototype = false;
+
     Data_Type return_type;
     std::string function_name;
     std::vector<Function_Parameter*> params;

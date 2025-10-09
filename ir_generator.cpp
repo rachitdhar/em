@@ -128,6 +128,11 @@ inline llvm::Value *AST_Function_Definition::generate_ir(
         _module
     );
 
+    // if this is just a prototype, then we don't need to
+    // create a basic block. just declaring the function is
+    // all that's needed.
+    if (is_prototype) return _f;
+
     // create the entry block
     llvm::BasicBlock* function_entry = llvm::BasicBlock::Create(_context, "entry", _f);
     _builder->SetInsertPoint(function_entry);

@@ -22,7 +22,7 @@ is hardware architecture independent).
 #include "ir_generator.h"
 
 
-std::unordered_map<std::string, LLVM_Symbol_Info*> llvm_symbol_table;
+smap<LLVM_Symbol_Info*> llvm_symbol_table;
 std::stack<Loop_Terminals*> loop_terminals;
 
 
@@ -37,11 +37,11 @@ std::stack<Loop_Terminals*> loop_terminals;
 // this only applies for lvalue expressions (identifiers)
 inline llvm::Value *AST_Identifier::generate_ir_pointer()
 {
-    auto it = llvm_symbol_table.find(name);
-    if (it == llvm_symbol_table.end() || !it->second->val) {
+    LLVM_Symbol_Info *sym_info = llvm_symbol_table[name];
+    if (sym_info == NULL || !sym_info->val) {
 	throw_ir_error("Undefined identifier encountered.");
     }
-    return it->second->val; // a pointer to the identifier
+    return sym_info->val; // a pointer to the identifier
 }
 
 
@@ -52,12 +52,11 @@ inline llvm::Value *AST_Identifier::generate_ir(
 )
 {
     // returns the value contained in a particular variable
-    auto it = llvm_symbol_table.find(name);
-    if (it == llvm_symbol_table.end()) {
+    LLVM_Symbol_Info *sym_info = llvm_symbol_table[name];
+    if (sym_info == NULL) {
 	throw_ir_error("Undefined identifier encountered.");
     }
 
-    LLVM_Symbol_Info *sym_info = it->second;
     return _builder->CreateLoad(sym_info->type, sym_info->val, name.c_str());
 }
 
@@ -157,7 +156,7 @@ inline llvm::Value *AST_Function_Definition::generate_ir(
 
 	// store in the symbol table
 	auto *sym_info = new LLVM_Symbol_Info{ _alloca, arg.getType() };
-	llvm_symbol_table[param_name] = sym_info;
+	llvm_symbol_table.insert(param_name, sym_info);
     }
 
     // emit body
@@ -385,7 +384,7 @@ inline llvm::Value *AST_Declaration::generate_ir(
 
     // store it in the symbol table
     auto *sym_info = new LLVM_Symbol_Info{ _alloca, var_type };
-    llvm_symbol_table[variable_name] = sym_info;
+    llvm_symbol_table.insert(variable_name, sym_info);
     return _alloca;
 }
 
@@ -690,7 +689,7 @@ llvm::Value *generate_ir__global_declaration(
         );
 
 	auto *sym_info = new LLVM_Symbol_Info{ global, var_type };
-        llvm_symbol_table[decl->variable_name] = sym_info;
+        llvm_symbol_table.insert(decl->variable_name, sym_info);
         return global;
     }
     case EXPR_BINARY: {
@@ -720,7 +719,7 @@ llvm::Value *generate_ir__global_declaration(
         );
 
 	auto *sym_info = new LLVM_Symbol_Info{ global, var_type };
-        llvm_symbol_table[decl->variable_name] = sym_info;
+        llvm_symbol_table.insert(decl->variable_name, sym_info);
         return global;
     }
     default: {

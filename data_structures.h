@@ -63,7 +63,7 @@ struct smap {
     }
 
     void insert(const std::string& key, const T& value);
-    T* operator[](const std::string& key);
+    T operator[](const std::string& key);
     void rehash();
     void resize(size_t new_capacity);
 };
@@ -94,15 +94,15 @@ inline void smap<T>::insert(const std::string& key, const T& value) {
 }
 
 template <typename T>
-inline T *smap<T>::operator[](const std::string& key) {
+inline T smap<T>::operator[](const std::string& key) {
     size_t hash = fnv1a_hash(key);
     size_t index = hash & (capacity - 1);
 
     while (data[index].occupied) {
-        if (!data[index].deleted && data[index].key == key) return &data[index].value;
+        if (!data[index].deleted && data[index].key == key) return data[index].value;
         index = (index + 1) & (capacity - 1);
     }
-    return nullptr;
+    return NULL;
 }
 
 template <typename T>

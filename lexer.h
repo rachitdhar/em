@@ -5,9 +5,8 @@
 
 #include <stdio.h>
 #include <fstream>
-#include <string>
 #include <vector>
-#include <unordered_map>
+#include "data_structures.h"
 
 
 enum Token_Type {
@@ -161,16 +160,16 @@ struct Symbol {
 struct Scope {
     struct Scope *parent = NULL;
     struct Scope *child = NULL;
-    std::unordered_map<std::string, Symbol*> variables;
+    smap<Symbol*> variables;
 };
 
 struct Symbol_Table {
     Scope *head_scope = NULL;
     Scope *curr_scope = NULL;
 
-    std::unordered_map<std::string, Symbol*> global_variables;
-    std::unordered_map<std::string, Symbol*> functions;
-    std::unordered_map<std::string, Symbol*> function_prototypes;
+    smap<Symbol*> global_variables;
+    smap<Symbol*> functions;
+    smap<Symbol*> function_prototypes;
 
     void push();                  // pushes a new scope
     void pop();                   // pops the topmost scope
@@ -200,7 +199,10 @@ inline void Symbol_Table::pop()
     if (curr_scope->child != NULL) fprintf(stderr, "ERROR (Fatal): Failed to exit a scope.");
 
     // remove all symbols inside this scope
-    for (auto& it: curr_scope->variables) delete it.second;
+    for (size_t i = 0; i < curr_scope->variables.capacity; i++) {
+        if (curr_scope->variables.data[i].occupied && !curr_scope->variables.data[i].deleted)
+            delete curr_scope->variables.data[i].value;
+    }
 
     Scope *parent = curr_scope->parent;
 
@@ -213,12 +215,12 @@ inline void Symbol_Table::insert(Symbol *symbol)
 {
     if (symbol->symbol_type == SYM_VARIABLE) {
 	if (curr_scope == NULL) {
-	    global_variables[symbol->identifier] = symbol;
+	    global_variables.insert(symbol->identifier, symbol);
 	    return;
 	}
-	curr_scope->variables[symbol->identifier] = symbol;
+	curr_scope->variables.insert(symbol->identifier, symbol);
     } else {
-	functions[symbol->identifier] = symbol;
+	functions.insert(symbol->identifier, symbol);
     }
 }
 
@@ -226,11 +228,11 @@ inline bool Symbol_Table::exists(std::string name, Symbol_Type symbol_type)
 {
     // if it is a function, we just need to check the functions map
     if (symbol_type == SYM_FUNCTION) {
-	return functions.find(name) != functions.end();
+	return functions[name] != NULL;
     }
 
     // first check global variables
-    if (global_variables.find(name) != global_variables.end()) return true;
+    if (global_variables[name] != NULL) return true;
 
     // we will go backwards, starting from the innermost scope
     // to find the symbol
@@ -238,8 +240,7 @@ inline bool Symbol_Table::exists(std::string name, Symbol_Type symbol_type)
     auto *scope_to_search = curr_scope;
 
     while (scope_to_search != NULL) {
-	auto it = scope_to_search->variables.find(name);
-	if (it != scope_to_search->variables.end()) return true;
+	if (scope_to_search->variables[name] != NULL) return true;
 
 	scope_to_search = scope_to_search->parent;
     }
@@ -248,7 +249,7 @@ inline bool Symbol_Table::exists(std::string name, Symbol_Type symbol_type)
 
 inline bool Symbol_Table::prototype_exists(std::string name)
 {
-    return function_prototypes.find(name) != function_prototypes.end();
+    return function_prototypes[name] != NULL;
 }
 
 

@@ -964,7 +964,7 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer)
 	    throw_parser_error("SYNTAX ERROR: Function prototype with this name already exists.", lexer);
 	}
 	ast_function->is_prototype = true;
-	lexer->symbol_table.function_prototypes[ast_function->function_name] = symbol;
+	lexer->symbol_table.function_prototypes.insert(ast_function->function_name, symbol);
     } else {
 	lexer->symbol_table.insert(symbol); // normal function symbol insertion
 	parse_ast_block(ast_function->block, lexer);

@@ -31,7 +31,7 @@ struct LLVM_Symbol_Info {
     llvm::Type *type;
 };
 
-extern std::unordered_map<std::string, LLVM_Symbol_Info*> llvm_symbol_table;
+extern smap<LLVM_Symbol_Info*> llvm_symbol_table;
 
 
 // defining a stack to store the pairs <LOOP_CONDITION, LOOP_END>

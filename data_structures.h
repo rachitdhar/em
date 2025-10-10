@@ -77,7 +77,7 @@ inline void smap<T>::insert(const std::string& key, const T& value) {
     size_t hash = fnv1a_hash(key);
     size_t index = hash & (capacity - 1);
 
-    while (true) {
+    while (1) {
         if (!data[index].occupied || data[index].deleted) {
             data[index].key = key;
             data[index].value = value;

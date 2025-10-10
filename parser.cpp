@@ -359,10 +359,14 @@ inline AST_Function_Call *parse_ast_function_call(Lexer *lexer)
     Token *tok = lexer->peek();
     ast_call->function_name = tok->val;
 
-    if (
-        !lexer->symbol_table.exists(ast_call->function_name, SYM_FUNCTION) &&
-	!lexer->symbol_table.prototype_exists(ast_call->function_name)
-    ) {
+    // get the number of arguments that are expected
+    int num_expected_args;
+
+    if (lexer->symbol_table.functions[tok->val] != NULL) {
+	num_expected_args = lexer->symbol_table.functions[tok->val]->signature->size();
+    } else if (lexer->symbol_table.function_prototypes[tok->val] != NULL) {
+	num_expected_args = lexer->symbol_table.function_prototypes[tok->val]->signature->size();
+    } else {
 	throw_parser_error("SYNTAX ERROR: Undefined function encountered.", lexer);
     }
 
@@ -383,6 +387,10 @@ inline AST_Function_Call *parse_ast_function_call(Lexer *lexer)
 
     // if there are no arguments, just return this directly
     if (tok->type == TOKEN_RIGHT_PAREN) {
+	if (num_expected_args != 0) {
+	    throw_parser_error("SYNTAX ERROR: Missing arguments in function call.", lexer);
+	}
+
 	lexer->move_to_next_token();
 	return ast_call;
     }
@@ -399,6 +407,10 @@ inline AST_Function_Call *parse_ast_function_call(Lexer *lexer)
 	if (lexer->peek(i)->type == TOKEN_SEPARATOR) num_separators++;
 	else if (lexer->peek(i)->type == TOKEN_RIGHT_PAREN) break;
 	i++;
+    }
+
+    if (num_expected_args != num_separators + 1) {
+	throw_parser_error("SYNTAX ERROR: Function call does not have expected number of arguments.", lexer);
     }
 
     for (int arg_num = 0; arg_num < num_separators + 1; arg_num++) {

@@ -142,7 +142,8 @@ void run_llvm_backend(
 void print_benchmark_metrics(
     std::chrono::time_point<std::chrono::high_resolution_clock> frontend_start,
     std::chrono::time_point<std::chrono::high_resolution_clock> frontend_end,
-    std::chrono::time_point<std::chrono::high_resolution_clock> backend_end
+    std::chrono::time_point<std::chrono::high_resolution_clock> backend_end,
+    int total_lines_of_code
 ) {
     // calculating the elapsed time duration in seconds
     std::chrono::duration<double> frontend_elapsed_time = frontend_end - frontend_start;
@@ -150,6 +151,7 @@ void print_benchmark_metrics(
 
     printf("\n         Performance metrics\n");
     printf("-------------------------------------\n");
+    printf("Total lines of code: \t%d lines\n", total_lines_of_code);
     printf("Frontend time elapsed: \t%.6f sec\n", frontend_elapsed_time.count());
     printf("Backend time elapsed: \t%.6f sec\n", backend_elapsed_time.count());
 
@@ -245,7 +247,8 @@ int main(int argc, char **argv)
     auto backend_end = std::chrono::high_resolution_clock::now();
 
     if (show_benchmarking_metrics) {
-	print_benchmark_metrics(frontend_start, frontend_end, backend_end);
+	int total_lines_of_code = lexer->total_lines_postprocessing;
+	print_benchmark_metrics(frontend_start, frontend_end, backend_end, total_lines_of_code);
     }
 
     return 0;

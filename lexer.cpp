@@ -71,6 +71,109 @@ and this is NOT a continuation.
 */
 
 
+// handle preprocessor directives during lexical analysis
+void handle_preprocessor_directive(Lexer *lexer, std::string preprocessor_directive_name, int pos)
+{
+    if (preprocessor_directive_name == "import") {
+	// the next token should be a string containing the file path
+
+	// skip whitespace
+	while (
+	lexer->line[pos] &&
+	(lexer->line[pos] == ' ' ||
+	lexer->line[pos] == '\t')
+	) pos++;
+
+	if (!lexer->line[pos] || lexer->line[pos] != '\"') {
+	    throw_error(
+	    "SYNTAX ERROR: import file path not specified.",
+	    lexer->line, lexer->line_num, pos, lexer->file_name);
+	}
+	pos++;
+
+	std::string import_file_name;
+	bool is_valid_string = false;
+
+	while (lexer->line[pos]) {
+	    if (lexer->line[pos] == '\"') {
+		is_valid_string = true;
+		break;
+	    }
+	    import_file_name += lexer->line[pos];
+	    pos++;
+	}
+
+	if (!is_valid_string) {
+	    throw_error(
+	    "SYNTAX ERROR: Invalid string provided for import file path.",
+	    lexer->line, lexer->line_num, pos, lexer->file_name);
+	}
+
+	// tokenize the import file specified
+	Lexer *import_lexer = perform_lexical_analysis(import_file_name.c_str());
+
+	/*
+	here is how we want to handle imports. essentially we just
+	want to return a single lexer object for a file, irrespective
+	of how many imports it has which are individually being tokenized.
+
+	so to handle that, we will take the token vectors from each individual
+	import, and push those tokens into our main lexer. now, to ensure that
+	we can provide the correct syntax error messages (with the actual file
+	name from where those tokens originated) we need to track the file name
+	from where the token actually came. so we are storing the file name
+	in the tokens themselves for this reason. wherever these tokens go
+	they will maintain the file name of their source.
+	*/
+
+	// push the imported file tokens into our main lexer.
+	// we will not copy the tokens, but instead move them directly.
+	lexer->tokens.insert(
+	    lexer->tokens.end(),
+	    std::make_move_iterator(import_lexer->tokens.begin()),
+	    std::make_move_iterator(import_lexer->tokens.end())
+	);
+
+	lexer->total_lines_postprocessing += import_lexer->total_lines_postprocessing;
+	return;
+    }
+
+    // throw an error if invalid directive passed
+    throw_error(
+    "SYNTAX ERROR: Invalid preprocessor directive encountered.",
+    lexer->line, lexer->line_num, pos, lexer->file_name);
+}
+
+
+inline void make_token_as_per_ptok(Lexer* lexer, std::string& curr, Partial_Token_Type ptok, int pos)
+{
+    if (ptok == PTOK_NUMERIC) {
+	lexer->tokens.push_back(Token{curr, TOKEN_NUMERIC_LITERAL, lexer->line_num, pos, lexer->file_name});
+	return;
+    }
+
+    if (curr == "true" || curr == "false") {
+	lexer->tokens.push_back(Token{curr, TOKEN_BOOL_LITERAL, lexer->line_num, pos, lexer->file_name});
+	return;
+    }
+
+    for (int i = 0; i < TOTAL_KEYWORDS; i++) {
+	if (KEYWORDS[i] == curr) {
+	    lexer->tokens.push_back(Token{curr, TOKEN_KEYWORD, lexer->line_num, pos, lexer->file_name});
+	    return;
+	}
+    }
+
+    for (int i = 0; i < TOTAL_DATA_TYPES; i++) {
+	if (DATA_TYPES[i] == curr) {
+	    lexer->tokens.push_back(Token{curr, TOKEN_DATA_TYPE, lexer->line_num, pos, lexer->file_name});
+	    return;
+	}
+    }
+    lexer->tokens.push_back(Token{curr, TOKEN_IDENTIFIER, lexer->line_num, pos, lexer->file_name});
+}
+
+
 // generates tokens for a line
 // it returns a boolean telling whether we are inside a multiline comment
 // at the start of the next line
@@ -115,6 +218,21 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 
 	char c = lexer->line[pos];
 
+	// handling preprocessor directives
+	if (c == '#') {
+	    pos++;
+
+	    // read the name of the directive
+	    std::string preprocessor_directive_name;
+	    while (lexer->line[pos] && lexer->line[pos] != ' ' && lexer->line[pos] != '\t') {
+	        preprocessor_directive_name += lexer->line[pos];
+		pos++;
+	    }
+
+	    handle_preprocessor_directive(lexer, preprocessor_directive_name, pos);
+	    break; // ignore the rest of the line after this (if anything exists)
+	}
+
 	// reached a whitespace or end of line
 	if (curr != "" && (!c || c == ' ' || c == '\t')) {
 	    make_token_as_per_ptok(lexer, curr, ptok, pos);
@@ -152,7 +270,7 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 	    if (curr != "" && ptok == PTOK_NUMERIC) {
 		throw_error(
 		"SYNTAX ERROR: Invalid token. Identifiers cannot start with numeric characters.",
-		lexer->line, lexer->line_num, pos);
+		lexer->line, lexer->line_num, pos, lexer->file_name);
 	    }
 
 	    curr += c;
@@ -177,32 +295,32 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 	switch (c) {
 	    /* brackets */
 	    case '{': {
-		lexer->tokens.push_back(Token{"{", TOKEN_LEFT_BRACE, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"{", TOKEN_LEFT_BRACE, lexer->line_num, pos, lexer->file_name});
 		pos++;
 		break;
 	    }
 	    case '}': {
-		lexer->tokens.push_back(Token{"}", TOKEN_RIGHT_BRACE, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"}", TOKEN_RIGHT_BRACE, lexer->line_num, pos, lexer->file_name});
 		pos++;
 		break;
 	    }
 	    case '(': {
-		lexer->tokens.push_back(Token{"(", TOKEN_LEFT_PAREN, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"(", TOKEN_LEFT_PAREN, lexer->line_num, pos, lexer->file_name});
 		pos++;
 		break;
 	    }
 	    case ')': {
-		lexer->tokens.push_back(Token{")", TOKEN_RIGHT_PAREN, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{")", TOKEN_RIGHT_PAREN, lexer->line_num, pos, lexer->file_name});
 		pos++;
 		break;
 	    }
 	    case '[': {
-		lexer->tokens.push_back(Token{"[", TOKEN_LEFT_SQUARE, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"[", TOKEN_LEFT_SQUARE, lexer->line_num, pos, lexer->file_name});
 		pos++;
 		break;
 	    }
 	    case ']': {
-		lexer->tokens.push_back(Token{"]", TOKEN_RIGHT_SQUARE, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"]", TOKEN_RIGHT_SQUARE, lexer->line_num, pos, lexer->file_name});
 		pos++;
 		break;
 	    }
@@ -212,16 +330,16 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 		if (!literal_val || literal_val == '\t') {
 		    throw_error(
 		    "SYNTAX ERROR: Invalid character literal",
-		    lexer->line, lexer->line_num, pos);
+		    lexer->line, lexer->line_num, pos, lexer->file_name);
 		}
 
-		lexer->tokens.push_back(Token{std::string(1, literal_val), TOKEN_CHAR_LITERAL, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{std::string(1, literal_val), TOKEN_CHAR_LITERAL, lexer->line_num, pos, lexer->file_name});
 
 		char closing_quote = lexer->line[++pos];
 		if (!closing_quote || closing_quote != '\'') {
 		    throw_error(
 		    "SYNTAX ERROR: Invalid character literal. Closing quote not found.",
-		    lexer->line, lexer->line_num, pos);
+		    lexer->line, lexer->line_num, pos, lexer->file_name);
 		}
 		pos++;
 		break;
@@ -235,7 +353,7 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 		    if (literal_char == '\t') {
 			throw_error(
 			"SYNTAX ERROR: Invalid character \'\\t\' in string literal",
-			lexer->line, lexer->line_num, pos);
+			lexer->line, lexer->line_num, pos, lexer->file_name);
 		    }
 
 		    literal += literal_char;
@@ -246,31 +364,31 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 		if (!literal_char) {
 		    throw_error(
 		    "SYNTAX ERROR: Invalid string literal. Closing quote not found.",
-		    lexer->line, lexer->line_num, pos);
+		    lexer->line, lexer->line_num, pos, lexer->file_name);
 		}
 
-		lexer->tokens.push_back(Token{literal, TOKEN_STRING_LITERAL, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{literal, TOKEN_STRING_LITERAL, lexer->line_num, pos, lexer->file_name});
 		pos++;
 		break;
 	    }
 	    /* other symbols */
 	    case '~': {
-		lexer->tokens.push_back(Token{"~", TOKEN_BIT_NOT, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"~", TOKEN_BIT_NOT, lexer->line_num, pos, lexer->file_name});
 		pos++;
 		break;
 	    }
 	    case '.': {
-	      lexer->tokens.push_back(Token{".", TOKEN_DOT, lexer->line_num, pos});
+	      lexer->tokens.push_back(Token{".", TOKEN_DOT, lexer->line_num, pos, lexer->file_name});
 		pos++;
 		break;
 	    }
 	    case ',': {
-		lexer->tokens.push_back(Token{",", TOKEN_SEPARATOR, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{",", TOKEN_SEPARATOR, lexer->line_num, pos, lexer->file_name});
 		pos++;
 		break;
 	    }
 	    case ';': {
-		lexer->tokens.push_back(Token{";", TOKEN_DELIMITER, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{";", TOKEN_DELIMITER, lexer->line_num, pos, lexer->file_name});
 		pos++;
 		break;
 	    }
@@ -280,11 +398,11 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"!=", TOKEN_NOTEQ, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{"!=", TOKEN_NOTEQ, lexer->line_num, pos, lexer->file_name});
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"!", TOKEN_NOT, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"!", TOKEN_NOT, lexer->line_num, pos, lexer->file_name});
 		break;
 	    }
 	    /* (+ ++ +=)  */
@@ -293,15 +411,15 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"+=", TOKEN_PLUSEQ, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{"+=", TOKEN_PLUSEQ, lexer->line_num, pos, lexer->file_name});
 		    pos++;
 		    break;
 		} else if (next && next == '+') {
-		    lexer->tokens.push_back(Token{"++", TOKEN_INCREMENT, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{"++", TOKEN_INCREMENT, lexer->line_num, pos, lexer->file_name});
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"+", TOKEN_PLUS, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"+", TOKEN_PLUS, lexer->line_num, pos, lexer->file_name});
 		break;
 	    }
 	    /* (- -- -=) */
@@ -310,15 +428,15 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"-=", TOKEN_MINUSEQ, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{"-=", TOKEN_MINUSEQ, lexer->line_num, pos, lexer->file_name});
 		    pos++;
 		    break;
 		} else if (next && next == '-') {
-		    lexer->tokens.push_back(Token{"--", TOKEN_DECREMENT, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{"--", TOKEN_DECREMENT, lexer->line_num, pos, lexer->file_name});
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"-", TOKEN_MINUS, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"-", TOKEN_MINUS, lexer->line_num, pos, lexer->file_name});
 		break;
 	    }
 	    /* (* *=) */
@@ -327,11 +445,11 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"*=", TOKEN_MULTIPLYEQ, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{"*=", TOKEN_MULTIPLYEQ, lexer->line_num, pos, lexer->file_name});
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"*", TOKEN_STAR, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"*", TOKEN_STAR, lexer->line_num, pos, lexer->file_name});
 		break;
 	    }
 	    /* (/ /= // /*) */
@@ -340,7 +458,7 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"/=", TOKEN_DIVIDEEQ, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{"/=", TOKEN_DIVIDEEQ, lexer->line_num, pos, lexer->file_name});
 		    pos++;
 		    break;
 		} else if (next && next == '/') {
@@ -356,7 +474,7 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"/", TOKEN_DIVIDE, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"/", TOKEN_DIVIDE, lexer->line_num, pos, lexer->file_name});
 		break;
 	    }
 	    /* (% %=) */
@@ -365,11 +483,11 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"%=", TOKEN_MODEQ, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{"%=", TOKEN_MODEQ, lexer->line_num, pos, lexer->file_name});
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"%", TOKEN_MOD, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"%", TOKEN_MOD, lexer->line_num, pos, lexer->file_name});
 		break;
 	    }
 	    /* (< <= << <<=) */
@@ -378,20 +496,20 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"<=", TOKEN_LESSEQ, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{"<=", TOKEN_LESSEQ, lexer->line_num, pos, lexer->file_name});
 		    pos++;
 		    break;
 		} else if (next && next == '<') {
 		    next = lexer->line[++pos];
 		    if (next && next == '=') {
-			lexer->tokens.push_back(Token{"<<=", TOKEN_LSHIFT_EQ, lexer->line_num, pos});
+			lexer->tokens.push_back(Token{"<<=", TOKEN_LSHIFT_EQ, lexer->line_num, pos, lexer->file_name});
 			pos++;
 			break;
 		    }
-		    lexer->tokens.push_back(Token{"<<", TOKEN_LSHIFT, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{"<<", TOKEN_LSHIFT, lexer->line_num, pos, lexer->file_name});
 		    break;
 		}
-		lexer->tokens.push_back(Token{"<", TOKEN_LESS, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"<", TOKEN_LESS, lexer->line_num, pos, lexer->file_name});
 		break;
 	    }
 	    /* (> >= >> >>=) */
@@ -400,20 +518,20 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{">=", TOKEN_GREATEREQ, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{">=", TOKEN_GREATEREQ, lexer->line_num, pos, lexer->file_name});
 		    pos++;
 		    break;
 		} else if (next && next == '>') {
 		    next = lexer->line[++pos];
 		    if (next && next == '=') {
-			lexer->tokens.push_back(Token{">>=", TOKEN_RSHIFT_EQ, lexer->line_num, pos});
+			lexer->tokens.push_back(Token{">>=", TOKEN_RSHIFT_EQ, lexer->line_num, pos, lexer->file_name});
 			pos++;
 			break;
 		    }
-		    lexer->tokens.push_back(Token{">>", TOKEN_RSHIFT, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{">>", TOKEN_RSHIFT, lexer->line_num, pos, lexer->file_name});
 		    break;
 		}
-		lexer->tokens.push_back(Token{">", TOKEN_GREATER, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{">", TOKEN_GREATER, lexer->line_num, pos, lexer->file_name});
 		break;
 	    }
 	    /* (= ==) */
@@ -422,11 +540,11 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"==", TOKEN_EQUAL, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{"==", TOKEN_EQUAL, lexer->line_num, pos, lexer->file_name});
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"=", TOKEN_ASSIGN, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"=", TOKEN_ASSIGN, lexer->line_num, pos, lexer->file_name});
 		break;
 	    }
 	    /* (& && &= &&=) */
@@ -435,20 +553,20 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"&=", TOKEN_BIT_ANDEQ, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{"&=", TOKEN_BIT_ANDEQ, lexer->line_num, pos, lexer->file_name});
 		    pos++;
 		    break;
 		} else if (next && next == '&') {
 		    next = lexer->line[++pos];
 		    if (next && next == '=') {
-			lexer->tokens.push_back(Token{"&&=", TOKEN_ANDEQ, lexer->line_num, pos});
+			lexer->tokens.push_back(Token{"&&=", TOKEN_ANDEQ, lexer->line_num, pos, lexer->file_name});
 			pos++;
 			break;
 		    }
-		    lexer->tokens.push_back(Token{"&&", TOKEN_AND, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{"&&", TOKEN_AND, lexer->line_num, pos, lexer->file_name});
 		    break;
 		}
-		lexer->tokens.push_back(Token{"&", TOKEN_AMPERSAND, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"&", TOKEN_AMPERSAND, lexer->line_num, pos, lexer->file_name});
 		break;
 	    }
 	    /* (| || |= ||=) */
@@ -457,20 +575,20 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"|=", TOKEN_BIT_OREQ, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{"|=", TOKEN_BIT_OREQ, lexer->line_num, pos, lexer->file_name});
 		    pos++;
 		    break;
 		} else if (next && next == '|') {
 		    next = lexer->line[++pos];
 		    if (next && next == '=') {
-			lexer->tokens.push_back(Token{"||=", TOKEN_OREQ, lexer->line_num, pos});
+			lexer->tokens.push_back(Token{"||=", TOKEN_OREQ, lexer->line_num, pos, lexer->file_name});
 			pos++;
 			break;
 		    }
-		    lexer->tokens.push_back(Token{"||", TOKEN_OR, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{"||", TOKEN_OR, lexer->line_num, pos, lexer->file_name});
 		    break;
 		}
-		lexer->tokens.push_back(Token{"|", TOKEN_BIT_OR, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"|", TOKEN_BIT_OR, lexer->line_num, pos, lexer->file_name});
 		break;
 	    }
 	    /* (^ ^=) */
@@ -479,17 +597,17 @@ bool generate_tokens(Lexer* lexer, bool inside_multiline_comment)
 		char next = lexer->line[pos];
 
 		if (next && next == '=') {
-		    lexer->tokens.push_back(Token{"^=", TOKEN_XOREQ, lexer->line_num, pos});
+		    lexer->tokens.push_back(Token{"^=", TOKEN_XOREQ, lexer->line_num, pos, lexer->file_name});
 		    pos++;
 		    break;
 		}
-		lexer->tokens.push_back(Token{"^", TOKEN_XOR, lexer->line_num, pos});
+		lexer->tokens.push_back(Token{"^", TOKEN_XOR, lexer->line_num, pos, lexer->file_name});
 		break;
 	    }
 	    default: {
 		throw_error(
 		"SYNTAX ERROR: Invalid token encountered.",
-		lexer->line, lexer->line_num, pos);
+		lexer->line, lexer->line_num, pos, lexer->file_name);
 	    }
 	}
 
@@ -506,7 +624,7 @@ Lexer *perform_lexical_analysis(const char* file_name)
 
     std::ifstream file(file_name);
     if (!file.is_open()) {
-	fprintf(stderr, "ERROR: Could not find the file");
+	fprintf(stderr, "ERROR: Could not find the file: %s", file_name);
 	exit(1);
     }
 
@@ -517,6 +635,7 @@ Lexer *perform_lexical_analysis(const char* file_name)
 	lexer->line_num++;
 	inside_multiline_comment = generate_tokens(lexer, inside_multiline_comment);
     }
+    lexer->total_lines_postprocessing += lexer->line_num;
 
     file.close();
     return lexer;

@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <fstream>
 #include <vector>
+#include <iterator>
 #include "data_structures.h"
 
 
@@ -89,6 +90,7 @@ struct Token {
 
     int line_num;
     int position;
+    std::string file_name;
 };
 
 
@@ -260,6 +262,7 @@ struct Lexer {
     std::string file_name;
     std::string line;
     int line_num = 0;
+    int total_lines_postprocessing = 0;
 
     std::vector<Token> tokens;
 
@@ -348,39 +351,12 @@ inline bool is_numeric(char c)
     return (c >= '0' && c <= '9');
 }
 
-inline void make_token_as_per_ptok(Lexer* lexer, std::string& curr, Partial_Token_Type ptok, int pos)
-{
-    if (ptok == PTOK_NUMERIC) {
-	lexer->tokens.push_back(Token{curr, TOKEN_NUMERIC_LITERAL, lexer->line_num, pos});
-	return;
-    }
-
-    if (curr == "true" || curr == "false") {
-	lexer->tokens.push_back(Token{curr, TOKEN_BOOL_LITERAL, lexer->line_num, pos});
-	return;
-    }
-
-    for (int i = 0; i < TOTAL_KEYWORDS; i++) {
-	if (KEYWORDS[i] == curr) {
-	    lexer->tokens.push_back(Token{curr, TOKEN_KEYWORD, lexer->line_num, pos});
-	    return;
-	}
-    }
-
-    for (int i = 0; i < TOTAL_DATA_TYPES; i++) {
-	if (DATA_TYPES[i] == curr) {
-	    lexer->tokens.push_back(Token{curr, TOKEN_DATA_TYPE, lexer->line_num, pos});
-	    return;
-	}
-    }
-    lexer->tokens.push_back(Token{curr, TOKEN_IDENTIFIER, lexer->line_num, pos});
-}
-
 // to print error messages
-inline void throw_error(const char *message, const std::string& line, int line_num, int pos)
+inline void throw_error(const char *message, const std::string& line, int line_num, int pos, std::string& file_name)
 {
+    printf("[%s: line %d, position %d] ", file_name.c_str(), line_num, pos);
     fprintf(stderr, message);
-    printf(" [line %d, position %d]\n\n", line_num, pos);
+    printf("\n\n");
 
     // display the line where error occurred
     printf("\t%s\n", line.c_str());

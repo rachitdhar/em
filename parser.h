@@ -342,8 +342,6 @@ inline std::string get_leading_whitespace(std::string line)
 // and then terminate the program execution.
 inline void throw_parser_error(const char *message, Lexer *lexer)
 {
-    fprintf(stderr, message);
-
     // check if there exists any token at curr_token_index
     // if not, throw a fatal error
 
@@ -353,10 +351,12 @@ inline void throw_parser_error(const char *message, Lexer *lexer)
 	exit(1);
     }
 
-    printf(" [line %d, position %d]\n\n", tok->line_num, tok->position);
+    printf("[%s: line %d, position %d] ", tok->file_name.c_str(), tok->line_num, tok->position);
+    fprintf(stderr, message);
+    printf("\n\n");
 
     // display the line where error occurred
-    std::string line = get_file_line(lexer->file_name, tok->line_num - 1);
+    std::string line = get_file_line(tok->file_name, tok->line_num - 1);
     std::string leading_ws = get_leading_whitespace(line);
     int error_pointer_pos = tok->position - leading_ws.size();
 

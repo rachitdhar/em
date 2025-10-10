@@ -585,6 +585,12 @@ inline llvm::Value *AST_Function_Call::generate_ir(
         args.push_back(arg_val);
     }
 
+    // in case the return type is void, we should not return anything
+    if (callee->getReturnType()->isVoidTy()) {
+        _builder->CreateCall(callee, args);
+        return nullptr;
+    }
+
     // emit the call instruction
     return _builder->CreateCall(callee, args, "calltmp");
 }

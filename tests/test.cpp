@@ -102,7 +102,7 @@ const std::string tests[][2] = {
 void create_blank_tests()
 {
     for (const auto& test : tests) {
-        std::string filename = test[0] + ".txt";
+        std::string filename = test[0] + ".em";
 
         std::ofstream outfile(filename);
         if (!outfile) {

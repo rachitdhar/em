@@ -14,15 +14,23 @@ emc <FILE_PATH>
 ```
 
 The file must have a .em extension.
+To compile multiple files at once:
+
+```
+emc <FILE_1> <FILE_2> ... <FILE_n>
+```
 
 ## Flags
 
 We can add some compilation flags when compiling, as:
 
 ```
-emc <FILE_PATH> ...
-                 ^ flags (optional)
+emc <FILE_1> <FILE_2> ... <FILE_n> ...
+                                    ^ flags (optional)
 ```
+
+A flag is identified as something that starts with a hyphen (-).
+Everything before the first flag will be treated as a file to be compiled.
 
 Here are the flags that can be added, along with their purposes:
 

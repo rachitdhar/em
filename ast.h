@@ -45,6 +45,55 @@ enum Jump_Type {
     J_CONTINUE
 };
 
+struct Function_Parameter {
+    std::string name;
+    Data_Type type;
+};
+
+
+//                             LLVM Objects
+// ********************************************************************
+
+struct LLVM_Symbol_Info {
+    llvm::Value *val;
+    llvm::Type *type;
+};
+
+
+struct Loop_Terminals {
+    llvm::BasicBlock *loop_condition;
+    llvm::BasicBlock *loop_end;
+};
+
+
+struct LLVM_IR {
+    llvm::LLVMContext& _context;
+    llvm::IRBuilder<> *_builder;
+    llvm::Module *_module;
+
+    // declaring a symbol table needed during IR generation
+    // apparently, we would need to store both the value as well
+    // as the type (since LLVM only keeps a pointer to the allocated
+    // memory, and does not seem to maintain type info).
+    smap<LLVM_Symbol_Info*> llvm_symbol_table;
+
+    // defining a stack to store the pairs <LOOP_CONDITION, LOOP_END>
+    // whenever we encounter a while/for loop. this is needed
+    // to be able to jump to those locations when a break/continue
+    // statement is encountered.
+    std::stack<Loop_Terminals*> loop_terminals;
+
+    LLVM_IR(
+        llvm::LLVMContext& c,
+        llvm::IRBuilder<> *b,
+        llvm::Module *m
+    ) : _context(c), _builder(b), _module(m) {}
+};
+
+
+//                           AST Expressions
+// ********************************************************************
+
 
 struct AST_Expression {
     Expression_Type expr_type = EXPR_IDENT;
@@ -57,13 +106,7 @@ struct AST_Expression {
     // the derived struct's destructor is called
     virtual ~AST_Expression() = default;
 
-    virtual llvm::Value *generate_ir(llvm::LLVMContext& _context, llvm::IRBuilder<> *_builder, llvm::Module *_module) = 0;
-};
-
-
-struct Function_Parameter {
-    std::string name;
-    Data_Type type;
+    virtual llvm::Value *generate_ir(LLVM_IR *ir) = 0;
 };
 
 
@@ -72,13 +115,8 @@ struct AST_Identifier : AST_Expression {
 
     std::string name;
 
-    llvm::Value *generate_ir_pointer(); // for handling lvalues
-
-    llvm::Value *generate_ir(
-    llvm::LLVMContext& _context,
-    llvm::IRBuilder<> *_builder,
-    llvm::Module *_module
-    ) override;
+    llvm::Value *generate_ir_pointer(LLVM_IR *ir); // for handling lvalues
+    llvm::Value *generate_ir(LLVM_IR *ir) override;
 };
 
 
@@ -95,7 +133,7 @@ struct AST_Literal : AST_Expression {
 	std::string *s; // storing the address of the string
     } value;
 
-    llvm::Value *generate_ir(llvm::LLVMContext& _context, llvm::IRBuilder<> *_builder, llvm::Module *_module) override;
+    llvm::Value *generate_ir(LLVM_IR *ir) override;
 };
 
 
@@ -109,7 +147,7 @@ struct AST_Function_Definition : AST_Expression {
     std::vector<Function_Parameter*> params;
     std::vector<AST_Expression*> block;
 
-    llvm::Value *generate_ir(llvm::LLVMContext& _context, llvm::IRBuilder<> *_builder, llvm::Module *_module) override;
+    llvm::Value *generate_ir(LLVM_IR *ir) override;
 };
 
 
@@ -120,7 +158,7 @@ struct AST_If_Expression : AST_Expression {
     std::vector<AST_Expression*> block;
     std::vector<AST_Expression*> else_block;
 
-    llvm::Value *generate_ir(llvm::LLVMContext& _context, llvm::IRBuilder<> *_builder, llvm::Module *_module) override;
+    llvm::Value *generate_ir(LLVM_IR *ir) override;
 };
 
 
@@ -132,7 +170,7 @@ struct AST_For_Expression : AST_Expression {
     AST_Expression *increment = NULL;
     std::vector<AST_Expression*> block;
 
-    llvm::Value *generate_ir(llvm::LLVMContext& _context, llvm::IRBuilder<> *_builder, llvm::Module *_module) override;
+    llvm::Value *generate_ir(LLVM_IR *ir) override;
 };
 
 
@@ -142,7 +180,7 @@ struct AST_While_Expression : AST_Expression {
     AST_Expression *condition = NULL;
     std::vector<AST_Expression*> block;
 
-    llvm::Value *generate_ir(llvm::LLVMContext& _context, llvm::IRBuilder<> *_builder, llvm::Module *_module) override;
+    llvm::Value *generate_ir(LLVM_IR *ir) override;
 };
 
 
@@ -152,7 +190,7 @@ struct AST_Declaration : AST_Expression {
     Data_Type data_type;
     std::string variable_name;
 
-    llvm::Value *generate_ir(llvm::LLVMContext& _context, llvm::IRBuilder<> *_builder, llvm::Module *_module) override;
+    llvm::Value *generate_ir(LLVM_IR *ir) override;
 };
 
 
@@ -163,7 +201,7 @@ struct AST_Unary_Expression : AST_Expression {
     Token_Type op = TOKEN_NONE;
     AST_Expression *expr = NULL;
 
-    llvm::Value *generate_ir(llvm::LLVMContext& _context, llvm::IRBuilder<> *_builder, llvm::Module *_module) override;
+    llvm::Value *generate_ir(LLVM_IR *ir) override;
 };
 
 
@@ -174,7 +212,7 @@ struct AST_Binary_Expression : AST_Expression {
     AST_Expression *left = NULL;
     AST_Expression *right = NULL;
 
-    llvm::Value *generate_ir(llvm::LLVMContext& _context, llvm::IRBuilder<> *_builder, llvm::Module *_module) override;
+    llvm::Value *generate_ir(LLVM_IR *ir) override;
 };
 
 
@@ -184,7 +222,7 @@ struct AST_Function_Call : AST_Expression {
     std::string function_name;
     std::vector<AST_Expression*> params;
 
-    llvm::Value *generate_ir(llvm::LLVMContext& _context, llvm::IRBuilder<> *_builder, llvm::Module *_module) override;
+    llvm::Value *generate_ir(LLVM_IR *ir) override;
 };
 
 
@@ -193,7 +231,7 @@ struct AST_Return_Expression : AST_Expression {
 
     AST_Expression *value = NULL;
 
-    llvm::Value *generate_ir(llvm::LLVMContext& _context, llvm::IRBuilder<> *_builder, llvm::Module *_module) override;
+    llvm::Value *generate_ir(LLVM_IR *ir) override;
 };
 
 
@@ -202,7 +240,7 @@ struct AST_Jump_Expression : AST_Expression {
 
     Jump_Type jump_type;
 
-    llvm::Value *generate_ir(llvm::LLVMContext& _context, llvm::IRBuilder<> *_builder, llvm::Module *_module) override;
+    llvm::Value *generate_ir(LLVM_IR *ir) override;
 };
 
 
@@ -213,7 +251,7 @@ struct AST_Block_Expression : AST_Expression {
 
     std::vector<AST_Expression*> block;
 
-    llvm::Value *generate_ir(llvm::LLVMContext& _context, llvm::IRBuilder<> *_builder, llvm::Module *_module) override;
+    llvm::Value *generate_ir(LLVM_IR *ir) override;
 };
 
 #endif

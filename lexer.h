@@ -7,6 +7,7 @@
 #include <fstream>
 #include <vector>
 #include <iterator>
+#include <stack>
 #include "data_structures.h"
 
 

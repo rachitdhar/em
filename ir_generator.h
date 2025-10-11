@@ -16,35 +16,8 @@ to help describe what IR instructions are meant to be generated.
 #ifndef IR_GENERATOR_H
 #define IR_GENERATOR_H
 
-#include <stack>
 #include "parser.h"
 
-
-
-// declaring a symbol table needed during IR generation
-// apparently, we would need to store both the value as well
-// as the type (since LLVM only keeps a pointer to the allocated
-// memory, and does not seem to maintain type info).
-
-struct LLVM_Symbol_Info {
-    llvm::Value *val;
-    llvm::Type *type;
-};
-
-extern smap<LLVM_Symbol_Info*> llvm_symbol_table;
-
-
-// defining a stack to store the pairs <LOOP_CONDITION, LOOP_END>
-// whenever we encounter a while/for loop. this is needed
-// to be able to jump to those locations when a break/continue
-// statement is encountered.
-
-struct Loop_Terminals {
-    llvm::BasicBlock *loop_condition;
-    llvm::BasicBlock *loop_end;
-};
-
-extern std::stack<Loop_Terminals*> loop_terminals;
 
 
 inline llvm::Type *llvm_type_map(const Data_Type type, llvm::LLVMContext& _context)
@@ -112,35 +85,33 @@ inline llvm::Value *cast_llvm_value_to_bool(
 inline llvm::Value* generate_ir__logical_and(
     AST_Expression* left,
     AST_Expression* right,
-    llvm::LLVMContext& _context,
-    llvm::IRBuilder<> *_builder,
-    llvm::Module *_module
+    LLVM_IR *ir
 ) {
-    llvm::BasicBlock *current_block = _builder->GetInsertBlock();
+    llvm::BasicBlock *current_block = ir->_builder->GetInsertBlock();
     llvm::Function* f = current_block->getParent();
 
-    llvm::BasicBlock* andright = llvm::BasicBlock::Create(_context, "andright", f);
-    llvm::BasicBlock* andend = llvm::BasicBlock::Create(_context, "andend", f);
+    llvm::BasicBlock* andright = llvm::BasicBlock::Create(ir->_context, "andright", f);
+    llvm::BasicBlock* andend = llvm::BasicBlock::Create(ir->_context, "andend", f);
 
     // evaluate left
-    llvm::Value* L = left->generate_ir(_context, _builder, _module);
+    llvm::Value* L = left->generate_ir(ir);
     if (!L) return nullptr;
 
-    L = cast_llvm_value_to_bool(L, _context, _builder);
-    _builder->CreateCondBr(L, andright, andend);
+    L = cast_llvm_value_to_bool(L, ir->_context, ir->_builder);
+    ir->_builder->CreateCondBr(L, andright, andend);
 
     // right block
-    _builder->SetInsertPoint(andright);
-    llvm::Value* R = right->generate_ir(_context, _builder, _module);
+    ir->_builder->SetInsertPoint(andright);
+    llvm::Value* R = right->generate_ir(ir);
     if (!R) return nullptr;
 
-    R = cast_llvm_value_to_bool(R, _context, _builder);
-    _builder->CreateBr(andend);
+    R = cast_llvm_value_to_bool(R, ir->_context, ir->_builder);
+    ir->_builder->CreateBr(andend);
 
     // end block
-    _builder->SetInsertPoint(andend);
-    llvm::PHINode* phi_node = _builder->CreatePHI(llvm::Type::getInt1Ty(_context), 2, "andtmp");
-    phi_node->addIncoming(llvm::ConstantInt::getFalse(_context), current_block);
+    ir->_builder->SetInsertPoint(andend);
+    llvm::PHINode* phi_node = ir->_builder->CreatePHI(llvm::Type::getInt1Ty(ir->_context), 2, "andtmp");
+    phi_node->addIncoming(llvm::ConstantInt::getFalse(ir->_context), current_block);
     phi_node->addIncoming(R, andright);
 
     return phi_node;
@@ -150,35 +121,33 @@ inline llvm::Value* generate_ir__logical_and(
 inline llvm::Value* generate_ir__logical_or(
     AST_Expression* left,
     AST_Expression* right,
-    llvm::LLVMContext& _context,
-    llvm::IRBuilder<> *_builder,
-    llvm::Module *_module
+    LLVM_IR *ir
 ) {
-    llvm::BasicBlock *current_block = _builder->GetInsertBlock();
+    llvm::BasicBlock *current_block = ir->_builder->GetInsertBlock();
     llvm::Function* f = current_block->getParent();
 
-    llvm::BasicBlock* orright = llvm::BasicBlock::Create(_context, "orright", f);
-    llvm::BasicBlock* orend = llvm::BasicBlock::Create(_context, "orend", f);
+    llvm::BasicBlock* orright = llvm::BasicBlock::Create(ir->_context, "orright", f);
+    llvm::BasicBlock* orend = llvm::BasicBlock::Create(ir->_context, "orend", f);
 
     // evaluate left
-    llvm::Value* L = left->generate_ir(_context, _builder, _module);
+    llvm::Value* L = left->generate_ir(ir);
     if (!L) return nullptr;
 
-    L = cast_llvm_value_to_bool(L, _context, _builder);
-    _builder->CreateCondBr(L, orend, orright);
+    L = cast_llvm_value_to_bool(L, ir->_context, ir->_builder);
+    ir->_builder->CreateCondBr(L, orend, orright);
 
     // right block
-    _builder->SetInsertPoint(orright);
-    llvm::Value* R = right->generate_ir(_context, _builder, _module);
+    ir->_builder->SetInsertPoint(orright);
+    llvm::Value* R = right->generate_ir(ir);
     if (!R) return nullptr;
 
-    R = cast_llvm_value_to_bool(R, _context, _builder);
-    _builder->CreateBr(orend);
+    R = cast_llvm_value_to_bool(R, ir->_context, ir->_builder);
+    ir->_builder->CreateBr(orend);
 
     // end block
-    _builder->SetInsertPoint(orend);
-    llvm::PHINode* phi_node = _builder->CreatePHI(llvm::Type::getInt1Ty(_context), 2, "ortmp");
-    phi_node->addIncoming(llvm::ConstantInt::getTrue(_context), current_block);
+    ir->_builder->SetInsertPoint(orend);
+    llvm::PHINode* phi_node = ir->_builder->CreatePHI(llvm::Type::getInt1Ty(ir->_context), 2, "ortmp");
+    phi_node->addIncoming(llvm::ConstantInt::getTrue(ir->_context), current_block);
     phi_node->addIncoming(R, orright);
 
     return phi_node;
@@ -188,15 +157,11 @@ inline llvm::Value* generate_ir__logical_or(
 // executes generate_ir for each expression inside
 // the block, and returns whether or not a return was
 // one of the expressions encountered.
-inline bool generate_block_ir(
-    llvm::LLVMContext& _context,
-    llvm::IRBuilder<> *_builder,
-    llvm::Module *_module,
-    std::vector<AST_Expression*>& block
-) {
+inline bool generate_block_ir(LLVM_IR *ir, std::vector<AST_Expression*>& block)
+{
     for (auto* expr : block) {
 	if (expr) {
-	    expr->generate_ir(_context, _builder, _module);
+	    expr->generate_ir(ir);
 
 	    // once return/jump expression is encountered
 	    // the expressions after it can be ignored.
@@ -211,14 +176,7 @@ inline bool generate_block_ir(
 //                       Function declarations
 // ******************************************************************
 
-void emit_llvm_ir(
-    std::vector<AST_Expression*> *ast,
-    llvm::LLVMContext& _context,
-    llvm::IRBuilder<> *_builder,
-    llvm::Module *_module
-);
-
+LLVM_IR *emit_llvm_ir(std::vector<AST_Expression*> *ast, const char *file_name);
 void write_llvm_ir_to_file(const char *llvm_file_name, llvm::Module *_module);
-
 
 #endif

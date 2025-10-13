@@ -20,4 +20,7 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/MC/TargetRegistry.h"
 
+/* for linking */
+#include "llvm/Linker/Linker.h"
+
 #endif

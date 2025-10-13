@@ -41,6 +41,7 @@ of threads to run the compilation process in parallel.
 #include <chrono>
 #include <thread>
 #include <mutex>
+#include <iostream>
 
 #define LANGUAGE_FILE_EXTENSION "em"
 
@@ -164,6 +165,54 @@ void run_llvm_backend(
 }
 
 
+// to link all the LLVM modules
+std::unique_ptr<llvm::Module> link_modules(std::vector<std::unique_ptr<llvm::Module>> modules) {
+    if (modules.empty()) {
+        llvm::errs() << "link_modules: input module vector is empty\n";
+        return nullptr;
+    }
+
+    // Take ownership of the first module
+    std::unique_ptr<llvm::Module> combined = std::move(modules[0]);
+    if (!combined) {
+        llvm::errs() << "link_modules: modules[0] was null after move\n";
+        return nullptr;
+    }
+
+    llvm::Linker linker(*combined);
+
+    // Link remaining modules into combined
+    for (size_t i = 1; i < modules.size(); ++i) {
+        if (!modules[i]) {
+            llvm::errs() << "link_modules: skipping null module at index " << i << "\n";
+            continue;
+        }
+        if (linker.linkInModule(std::move(modules[i]))) {
+            llvm::errs() << "link_modules: linker failed while linking module index " << i << "\n";
+            return nullptr;
+        }
+    }
+
+    return combined;
+}
+/*std::unique_ptr<llvm::Module> link_modules(std::vector<std::unique_ptr<llvm::Module>> &module_list)
+{
+    if (module_list.empty())
+        return nullptr;
+
+    std::unique_ptr<llvm::Module> linked_module = std::move(module_list[0]);
+    llvm::Linker linker(*linked_module);
+
+    for (size_t i = 1; i < module_list.size(); ++i) {
+        if (linker.linkInModule(std::move(module_list[i]))) {
+            fprintf(stderr, "LINKER ERROR: Failed to link module %zu.\n", i);
+            exit(1);
+        }
+    }
+    return linked_module;
+}*/
+
+
 // displays the total lines, and the frontend, backend, and total elapsed times.
 void print_benchmark_metrics(Compilation_Metrics *metrics)
 {
@@ -184,14 +233,15 @@ int has_extension(const char *file_name, const char *ext) {
 }
 
 
-// perform the entire compilation process (frontend + backend) for a file.
+// perform the frontend compilation process for a file, and returns its LLVM module
 // also updates the overall compilation metrics as per the metrics for this file.
 void compile(
     const char *file_name,
     Flag_Settings *flag_settings,
     std::chrono::time_point<std::chrono::high_resolution_clock> frontend_start,
     Compilation_Metrics *metrics,
-    std::mutex *metrics_mutex
+    std::mutex *metrics_mutex,
+    std::vector<std::unique_ptr<llvm::Module>> *module_list
 ) {
     if (!has_extension(file_name, LANGUAGE_FILE_EXTENSION)) {
 	fprintf(stderr, "ERROR: Invalid file type (%s). File must have a .%s extension.", file_name, LANGUAGE_FILE_EXTENSION);
@@ -202,8 +252,6 @@ void compile(
     auto *ast = parse_tokens(lexer);
     LLVM_IR *ir = emit_llvm_ir(ast, lexer->file_name.c_str());
 
-    auto frontend_end = std::chrono::high_resolution_clock::now();
-
     // handle compiler flags
     if (flag_settings->print_ast) print_ast(ast);
     if (flag_settings->print_ir) print_ir(ir->_module);
@@ -212,29 +260,7 @@ void compile(
 	write_llvm_ir_to_file(llvm_file_name.c_str(), ir->_module);
     }
 
-    std::string target_triple;
-    if (flag_settings->cpu_type != "") {
-	for (int i = 0; i < NUM_CPU_TYPES; i++) {
-	    if (cpu_to_target[i][0] == flag_settings->cpu_type) {
-		target_triple = cpu_to_target[i][1];
-		break;
-	    }
-	}
-    }
-    if (target_triple == "") flag_settings->cpu_type = "generic";
-
-    if (flag_settings->make_output_file) {
-	std::string file_extension = flag_settings->output_file_type == OBJ ? ".o" : ".s";
-	std::string output_file_name = lexer->file_name + file_extension;
-	run_llvm_backend(
-	    ir->_module,
-	    output_file_name,
-	    flag_settings->output_file_type,
-	    flag_settings->cpu_type,
-	    target_triple
-	);
-    }
-    auto backend_end = std::chrono::high_resolution_clock::now();
+    auto frontend_end = std::chrono::high_resolution_clock::now();
 
     {
 	std::lock_guard<std::mutex> lock(*metrics_mutex);
@@ -242,17 +268,15 @@ void compile(
 
 	// calculating the elapsed time duration in seconds
 	std::chrono::duration<double> frontend_elapsed_time = frontend_end - frontend_start;
-	std::chrono::duration<double> backend_elapsed_time = backend_end - frontend_end;
-
 	metrics->frontend_time += frontend_elapsed_time.count();
-	metrics->backend_time += backend_elapsed_time.count();
+    
+    module_list->push_back(std::unique_ptr<llvm::Module>(ir->_module));
     }
 
     // cleaning up allocated memory
     delete lexer;
     delete ast;
 }
-
 
 int main(int argc, char **argv)
 {
@@ -296,17 +320,51 @@ int main(int argc, char **argv)
 	}
     }
 
-    // run the compilation process for each file in parallel
+    // run the compilation frontend for each file in parallel
     Compilation_Metrics metrics;
     std::mutex metrics_mutex;
     std::vector<std::thread> threads;
+    std::vector<std::unique_ptr<llvm::Module>> module_list;
 
     for (int i = 1; i < flags_start_index; i++) {
 	threads.emplace_back([&, i]() {
-	    compile(argv[i], &flag_settings, frontend_start, &metrics, &metrics_mutex);
+	    compile(argv[i], &flag_settings, frontend_start, &metrics, &metrics_mutex, &module_list);
 	});
     }
     for (auto& t : threads) t.join(); // wait for all threads to finish
+
+    // run the compilation backend
+    auto backend_start = std::chrono::high_resolution_clock::now();
+
+    std::string target_triple;
+    if (flag_settings.cpu_type != "") {
+	for (int i = 0; i < NUM_CPU_TYPES; i++) {
+	    if (cpu_to_target[i][0] == flag_settings.cpu_type) {
+		target_triple = cpu_to_target[i][1];
+		break;
+	    }
+	}
+    }
+    if (target_triple == "") flag_settings.cpu_type = "generic";
+
+    if (flag_settings.make_output_file) {
+    std::unique_ptr<llvm::Module> linked_module = link_modules(std::move(module_list)); // link the modules
+
+	std::string file_extension = flag_settings.output_file_type == OBJ ? ".o" : ".s";
+	std::string output_file_name = "out" + file_extension;
+
+	run_llvm_backend(
+	    linked_module.get(),
+	    output_file_name,
+	    flag_settings.output_file_type,
+	    flag_settings.cpu_type,
+	    target_triple
+	);
+    }
+    auto backend_end = std::chrono::high_resolution_clock::now();
+
+	std::chrono::duration<double> backend_elapsed_time = backend_end - backend_start;
+	metrics.backend_time = backend_elapsed_time.count();
 
     if (show_benchmarking_metrics) {
 	metrics.total_time = metrics.frontend_time + metrics.backend_time;

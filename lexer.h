@@ -277,6 +277,7 @@ struct Lexer {
     void move_to_next_token();        // moves to the next token
 
     Symbol_Table symbol_table;        // to store symbols during parsing
+    bool entry_point_found = false;
 };
 
 

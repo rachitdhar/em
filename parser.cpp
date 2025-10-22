@@ -1042,8 +1042,11 @@ std::vector<AST_Expression*> *parse_tokens(Lexer *lexer)
 	}
     } while (lexer->get_next_token() != NULL);
 
-    if (!entry_point_exists) {
-	throw_parser_error("SYNTAX ERROR: No entry point (main) found.", lexer);
+    if (entry_point_exists) {
+	if (lexer->entry_point_found) {
+	    throw_parser_error("SYNTAX ERROR: Duplicate entry points found.", lexer);
+	}
+	lexer->entry_point_found = true;
     }
 
     return ast;

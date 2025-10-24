@@ -176,7 +176,7 @@ inline bool generate_block_ir(LLVM_IR *ir, std::vector<AST_Expression*>& block)
 //                       Function declarations
 // ******************************************************************
 
-LLVM_IR *emit_llvm_ir(std::vector<AST_Expression*> *ast, const char *file_name, llvm::LLVMContext &_context);
+LLVM_IR *emit_llvm_ir(std::vector<AST_Expression*> *ast, const char *file_name);
 void write_llvm_ir_to_file(const char *llvm_file_name, llvm::Module *_module);
 
 #endif

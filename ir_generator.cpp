@@ -678,12 +678,13 @@ llvm::Value *generate_ir__global_declaration(LLVM_IR *ir, AST_Expression *expr)
 // goes through each top-level expression in the AST
 // and runs the IR generation for each of them.
 // this emits the llvm IR into the module.
-LLVM_IR *emit_llvm_ir(std::vector<AST_Expression*> *ast, const char *file_name, llvm::LLVMContext &_context)
+LLVM_IR *emit_llvm_ir(std::vector<AST_Expression*> *ast, const char *file_name)
 {
-    auto *_module = new llvm::Module(file_name, _context); // container for functions/vars
-    auto *_builder = new llvm::IRBuilder<>(_context);      // helper to generate instructions
+    auto *_context = new llvm::LLVMContext;                // creating a context for this file
+    auto *_module = new llvm::Module(file_name, *_context); // container for functions/vars
+    auto *_builder = new llvm::IRBuilder<>(*_context);      // helper to generate instructions
 
-    auto *ir = new LLVM_IR(_context, _builder, _module);
+    auto *ir = new LLVM_IR(*_context, _builder, _module);
 
     // if a top-level expression is a non-function
     // then it must be either a declaration, or a binary

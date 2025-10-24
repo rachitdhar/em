@@ -38,7 +38,8 @@ Here are the flags that can be added, along with their purposes:
 - **-llout** : Prints the LLVM IR generated
 - **-ll** : Generates a .ll file (LLVM IR) instead of an executable
 - **-asm** : Generates a .s file (Assembly) instead of an executable
-- **-cpu** : To specify the target CPU type. This must be followed by the CPU name
+- **-cpu** : To specify the target CPU type. This flag must be followed by the CPU name
+- **-o** : To name the output file (for any type). This flag must be followed by the file name
 - **-benchmark** : Prints the performance metrics for the compilation process
 
 The list of CPU types that can be set as targets using "-cpu", are:

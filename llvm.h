@@ -20,6 +20,11 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/MC/TargetRegistry.h"
 
+/* for cloning modules */
+#include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/Support/MemoryBuffer.h"
+//#include "llvm/Transforms/Utils/Cloning.h"
+
 /* for linking */
 #include "llvm/Linker/Linker.h"
 

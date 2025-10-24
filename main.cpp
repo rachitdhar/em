@@ -188,6 +188,99 @@ std::unique_ptr<llvm::Module> link_modules(std::vector<std::unique_ptr<llvm::Mod
 }
 
 
+std::unique_ptr<llvm::Module> moveModuleToContext(
+    std::unique_ptr<llvm::Module> SourceModule,
+    llvm::LLVMContext& NewContext
+) {
+    if (!SourceModule) {
+        llvm::errs() << "moveModuleToContext: SourceModule is null\n";
+        exit(1);
+    }
+
+    // Optional: verify the source module before serialization (helps debug)
+    if (llvm::verifyModule(*SourceModule, &llvm::errs())) {
+        llvm::errs() << "ERROR: Source module verification failed before cloning.\n";
+        exit(1);
+    }
+
+    // Write bitcode into a SmallVector<char> buffer (this keeps bytes alive)
+    llvm::SmallVector<char, 0> buffer;
+    fprintf(stderr, "cloning3 - b\n");
+    fflush(stderr);
+    llvm::WriteBitcodeToFile(*SourceModule, os);
+fprintf(stderr, "cloning4\n");
+    fflush(stderr);
+    // Create a MemoryBufferRef that refers to our buffer (no temporary StringRef trick)
+    llvm::StringRef dataRef(buffer.data(), buffer.size());
+    llvm::MemoryBufferRef memRef(dataRef, SourceModule->getModuleIdentifier());
+
+    // Parse into NewContext
+    llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
+        llvm::parseBitcodeFile(memRef, NewContext);
+
+    if (!ModuleOrErr) {
+        llvm::Error err = ModuleOrErr.takeError();
+        llvm::errs() << "ERROR: parseBitcodeFile failed while cloning module: ";
+        llvm::logAllUnhandledErrors(std::move(err), llvm::errs(), "");
+        exit(1);
+    }
+
+    std::unique_ptr<llvm::Module> NewModule = std::move(*ModuleOrErr);
+
+    NewModule->setTargetTriple(SourceModule->getTargetTriple());
+    NewModule->setDataLayout(SourceModule->getDataLayout());
+
+    // verify cloned module
+    if (llvm::verifyModule(*NewModule, &llvm::errs())) {
+        llvm::errs() << "ERROR: cloned module verification failed.\n";
+	exit(1);
+    }
+fprintf(stderr, "cloning9\n");
+    fflush(stderr);
+    return NewModule;
+}
+
+
+// clone module into a destination context by writing bitcode to an in-memory buffer,
+// then parsing that buffer back into dest_context.
+/*
+std::unique_ptr<llvm::Module> clone_module_into_context(
+    llvm::LLVMContext &dest_context,
+    const llvm::Module &mod
+) {
+    if (llvm::verifyModule(mod, &llvm::errs())) {
+	fprintf(stderr, "ERROR: Source module verification failed before cloning.\n");
+	exit(1);
+    }
+
+    // write bitcode into a SmallVector<char> and then create a memory buffer
+    llvm::SmallVector<char, 0> buf;
+    {
+        llvm::raw_svector_ostream os(buf);
+        llvm::WriteBitcodeToFile(mod, os);
+    }
+
+    llvm::StringRef data_ref(buf.data(), buf.size());
+    llvm::MemoryBufferRef mem_ref(data_ref, "cloned_module_mem_ref");
+
+    // parse bitcode in the destination context
+    llvm::Expected<std::unique_ptr<llvm::Module>> _m = llvm::parseBitcodeFile(mem_ref, dest_context);
+
+    if (!_m) {
+	fprintf(stderr, "ERROR: Failed to clone module.");
+        exit(1);
+    }
+
+    std::unique_ptr<llvm::Module> parsed = std::move(*_m);
+
+    // copy target triple and datalayout
+    parsed->setTargetTriple(mod.getTargetTriple());
+    parsed->setDataLayout(mod.getDataLayout());
+
+    return parsed;
+}
+*/
+
 // displays the total lines, and the frontend, backend, and total elapsed times.
 void print_benchmark_metrics(Compilation_Metrics *metrics)
 {
@@ -267,6 +360,7 @@ void compile(
     delete ast;
 }
 
+
 int main(int argc, char **argv)
 {
     // keeping track of the execution time for benchmarking metrics
@@ -320,14 +414,19 @@ int main(int argc, char **argv)
     bool entry_point_found = false;
     std::mutex metrics_mutex;
     std::mutex module_list_mutex;
-    std::vector<std::thread> threads;
+    //std::vector<std::thread> threads;
     std::vector<std::unique_ptr<llvm::Module>> module_list;
 
-    auto *_context = new llvm::LLVMContext; // holds global LLVM state
+    //auto *_context = new llvm::LLVMContext; // holds global LLVM state
+    std::vector<std::unique_ptr<llvm::LLVMContext>> context_list;
 
     int last_file_arg_index = flags_exist ? flags_start_index - 1 : argc - 1;
+
+    for (int i = 1; i <= last_file_arg_index; i++)
+	context_list.push_back(std::make_unique<llvm::LLVMContext>());
+
     for (int i = 1; i <= last_file_arg_index; i++) {
-	threads.emplace_back([&, i]() {
+	//threads.emplace_back([&, i]() {
 	    compile(
 	        argv[i],
 	        &flag_settings,
@@ -337,16 +436,29 @@ int main(int argc, char **argv)
 	        &metrics_mutex,
 	        &module_list,
 	        &module_list_mutex,
-		_context
+		context_list[i - 1].get()
 	    );
-	});
+	    //});
     }
-    for (auto& t : threads) t.join(); // wait for all threads to finish
+    //for (auto& t : threads) t.join(); // wait for all threads to finish
 
     // ensure that entry point exists
     if (!entry_point_found) {
 	fprintf(stderr, "ERROR: No entry point (main) found.");
 	exit(1);
+    }
+
+    llvm::LLVMContext shared_context;
+    std::vector<std::unique_ptr<llvm::Module>> unified_modules;
+
+    unified_modules.reserve(module_list.size());
+
+    for (size_t i = 0; i < module_list.size(); ++i) {
+	// clone the module into the shared_context
+	auto cloned_module = moveModuleToContext(std::move(module_list[i]), shared_context);
+	fprintf(stderr, "cloning done\n");
+	fflush(stderr);
+	unified_modules.push_back(std::move(cloned_module));
     }
 
     // run the compilation backend
@@ -364,7 +476,7 @@ int main(int argc, char **argv)
     if (target_triple == "") flag_settings.cpu_type = "generic";
 
     if (flag_settings.make_output_file) {
-	std::unique_ptr<llvm::Module> linked_module = link_modules(std::move(module_list)); // link the modules
+	std::unique_ptr<llvm::Module> linked_module = link_modules(std::move(unified_modules)); // link the modules
 
 	if (llvm::verifyModule(*linked_module, &llvm::errs())) {
 	    fprintf(stderr, "LINKER ERROR: Merged module verification failed.\n");
@@ -382,7 +494,6 @@ int main(int argc, char **argv)
 	    flag_settings.cpu_type,
 	    target_triple
 	);
-	linked_module.release();
     }
     auto backend_end = std::chrono::high_resolution_clock::now();
 

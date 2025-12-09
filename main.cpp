@@ -133,7 +133,7 @@ void run_llvm_backend(
     llvm::TargetOptions opt;
     auto RM = std::optional<llvm::Reloc::Model>();
     llvm::TargetMachine *target_machine =
-        target->createTargetMachine(target_triple, cpu, features, opt, RM);
+        target->createTargetMachine(triple, cpu, features, opt, RM);
 
     _module->setDataLayout(target_machine->createDataLayout());
 
@@ -151,6 +151,10 @@ void run_llvm_backend(
     switch (output_file_type) {
     case OBJ: file_type = llvm::CodeGenFileType::ObjectFile; break;
     case ASM: file_type = llvm::CodeGenFileType::AssemblyFile; break;
+    case LL: {
+	llvm::errs() << "ERROR: Invalid output file type for LLVM backend.";
+	return;
+    }
     }
 
     if (target_machine->addPassesToEmitFile(pass, dest, nullptr, file_type)) {

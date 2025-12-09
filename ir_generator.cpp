@@ -83,7 +83,7 @@ inline llvm::Value *AST_Literal::generate_ir(LLVM_IR *ir)
 	    global_str->setAlignment(llvm::Align(1));
 	    return global_str;
 	}
-	return ir->_builder->CreateGlobalStringPtr(*(value.s)); // local string literal
+	return ir->_builder->CreateGlobalString(*(value.s)); // local string literal
     }
     default: throw_ir_error("Unidentified literal type encountered.");
     }

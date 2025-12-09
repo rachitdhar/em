@@ -79,6 +79,7 @@ inline llvm::Value *cast_llvm_value_to_bool(
         );
     }
     throw_ir_error("Non-integer type in logical expression.");
+    return NULL;
 }
 
 

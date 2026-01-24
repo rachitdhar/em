@@ -35,87 +35,72 @@ the following ideas:
 #include <fstream>
 #include <stdio.h>
 #include <string>
+#include <iostream>
+#include <filesystem>
+#include <vector>
+#include <iomanip>
+#include <cstdio>
 
-
-// list of [ <test_name>, <test_output_file_name> ]
-const std::string tests[][2] = {
-    {"tokenization_1",  ""},
-    {"tokenization_2",  ""},
-    {"tokenization_3",  ""},
-    {"tokenization_4",  ""},
-    {"funcdef_1",       ""},
-    {"funcdef_2",       ""},
-    {"funcdef_3",       ""},
-    {"funcdef_4",       ""},
-    {"declarations_1",  ""},
-    {"declarations_2",  ""},
-    {"declarations_3",  ""},
-    {"declarations_4",  ""},
-    {"literals_1",      ""},
-    {"literals_2",      ""},
-    {"literals_3",      ""},
-    {"literals_4",      ""},
-    {"calls_1",         ""},
-    {"calls_2",         ""},
-    {"calls_3",         ""},
-    {"calls_4",         ""},
-    {"ifelse_1",        ""},
-    {"ifelse_2",        ""},
-    {"ifelse_3",        ""},
-    {"ifelse_4",        ""},
-    {"forloop_1",       ""},
-    {"forloop_2",       ""},
-    {"forloop_3",       ""},
-    {"forloop_4",       ""},
-    {"whileloop_1",     ""},
-    {"whileloop_2",     ""},
-    {"whileloop_3",     ""},
-    {"whileloop_4",     ""},
-    {"break_1",         ""},
-    {"break_2",         ""},
-    {"break_3",         ""},
-    {"break_4",         ""},
-    {"continue_1",      ""},
-    {"continue_2",      ""},
-    {"continue_3",      ""},
-    {"continue_4",      ""},
-    {"return_1",        ""},
-    {"return_2",        ""},
-    {"return_3",        ""},
-    {"return_4",        ""},
-    {"assignment_1",    ""},
-    {"assignment_2",    ""},
-    {"assignment_3",    ""},
-    {"assignment_4",    ""},
-    {"binaryops_1",     ""},
-    {"binaryops_2",     ""},
-    {"binaryops_3",     ""},
-    {"binaryops_4",     ""},
-    {"unaryops_1",      ""},
-    {"unaryops_2",      ""},
-    {"unaryops_3",      ""},
-    {"unaryops_4",      ""}
-};
-
-
-// create blank test files (just one time use)
-void create_blank_tests()
-{
-    for (const auto& test : tests) {
-        std::string filename = test[0] + ".em";
-
-        std::ofstream outfile(filename);
-        if (!outfile) {
-	    break;
-        }
-        outfile.close();
-    }
-}
-
+namespace fs = std::filesystem;
 
 // to run the tests
 int main()
 {
-    //create_blank_tests();
+    // Preliminary check: run emc without arguments and check output
+    FILE* pipe = _popen("\"d:\\github\\compiler\\emc.exe\" 2>&1", "r");
+    if (!pipe) {
+        std::cout << "\033[31mABORT: emc compiler not detected / displaying undefined behavior. Testing halted.\033[0m" << std::endl;
+        return 1;
+    }
+    std::string output;
+    char buffer[128];
+    while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+        output += buffer;
+    }
+    _pclose(pipe);
+    // Remove trailing newline
+    if (!output.empty() && output.back() == '\n') output.pop_back();
+    if (output.find("ERROR") == std::string::npos) {
+        std::cout << "\033[31mABORT: emc compiler not detected / displaying undefined behavior. Testing halted.\033[0m" << std::endl;
+        return 1;
+    }
+
+    std::vector<std::string> positive_files;
+    std::vector<std::string> negative_files;
+
+    // Collect positive test files
+    for (const auto& entry : fs::directory_iterator("positive")) {
+        if (entry.path().extension() == ".em") {
+            positive_files.push_back(entry.path().string());
+        }
+    }
+
+    // Collect negative test files
+    for (const auto& entry : fs::directory_iterator("negative")) {
+        if (entry.path().extension() == ".em") {
+            negative_files.push_back(entry.path().string());
+        }
+    }
+
+    // Run positive tests
+    std::cout << "Running Positive Test Cases:" << std::endl;
+    std::cout << "=============================" << std::endl;
+    for (const auto& file : positive_files) {
+        std::string command = "d:/github/compiler/emc.exe " + file + " >nul 2>>test_logs.txt";
+        int result = system(command.c_str());
+        std::string status = (result == 0) ? "passed" : "failed";
+        std::cout << std::left << std::setw(50) << file << (status == "passed" ? "\033[32mpassed\033[0m" : "\033[31mfailed\033[0m") << std::endl;
+    }
+
+    // Run negative tests
+    std::cout << "Running Negative Test Cases:" << std::endl;
+    std::cout << "=============================" << std::endl;
+    for (const auto& file : negative_files) {
+        std::string command = "d:/github/compiler/emc.exe " + file + " >nul 2>>test_logs.txt";
+        int result = system(command.c_str());
+        std::string status = (result != 0) ? "passed" : "failed";
+        std::cout << std::left << std::setw(50) << file << (status == "passed" ? "\033[32mpassed\033[0m" : "\033[31mfailed\033[0m") << std::endl;
+    }
+
     return 0;
 }

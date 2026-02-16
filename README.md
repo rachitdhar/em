@@ -88,22 +88,14 @@ gives me the output:
 
 which contains the information needed regarding the include paths, compiler flags and library paths that are needed for linking LLVM during the compilation of my compiler.
 
-I am using nob to write the C script to compile my compiler. It uses the nob.h single header library (from Tsoding, inspired by his "No-Build" concept).
-
-Of course, this means before using nob, we must compile it too!
+I have a build script to compile the compiler:
 
 ```
-gcc nob.c -o nob
-```
-
-Then, to compile the compiler, just do:
-
-```
-./nob
+./build.bat
 ```
 
 To compile with debugging symbols, use the -debug flag:
 
 ```
-./nob -debug
+./build.bat -debug
 ```

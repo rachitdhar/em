@@ -1,2 +1,0 @@
-# to not include externally sourced libraries in github language metrics
-nob.h linguist-vendored

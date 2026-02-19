@@ -28,7 +28,7 @@ is hardware architecture independent).
 //   generate_ir_pointer() -> returns the address of the "expression" (variable)
 //
 // this only applies for lvalue expressions (identifiers)
-inline llvm::Value *AST_Identifier::generate_ir_pointer(LLVM_IR *ir) {
+llvm::Value *AST_Identifier::generate_ir_pointer(LLVM_IR *ir) {
     LLVM_Symbol_Info *sym_info = ir->llvm_symbol_table[name];
     if (sym_info == NULL || !sym_info->val) {
         throw_ir_error("Undefined identifier encountered.");
@@ -36,7 +36,7 @@ inline llvm::Value *AST_Identifier::generate_ir_pointer(LLVM_IR *ir) {
     return sym_info->val; // a pointer to the identifier
 }
 
-inline llvm::Value *AST_Identifier::generate_ir(LLVM_IR *ir) {
+llvm::Value *AST_Identifier::generate_ir(LLVM_IR *ir) {
     // returns the value contained in a particular variable
     LLVM_Symbol_Info *sym_info = ir->llvm_symbol_table[name];
     if (sym_info == NULL) {
@@ -47,7 +47,7 @@ inline llvm::Value *AST_Identifier::generate_ir(LLVM_IR *ir) {
                                     name.c_str());
 }
 
-inline llvm::Value *AST_Literal::generate_ir(LLVM_IR *ir) {
+llvm::Value *AST_Literal::generate_ir(LLVM_IR *ir) {
     switch (type) {
     case T_BOOL:
         return llvm::ConstantInt::get(
@@ -91,7 +91,7 @@ inline llvm::Value *AST_Literal::generate_ir(LLVM_IR *ir) {
     return nullptr; // added to prevent warnings (should never reach here)
 }
 
-inline llvm::Value *AST_Function_Definition::generate_ir(LLVM_IR *ir) {
+llvm::Value *AST_Function_Definition::generate_ir(LLVM_IR *ir) {
     // get the llvm return type
     llvm::Type *llvm_return_type = llvm_type_map(return_type, ir->_context);
 
@@ -160,7 +160,7 @@ inline llvm::Value *AST_Function_Definition::generate_ir(LLVM_IR *ir) {
     return _f;
 }
 
-inline llvm::Value *AST_If_Expression::generate_ir(LLVM_IR *ir) {
+llvm::Value *AST_If_Expression::generate_ir(LLVM_IR *ir) {
     // %ifcond = icmp ne i32 %x, 0
     llvm::Value *_condition = condition->generate_ir(ir);
     if (!_condition)
@@ -209,7 +209,7 @@ inline llvm::Value *AST_If_Expression::generate_ir(LLVM_IR *ir) {
     return nullptr; // if statement returns no value
 }
 
-inline llvm::Value *AST_For_Expression::generate_ir(LLVM_IR *ir) {
+llvm::Value *AST_For_Expression::generate_ir(LLVM_IR *ir) {
     if (ir->_builder->GetInsertBlock() == nullptr) {
         throw_ir_error(
             "(FATAL) Cannot find parent IR block for \'for\' statement.");
@@ -279,7 +279,7 @@ inline llvm::Value *AST_For_Expression::generate_ir(LLVM_IR *ir) {
     return nullptr; // for statement doesn't return any value
 }
 
-inline llvm::Value *AST_While_Expression::generate_ir(LLVM_IR *ir) {
+llvm::Value *AST_While_Expression::generate_ir(LLVM_IR *ir) {
     // here we will need labels for the
     // while condition, while body,
     // and the while end
@@ -338,7 +338,7 @@ inline llvm::Value *AST_While_Expression::generate_ir(LLVM_IR *ir) {
     return nullptr; // while statement returns no value
 }
 
-inline llvm::Value *AST_Declaration::generate_ir(LLVM_IR *ir) {
+llvm::Value *AST_Declaration::generate_ir(LLVM_IR *ir) {
     if (ir->_builder->GetInsertBlock() == nullptr) {
         throw_ir_error("(FATAL) Cannot find parent IR block for declaration.");
     }
@@ -360,7 +360,7 @@ inline llvm::Value *AST_Declaration::generate_ir(LLVM_IR *ir) {
     return _alloca;
 }
 
-inline llvm::Value *AST_Unary_Expression::generate_ir(LLVM_IR *ir) {
+llvm::Value *AST_Unary_Expression::generate_ir(LLVM_IR *ir) {
     switch (op) {
     case TOKEN_NOT: {
         // get a 0 having a type same as val
@@ -407,7 +407,7 @@ inline llvm::Value *AST_Unary_Expression::generate_ir(LLVM_IR *ir) {
     return nullptr; // added to prevent warnings (should never reach here)
 }
 
-inline llvm::Value *AST_Binary_Expression::generate_ir(LLVM_IR *ir) {
+llvm::Value *AST_Binary_Expression::generate_ir(LLVM_IR *ir) {
     // a binary operation could either be a kind
     // of assignment, or a logical operation, or
     // some binary operation. for each case we will have
@@ -571,7 +571,7 @@ inline llvm::Value *AST_Binary_Expression::generate_ir(LLVM_IR *ir) {
     return nullptr;
 }
 
-inline llvm::Value *AST_Function_Call::generate_ir(LLVM_IR *ir) {
+llvm::Value *AST_Function_Call::generate_ir(LLVM_IR *ir) {
     if (ir->_builder->GetInsertBlock() == nullptr) {
         throw_ir_error(
             "(FATAL) Cannot find parent IR block for function call.");
@@ -602,7 +602,7 @@ inline llvm::Value *AST_Function_Call::generate_ir(LLVM_IR *ir) {
     return ir->_builder->CreateCall(callee, args, "calltmp");
 }
 
-inline llvm::Value *AST_Return_Expression::generate_ir(LLVM_IR *ir) {
+llvm::Value *AST_Return_Expression::generate_ir(LLVM_IR *ir) {
     if (!value)
         return ir->_builder->CreateRetVoid(); // ret void
 
@@ -627,7 +627,7 @@ inline llvm::Value *AST_Return_Expression::generate_ir(LLVM_IR *ir) {
     return ir->_builder->CreateRet(val); // ret <value>
 }
 
-inline llvm::Value *AST_Jump_Expression::generate_ir(LLVM_IR *ir) {
+llvm::Value *AST_Jump_Expression::generate_ir(LLVM_IR *ir) {
     // we just peek at the top of the loop stack
     // to get to know the label of the condition/end
     // of the loop where we need to jump to.
@@ -661,7 +661,7 @@ inline llvm::Value *AST_Jump_Expression::generate_ir(LLVM_IR *ir) {
     return nullptr; // break and continue don't return any value
 }
 
-inline llvm::Value *AST_Block_Expression::generate_ir(LLVM_IR *ir) {
+llvm::Value *AST_Block_Expression::generate_ir(LLVM_IR *ir) {
     generate_block_ir(ir, block);
     return nullptr; // scoped-expressions don't return any value
 }

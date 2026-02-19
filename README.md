@@ -99,3 +99,20 @@ To compile with debugging symbols, use the -debug flag:
 ```
 ./build.bat -debug
 ```
+
+## Compiling the Compiler (Visual Studio / MSVC cl.exe compiler + LLVM for Windows)
+
+So here's the thing. Visual Studio uses the MSVC cl.exe compiler, which CAN actually be used to build this project.
+The thing where I was going wrong was, I was trying to use the LLVM version for GNU based C++ compilers. What I did not
+realise at the time was that this is a problem because the GNU based LLVM libraries and MSVC cl.exe compiler are not ABI
+compatible, since of course, GNU compilers (used to build the GNU based LLVM) are just different from MSVC ones. So I had to use
+the correct build of LLVM. I DID in fact try to do this earlier, and HAD even installed the one from the LLVM releases page. The
+problem there was that it did not have all the libraries and libs I needed to be able to use it.
+
+Turns out, that on their releases page itself, they have mentioned clearly that for Windows, the clang+llvm artifact is the one
+that contains all the libraries and libs, which for some reason is this way only for Windows (otherwise for other cases, as I previously
+assumed, it shouldn't matter which one you installed, as they are all the same LLVM version and under the same release).
+
+Anyways, long story short, now I can actually build using the Visual Studio default compiler. Of course, I wrote a separate build script
+for this purpose, in build-msvc.bat, which I configured Visual Studio to use as part of its Makefile project configuration. It took a
+few hours figuring out how I am supposed to add the flags for linking and stuff, but now it seems to be working fine.

@@ -1,17 +1,20 @@
 @echo off
 
-set DEBUG_FLAG=/W0
-set DEBUG_LINK=
+set OPT_FLAG=/W0
+set DEBUG_FLAG=
+set CRT_FLAG=/MD
 
 if "%1"=="Debug" (
-   set DEBUG_FLAG=/Od
-   set DEBUG_LINK=/DEBUG
+   set OPT_FLAG=/Od
+   set DEBUG_FLAG=/DEBUG
+   set CRT_FLAG=/MDd
 )
 
 echo Build type: %1
 
 cl ^
-%DEBUG_FLAG% ^
+%OPT_FLAG% ^
+%CRT_FLAG% ^
 /std:c++17 ^
 /DEXPERIMENTAL_KEY_INSTRUCTIONS ^
 /D_FILE_OFFSET_BITS=64 ^
@@ -22,8 +25,7 @@ cl ^
 /I "D:\softwares\clang+llvm-21.1.8-x86_64-pc-windows-msvc\include" ^
 lexer.cpp parser.cpp ir_generator.cpp main.cpp ^
 /link ^
-ntdll.lib ^
 /LIBPATH:"D:\softwares\clang+llvm-21.1.8-x86_64-pc-windows-msvc\lib" ^
 D:\softwares\clang+llvm-21.1.8-x86_64-pc-windows-msvc\lib\*.lib ^
-%DEBUG_LINK% ^
+%DEBUG_FLAG% ^
 /OUT:emc.exe

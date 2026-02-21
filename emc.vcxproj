@@ -65,10 +65,9 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <NMakeOutput>emc.exe</NMakeOutput>
     <NMakePreprocessorDefinitions>_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-    <NMakeBuildCommandLine>build-msvc.bat</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>build-msvc.bat $(Configuration)</NMakeBuildCommandLine>
     <NMakeIncludeSearchPath>D:\softwares\clang+llvm-21.1.8-x86_64-pc-windows-msvc\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
-    <IncludePath>$(IncludePath)</IncludePath>
-    <ExternalIncludePath>D:\softwares\clang+llvm-21.1.8-x86_64-pc-windows-msvc\include;$(ExternalIncludePath)</ExternalIncludePath>
+    <NMakeCleanCommandLine>build-msvc Clean</NMakeCleanCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <NMakeOutput>emc.exe</NMakeOutput>

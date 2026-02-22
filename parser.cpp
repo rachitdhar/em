@@ -32,9 +32,9 @@ two broad kinds of units:
 These need to be handled first.
 
                       Top-level Program Unit
-			      /    \
-			Function   Global variable
-			   |...
+                              /    \
+                        Function   Global variable
+                           |...
 
 Now, further code only exists within the function blocks.
 This is where things actually get crucial. Here, we have a concept
@@ -45,16 +45,16 @@ called a statement. Here, are the rules for what a statement can be
 
     <statement> --> <expr> ;
                 | if (<expr>) <statement> [ else <statement> ]
-		| <loop-stmt>
-		| <jump-stmt>
-		| { <statement_1>, ..., <statement_n> }
+                | <loop-stmt>
+                | <jump-stmt>
+                | { <statement_1>, ..., <statement_n> }
 
     <loop-stmt> --> for (<expr>; <expr>; <expr>) <statement>
-		  | while (<expr>) <statement>
+                  | while (<expr>) <statement>
 
     <jump-stmt> --> break;
                   | continue;
-	          | return <expr>;
+                  | return <expr>;
 
 So when we are creating the AST, we need to ensure that these rules
 are followed for the statements.
@@ -62,11 +62,11 @@ are followed for the statements.
 At the top level, a function in an AST would look like:
 
                      root
-		     /  \...
-	       function
-	        /   \
-	    params   body (<statement>)
-	      |...         |...
+                     /  \...
+               function
+                /   \
+            params   body (<statement>)
+              |...         |...
 
 Let's look at an example of a simple function body, and how
 its function body AST segment would look.
@@ -74,9 +74,9 @@ its function body AST segment would look.
 Consider the function:
 
     f() {
-	int x = 3;
-	y++;
-	return y;
+        int x = 3;
+        y++;
+        return y;
     }
 
 (Note that this is actually not a valid function. But it
@@ -85,14 +85,14 @@ is only semantically invalid. Syntactically it is fine.)
 The AST segment for this should be something like:
 
                   function f
-		   .../ \
-		        <compound-stmt>
-			 /     |     \
-			=     ++    return
-		       / \     |      |
-		     int  3    y      y
-		      |
-		      x
+                   .../ \
+                        <compound-stmt>
+                         /     |     \
+                        =     ++    return
+                       / \     |      |
+                     int  3    y      y
+                      |
+                      x
 
 This is the basic idea for this. However, we still have
 to go over operator-precedence, which will be important when
@@ -101,17 +101,14 @@ evaluating many expressions.
 
 #include "parser.h"
 
-
-
-void parse_ast_block(std::vector<AST_Expression*> &block, Lexer *lexer)
-{
+void parse_ast_block(std::vector<AST_Expression *> &block, Lexer *lexer) {
     // one possibility is that this is not a block
     // and just a single statement/expression
 
     if (lexer->peek()->type != TOKEN_LEFT_BRACE) {
-	AST_Expression *expr = parse_ast_expression(lexer);
-	block.push_back(expr);
-	return;
+        AST_Expression *expr = parse_ast_expression(lexer);
+        block.push_back(expr);
+        return;
     }
 
     // if it is a block:
@@ -120,52 +117,56 @@ void parse_ast_block(std::vector<AST_Expression*> &block, Lexer *lexer)
 
     /*
     The structure of a block is:
-	{ <expr_1>; <expr_2>; ... <expr_n>; }
+        { <expr_1>; <expr_2>; ... <expr_n>; }
     */
 
     Token *tok = lexer->get_next_token();
     if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Missing \'}\' from scope.", lexer);
+        throw_parser_error("SYNTAX ERROR: Missing \'}\' from scope.", lexer);
     }
 
     while (tok->type != TOKEN_RIGHT_BRACE) {
-	AST_Expression *expr = parse_ast_expression(lexer);
-	block.push_back(expr);
+        AST_Expression *expr = parse_ast_expression(lexer);
+        block.push_back(expr);
 
-	tok = lexer->get_next_token();
-	if (tok == NULL) {
-	    throw_parser_error("SYNTAX ERROR: Missing \'}\' from scope.", lexer);
-	}
+        tok = lexer->get_next_token();
+        if (tok == NULL) {
+            throw_parser_error("SYNTAX ERROR: Missing \'}\' from scope.",
+                               lexer);
+        }
     }
 }
 
-
-inline AST_If_Expression *parse_ast_if_expression(Lexer *lexer)
-{
+inline AST_If_Expression *parse_ast_if_expression(Lexer *lexer) {
     // currently the token must be an "if"
     // so we will start from the next token
 
     Token *tok = lexer->get_next_token();
     if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Incomplete \'if\' statement encountered.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Incomplete \'if\' statement encountered.", lexer);
     }
     if (tok->type != TOKEN_LEFT_PAREN) {
-	throw_parser_error("SYNTAX ERROR: Missing \'(\' from if statement condition.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Missing \'(\' from if statement condition.", lexer);
     }
     tok = lexer->get_next_token();
     if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Incomplete \'if\' statement encountered.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Incomplete \'if\' statement encountered.", lexer);
     } else if (tok->type == TOKEN_KEYWORD) {
-	throw_parser_error("SYNTAX ERROR: \'if\' condition cannot contain a keyword.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: \'if\' condition cannot contain a keyword.", lexer);
     }
 
     // parse the expression
-    AST_Expression *condition = parse_ast_subexpression(lexer, PREC_MIN, TOKEN_RIGHT_PAREN);
-
+    AST_Expression *condition =
+        parse_ast_subexpression(lexer, PREC_MIN, TOKEN_RIGHT_PAREN);
 
     tok = lexer->get_next_token();
     if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Incomplete \'if\' statement encountered.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Incomplete \'if\' statement encountered.", lexer);
     }
 
     auto *ast_if = new AST_If_Expression;
@@ -179,75 +180,86 @@ inline AST_If_Expression *parse_ast_if_expression(Lexer *lexer)
     // check whether there is an else block as well
     tok = lexer->peek_next_token();
     if (tok != NULL && tok->val == "else") {
-	lexer->move_to_next_token();
-	tok = lexer->get_next_token();
-	if (tok == NULL) {
-	    throw_parser_error("SYNTAX ERROR: Incomplete \'else\' statement encountered.", lexer);
-	}
+        lexer->move_to_next_token();
+        tok = lexer->get_next_token();
+        if (tok == NULL) {
+            throw_parser_error(
+                "SYNTAX ERROR: Incomplete \'else\' statement encountered.",
+                lexer);
+        }
 
-	// parse else block
-	lexer->symbol_table.push();
-	parse_ast_block(ast_if->else_block, lexer);
-	lexer->symbol_table.pop();
+        // parse else block
+        lexer->symbol_table.push();
+        parse_ast_block(ast_if->else_block, lexer);
+        lexer->symbol_table.pop();
     }
     return ast_if;
 }
 
-
-inline AST_For_Expression *parse_ast_for_expression(Lexer *lexer)
-{
+inline AST_For_Expression *parse_ast_for_expression(Lexer *lexer) {
     // currently the token must be a "for"
     // so we will start from the next token
 
     Token *tok = lexer->get_next_token();
     if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
     }
     if (tok->type != TOKEN_LEFT_PAREN) {
-	throw_parser_error("SYNTAX ERROR: Missing \'(\' from for statement condition.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Missing \'(\' from for statement condition.", lexer);
     }
     tok = lexer->get_next_token();
     if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
     } else if (tok->type == TOKEN_KEYWORD) {
-	throw_parser_error("SYNTAX ERROR: \'for\' initialization cannot contain a keyword.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: \'for\' initialization cannot contain a keyword.",
+            lexer);
     }
 
     // parse the initialization
     AST_Expression *init = NULL;
     if (tok->type != TOKEN_DELIMITER) {
-	init = parse_ast_subexpression(lexer, PREC_MIN);
+        init = parse_ast_subexpression(lexer, PREC_MIN);
     }
 
     tok = lexer->get_next_token();
     if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
     } else if (tok->type == TOKEN_KEYWORD) {
-	throw_parser_error("SYNTAX ERROR: \'for\' condition cannot contain a keyword.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: \'for\' condition cannot contain a keyword.", lexer);
     }
 
     // parse the condition
     AST_Expression *condition = NULL;
     if (tok->type != TOKEN_DELIMITER) {
-	condition = parse_ast_subexpression(lexer, PREC_MIN);
+        condition = parse_ast_subexpression(lexer, PREC_MIN);
     }
 
     tok = lexer->get_next_token();
     if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
     } else if (tok->type == TOKEN_KEYWORD) {
-	throw_parser_error("SYNTAX ERROR: \'for\' loop expression cannot contain a keyword.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: \'for\' loop expression cannot contain a keyword.",
+            lexer);
     }
 
     // parse the increment
     AST_Expression *increment = NULL;
     if (tok->type != TOKEN_RIGHT_PAREN) {
-	increment = parse_ast_subexpression(lexer, PREC_MIN, TOKEN_RIGHT_PAREN);
+        increment = parse_ast_subexpression(lexer, PREC_MIN, TOKEN_RIGHT_PAREN);
     }
 
     tok = lexer->get_next_token();
     if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Incomplete \'for\' statement encountered.", lexer);
     }
 
     auto *ast_for = new AST_For_Expression;
@@ -263,33 +275,38 @@ inline AST_For_Expression *parse_ast_for_expression(Lexer *lexer)
     return ast_for;
 }
 
-
-inline AST_While_Expression *parse_ast_while_expression(Lexer *lexer)
-{
+inline AST_While_Expression *parse_ast_while_expression(Lexer *lexer) {
     // currently the token must be a "while"
     // so we will start from the next token
 
     Token *tok = lexer->get_next_token();
     if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Incomplete \'while\' statement encountered.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Incomplete \'while\' statement encountered.", lexer);
     }
     if (tok->type != TOKEN_LEFT_PAREN) {
-	throw_parser_error("SYNTAX ERROR: Missing \'(\' from while statement condition.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Missing \'(\' from while statement condition.",
+            lexer);
     }
     tok = lexer->get_next_token();
     if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Incomplete \'while\' statement encountered.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Incomplete \'while\' statement encountered.", lexer);
     } else if (tok->type == TOKEN_KEYWORD) {
-	throw_parser_error("SYNTAX ERROR: \'while\' condition cannot contain a keyword.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: \'while\' condition cannot contain a keyword.",
+            lexer);
     }
 
     // parse the expression
-    AST_Expression *condition = parse_ast_subexpression(lexer, PREC_MIN, TOKEN_RIGHT_PAREN);
-
+    AST_Expression *condition =
+        parse_ast_subexpression(lexer, PREC_MIN, TOKEN_RIGHT_PAREN);
 
     tok = lexer->get_next_token();
     if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Incomplete \'while\' statement encountered.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Incomplete \'while\' statement encountered.", lexer);
     }
 
     auto *ast_while = new AST_While_Expression;
@@ -303,15 +320,15 @@ inline AST_While_Expression *parse_ast_while_expression(Lexer *lexer)
     return ast_while;
 }
 
-
-inline AST_Return_Expression *parse_ast_return_expression(Lexer *lexer)
-{
+inline AST_Return_Expression *parse_ast_return_expression(Lexer *lexer) {
     // currently the token must be a "return"
     // so we will start from the next token
 
     Token *tok = lexer->get_next_token();
     if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Incomplete \'return\' statement encountered.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Incomplete \'return\' statement encountered.",
+            lexer);
     }
 
     // there are two possibilities
@@ -321,20 +338,20 @@ inline AST_Return_Expression *parse_ast_return_expression(Lexer *lexer)
     auto *ast_return = new AST_Return_Expression;
 
     if (tok->type == TOKEN_DELIMITER) {
-	ast_return->value = NULL;
-    }
-    else if (tok->type == TOKEN_KEYWORD) {
-	throw_parser_error("SYNTAX ERROR: return statement cannot contain another keyword.", lexer);
+        ast_return->value = NULL;
+    } else if (tok->type == TOKEN_KEYWORD) {
+        throw_parser_error(
+            "SYNTAX ERROR: return statement cannot contain another keyword.",
+            lexer);
     } else {
-	AST_Expression *expr = parse_ast_subexpression(lexer, PREC_MIN);
-	ast_return->value = expr;
+        AST_Expression *expr = parse_ast_subexpression(lexer, PREC_MIN);
+        ast_return->value = expr;
     }
     return ast_return;
 }
 
-
-inline AST_Jump_Expression *parse_ast_jump_expression(Lexer *lexer, const std::string& jump_type)
-{
+inline AST_Jump_Expression *
+parse_ast_jump_expression(Lexer *lexer, const std::string &jump_type) {
     // currently the token must be either a "break" or "continue"
     // so we will start from the next token
 
@@ -343,14 +360,12 @@ inline AST_Jump_Expression *parse_ast_jump_expression(Lexer *lexer, const std::s
 
     Token *tok = lexer->get_next_token();
     if (tok == NULL || tok->type != TOKEN_DELIMITER) {
-	throw_error__missing_delimiter(lexer);
+        throw_error__missing_delimiter(lexer);
     }
     return ast_jump;
 }
 
-
-inline AST_Function_Call *parse_ast_function_call(Lexer *lexer)
-{
+inline AST_Function_Call *parse_ast_function_call(Lexer *lexer) {
     // currently the token must be at the function name (i.e., an identifier)
     // we will read that token, and then move ahead.
 
@@ -363,17 +378,20 @@ inline AST_Function_Call *parse_ast_function_call(Lexer *lexer)
     int num_expected_args;
 
     if (lexer->symbol_table.functions[tok->val] != NULL) {
-	num_expected_args = lexer->symbol_table.functions[tok->val]->signature->size();
+        num_expected_args =
+            lexer->symbol_table.functions[tok->val]->signature->size();
     } else if (lexer->symbol_table.function_prototypes[tok->val] != NULL) {
-	num_expected_args = lexer->symbol_table.function_prototypes[tok->val]->signature->size();
+        num_expected_args = lexer->symbol_table.function_prototypes[tok->val]
+                                ->signature->size();
     } else {
-	throw_parser_error("SYNTAX ERROR: Undefined function encountered.", lexer);
+        throw_parser_error("SYNTAX ERROR: Undefined function encountered.",
+                           lexer);
     }
 
     /*
     The argument structure is:
 
-	( <arg_1>, <arg_2>, ..., <arg_n> )
+        ( <arg_1>, <arg_2>, ..., <arg_n> )
 
     where, each <arg_k>, can be some kind of expression.
     */
@@ -387,12 +405,13 @@ inline AST_Function_Call *parse_ast_function_call(Lexer *lexer)
 
     // if there are no arguments, just return this directly
     if (tok->type == TOKEN_RIGHT_PAREN) {
-	if (num_expected_args != 0) {
-	    throw_parser_error("SYNTAX ERROR: Missing arguments in function call.", lexer);
-	}
+        if (num_expected_args != 0) {
+            throw_parser_error(
+                "SYNTAX ERROR: Missing arguments in function call.", lexer);
+        }
 
-	lexer->move_to_next_token();
-	return ast_call;
+        lexer->move_to_next_token();
+        return ast_call;
     }
 
     /*
@@ -403,30 +422,36 @@ inline AST_Function_Call *parse_ast_function_call(Lexer *lexer)
 
     int num_separators = 0, i = 0;
     while (1) {
-	if (lexer->peek(i) == NULL) throw_error__incomplete_func_call(lexer);
-	if (lexer->peek(i)->type == TOKEN_SEPARATOR) num_separators++;
-	else if (lexer->peek(i)->type == TOKEN_RIGHT_PAREN) break;
-	i++;
+        if (lexer->peek(i) == NULL)
+            throw_error__incomplete_func_call(lexer);
+        if (lexer->peek(i)->type == TOKEN_SEPARATOR)
+            num_separators++;
+        else if (lexer->peek(i)->type == TOKEN_RIGHT_PAREN)
+            break;
+        i++;
     }
 
     if (num_expected_args != num_separators + 1) {
-	throw_parser_error("SYNTAX ERROR: Function call does not have expected number of arguments.", lexer);
+        throw_parser_error("SYNTAX ERROR: Function call does not have expected "
+                           "number of arguments.",
+                           lexer);
     }
 
     for (int arg_num = 0; arg_num < num_separators + 1; arg_num++) {
-	AST_Expression *arg_expr = parse_ast_subexpression(lexer, PREC_MIN, arg_num < num_separators ? TOKEN_SEPARATOR : TOKEN_RIGHT_PAREN);
-	ast_call->params.push_back(arg_expr);
+        AST_Expression *arg_expr = parse_ast_subexpression(
+            lexer, PREC_MIN,
+            arg_num < num_separators ? TOKEN_SEPARATOR : TOKEN_RIGHT_PAREN);
+        ast_call->params.push_back(arg_expr);
 
-	lexer->move_to_next_token();
+        lexer->move_to_next_token();
     }
 
     return ast_call;
 }
 
-
-// may either return an identifier or a function call expression (depending upon the next token)
-inline AST_Expression *parse_ast_identifier(Lexer *lexer)
-{
+// may either return an identifier or a function call expression (depending upon
+// the next token)
+inline AST_Expression *parse_ast_identifier(Lexer *lexer) {
     // we need to "peek" ahead just to check in case
     // it might be actually a function call.
     // if we find a '(', we will assume that the
@@ -435,7 +460,7 @@ inline AST_Expression *parse_ast_identifier(Lexer *lexer)
     Token *tok = lexer->peek();
     Token *next = lexer->peek_next_token();
     if (next == NULL) {
-	throw_error__missing_delimiter(lexer);
+        throw_error__missing_delimiter(lexer);
     }
     if (next->type == TOKEN_LEFT_PAREN) {
         // this is a function call
@@ -447,7 +472,8 @@ inline AST_Expression *parse_ast_identifier(Lexer *lexer)
     ast_ident->name = tok->val;
 
     if (!lexer->symbol_table.exists(ast_ident->name, SYM_VARIABLE)) {
-	throw_parser_error("SYNTAX ERROR: Undeclared identifier encountered.", lexer);
+        throw_parser_error("SYNTAX ERROR: Undeclared identifier encountered.",
+                           lexer);
     }
 
     lexer->move_to_next_token();
@@ -455,28 +481,33 @@ inline AST_Expression *parse_ast_identifier(Lexer *lexer)
     return ast_ident;
 }
 
-
-inline AST_Declaration *parse_ast_declaration(Lexer *lexer)
-{
+inline AST_Declaration *parse_ast_declaration(Lexer *lexer) {
     // declaration
     //     <data_type> <identifier>
 
     auto *ast_decl = new AST_Declaration;
     Token *tok = lexer->peek();
     if (tok->type != TOKEN_DATA_TYPE) {
-	throw_parser_error("SYNTAX ERROR: Invalid declaration. Data type not specified for identifier.", lexer);
+        throw_parser_error("SYNTAX ERROR: Invalid declaration. Data type not "
+                           "specified for identifier.",
+                           lexer);
     }
     ast_decl->data_type = type_map(tok->val);
 
     tok = lexer->get_next_token();
     if (tok == NULL || tok->type != TOKEN_IDENTIFIER) {
-	throw_parser_error("SYNTAX ERROR: Invalid declaration. Missing identifier after data type", lexer);
+        throw_parser_error("SYNTAX ERROR: Invalid declaration. Missing "
+                           "identifier after data type",
+                           lexer);
     }
 
     ast_decl->variable_name = tok->val;
 
     if (lexer->symbol_table.exists(ast_decl->variable_name, SYM_VARIABLE)) {
-	throw_parser_error("SYNTAX ERROR: Invalid declaration. A variable with this name already exists in the current / parent scope.", lexer);
+        throw_parser_error("SYNTAX ERROR: Invalid declaration. A variable with "
+                           "this name already "
+                           "exists in the current / parent scope.",
+                           lexer);
     }
 
     auto *symbol = new Symbol;
@@ -486,168 +517,186 @@ inline AST_Declaration *parse_ast_declaration(Lexer *lexer)
     lexer->symbol_table.insert(symbol);
 
     if (lexer->get_next_token() == NULL) {
-	throw_error__missing_delimiter(lexer);
+        throw_error__missing_delimiter(lexer);
     }
     return ast_decl;
 }
 
-
-inline AST_Literal *parse_ast_literal(Lexer *lexer)
-{
+inline AST_Literal *parse_ast_literal(Lexer *lexer) {
     auto *ast_literal = new AST_Literal;
     Token *tok = lexer->peek();
 
     if (tok->type == TOKEN_NUMERIC_LITERAL) {
-      // it is either an int or a float
-      // if it has a decimal point ('.'), then it is a float
+        // it is either an int or a float
+        // if it has a decimal point ('.'), then it is a float
 
-      if (tok->val.find('.') != std::string::npos) {
-	  ast_literal->value.f = std::stof(tok->val);
-	  ast_literal->type = T_FLOAT;
-      } else {
-	  ast_literal->value.i = std::stoi(tok->val);
-	  ast_literal->type = T_INT;
-      }
+        if (tok->val.find('.') != std::string::npos) {
+            ast_literal->value.f = std::stof(tok->val);
+            ast_literal->type = T_FLOAT;
+        } else {
+            ast_literal->value.i = std::stoi(tok->val);
+            ast_literal->type = T_INT;
+        }
     } else if (tok->type == TOKEN_BOOL_LITERAL) {
-	ast_literal->value.b = tok->val == "true";
-	ast_literal->type = T_BOOL;
+        ast_literal->value.b = tok->val == "true";
+        ast_literal->type = T_BOOL;
     } else if (tok->type == TOKEN_CHAR_LITERAL) {
-	ast_literal->value.c = tok->val[0];
-	ast_literal->type = T_CHAR;
+        ast_literal->value.c = tok->val[0];
+        ast_literal->type = T_CHAR;
     } else {
-	ast_literal->value.s = &(tok->val);
-	ast_literal->type = T_STRING;
+        ast_literal->value.s = &(tok->val);
+        ast_literal->type = T_STRING;
     }
 
     if (lexer->get_next_token() == NULL) {
-	throw_error__missing_delimiter(lexer);
+        throw_error__missing_delimiter(lexer);
     }
     return ast_literal;
 }
 
-
-inline AST_Expression *parse_ast_parenthesized_expression(Lexer *lexer)
-{
+inline AST_Expression *parse_ast_parenthesized_expression(Lexer *lexer) {
     // parenthesized expression
     //     ( <expression> )
 
     Token *tok = lexer->get_next_token();
 
     if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Missing expression after \'(\'.", lexer);
+        throw_parser_error("SYNTAX ERROR: Missing expression after \'(\'.",
+                           lexer);
     }
 
-    AST_Expression *expr = parse_ast_subexpression(lexer, PREC_MIN, TOKEN_RIGHT_PAREN);
+    AST_Expression *expr =
+        parse_ast_subexpression(lexer, PREC_MIN, TOKEN_RIGHT_PAREN);
     if (lexer->get_next_token() == NULL) {
-	throw_error__missing_delimiter(lexer);
+        throw_error__missing_delimiter(lexer);
     }
     return expr;
 }
 
-
-// to parse the primary expressions (identifiers / function calls / literals / parenthesized expressions)
-// based on the type of token
-inline AST_Expression *parse_primary_subexpression(Lexer *lexer, Token *tok)
-{
+// to parse the primary expressions (identifiers / function calls / literals /
+// parenthesized expressions) based on the type of token
+inline AST_Expression *parse_primary_subexpression(Lexer *lexer, Token *tok) {
     // one possibility is that we start with a prefix unary operator
     AST_Unary_Expression *ast_unary_prefix = NULL;
 
     if (is_unary_op(tok)) {
-	ast_unary_prefix = new AST_Unary_Expression;
-	ast_unary_prefix->op = tok->type;
+        ast_unary_prefix = new AST_Unary_Expression;
+        ast_unary_prefix->op = tok->type;
 
-	tok = lexer->get_next_token();
-	if (tok == NULL) {
-	    throw_parser_error("SYNTAX ERROR: Unary prefix operator must be followed by an expression.", lexer);
-	}
+        tok = lexer->get_next_token();
+        if (tok == NULL) {
+            throw_parser_error(
+                "SYNTAX ERROR: Unary prefix operator must be followed "
+                "by an expression.",
+                lexer);
+        }
     }
 
     AST_Expression *expr = NULL;
 
     switch (tok->type) {
-    case TOKEN_IDENTIFIER: expr = parse_ast_identifier(lexer); break;
-    case TOKEN_DATA_TYPE: expr = parse_ast_declaration(lexer); break;
+    case TOKEN_IDENTIFIER:
+        expr = parse_ast_identifier(lexer);
+        break;
+    case TOKEN_DATA_TYPE:
+        expr = parse_ast_declaration(lexer);
+        break;
     case TOKEN_CHAR_LITERAL:
     case TOKEN_NUMERIC_LITERAL:
     case TOKEN_BOOL_LITERAL:
-    case TOKEN_STRING_LITERAL: expr = parse_ast_literal(lexer); break;
-    case TOKEN_LEFT_PAREN: expr = parse_ast_parenthesized_expression(lexer); break;
+    case TOKEN_STRING_LITERAL:
+        expr = parse_ast_literal(lexer);
+        break;
+    case TOKEN_LEFT_PAREN:
+        expr = parse_ast_parenthesized_expression(lexer);
+        break;
     default:
-	throw_parser_error("SYNTAX ERROR (Parser): Failed to parse primary expression.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR (Parser): Failed to parse primary expression.",
+            lexer);
     }
 
     if (ast_unary_prefix != NULL) {
-	ast_unary_prefix->expr = expr;
+        ast_unary_prefix->expr = expr;
     }
 
-    // in case the next token is a unary operator or postfix kind (i.e. ++ or --)
-    // we will apply that to the expression, and return that expression
+    // in case the next token is a unary operator or postfix kind (i.e. ++ or
+    // --) we will apply that to the expression, and return that expression
 
     Token *next = lexer->peek();
     if (next->type == TOKEN_INCREMENT || next->type == TOKEN_DECREMENT) {
-	if (lexer->get_next_token() == NULL) {
-	    throw_error__missing_delimiter(lexer);
-	}
+        if (lexer->get_next_token() == NULL) {
+            throw_error__missing_delimiter(lexer);
+        }
 
-	auto *ast_unary = new AST_Unary_Expression;
-	ast_unary->op = next->type;
-	ast_unary->expr = (ast_unary_prefix == NULL) ? expr : ast_unary_prefix;
-	ast_unary->is_postfix = true;
-	return ast_unary;
+        auto *ast_unary = new AST_Unary_Expression;
+        ast_unary->op = next->type;
+        ast_unary->expr = (ast_unary_prefix == NULL) ? expr : ast_unary_prefix;
+        ast_unary->is_postfix = true;
+        return ast_unary;
     }
 
     return (ast_unary_prefix == NULL) ? expr : ast_unary_prefix;
 }
 
-
-AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression *left, Precedence curr_precedence, Token_Type stops_at = TOKEN_DELIMITER)
-{
+AST_Expression *
+parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression *left,
+                            Precedence curr_precedence,
+                            Token_Type stops_at = TOKEN_DELIMITER) {
     auto *curr_expression = new AST_Binary_Expression;
 
     while (1) {
-	curr_expression->left = left;
+        curr_expression->left = left;
 
-	Token *tok = lexer->peek();
-	if (tok == NULL || !is_binary_op(tok)) {
-	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
-	}
-	curr_expression->op = tok->type;
+        Token *tok = lexer->peek();
+        if (tok == NULL || !is_binary_op(tok)) {
+            throw_parser_error(
+                "SYNTAX ERROR: Invalid expression. Expected binary operator.",
+                lexer);
+        }
+        curr_expression->op = tok->type;
 
-	tok = lexer->get_next_token();
-	if (tok == NULL || op_prec(tok->type) < PREC_UNARY) {
-	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
-	}
-	AST_Expression *tok_expr = parse_primary_subexpression(lexer, tok);
-	Token *op = lexer->peek();
+        tok = lexer->get_next_token();
+        if (tok == NULL || op_prec(tok->type) < PREC_UNARY) {
+            throw_parser_error("SYNTAX ERROR: Invalid expression. Expected "
+                               "identifier/literal.",
+                               lexer);
+        }
+        AST_Expression *tok_expr = parse_primary_subexpression(lexer, tok);
+        Token *op = lexer->peek();
 
-	if (op == NULL) {
-	    throw_parser_error("SYNTAX ERROR: Missing delimiter at the end of expression.", lexer);
-	}
-	if (op->type == stops_at) {
-	    curr_expression->right = tok_expr;
-	    break;
-	}
-	if (op->type == TOKEN_DELIMITER) {
-	    throw_error__used_delimiter_in_a_non_statement(lexer);
-	}
-	if (!is_binary_op(op)) {
-	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
-	}
+        if (op == NULL) {
+            throw_parser_error(
+                "SYNTAX ERROR: Missing delimiter at the end of expression.",
+                lexer);
+        }
+        if (op->type == stops_at) {
+            curr_expression->right = tok_expr;
+            break;
+        }
+        if (op->type == TOKEN_DELIMITER) {
+            throw_error__used_delimiter_in_a_non_statement(lexer);
+        }
+        if (!is_binary_op(op)) {
+            throw_parser_error(
+                "SYNTAX ERROR: Invalid expression. Expected binary operator.",
+                lexer);
+        }
 
-	Precedence new_prec = op_prec(op->type);
-	if (new_prec > curr_precedence) {
-	    curr_expression->right = parse_ast_subexpression(lexer, new_prec, stops_at, tok_expr);
-	    break;
-	}
+        Precedence new_prec = op_prec(op->type);
+        if (new_prec > curr_precedence) {
+            curr_expression->right =
+                parse_ast_subexpression(lexer, new_prec, stops_at, tok_expr);
+            break;
+        }
 
-	curr_expression->right = tok_expr;
-	left = curr_expression;
-	curr_precedence = new_prec;
-	curr_expression = new AST_Binary_Expression;
+        curr_expression->right = tok_expr;
+        left = curr_expression;
+        curr_precedence = new_prec;
+        curr_expression = new AST_Binary_Expression;
     }
     return curr_expression;
 }
-
 
 // parses the subexpression
 //
@@ -659,14 +708,16 @@ AST_Expression *parse_decreasing_precedence(Lexer *lexer, AST_Binary_Expression 
 // tells which token comes right after the end of this expression.
 // We need this to know when to stop reading further. By default it is ';',
 // but it can also be a ')' (or certain other characters too...)
-AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence, Token_Type stops_at, AST_Expression *left)
-{
+AST_Expression *parse_ast_subexpression(Lexer *lexer,
+                                        Precedence curr_precedence,
+                                        Token_Type stops_at,
+                                        AST_Expression *left) {
     /*
     The idea is that parsing in accordance with operator
     precedence can simply be broken into two scenarios:
 
-	(1) the next operator is of higher precedence -> rightward bent tree
-	(2) the next operator is of lower precedence -> leftward bent tree
+        (1) the next operator is of higher precedence -> rightward bent tree
+        (2) the next operator is of lower precedence -> leftward bent tree
 
     I got this idea from a conversation between Jonathan Blow
     and Casey Muratori that I saw on youtube. Based on this,
@@ -681,73 +732,87 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer, Precedence curr_precedence
     AST_Expression *tok_expr;
 
     if (left == NULL) {
-	tok = lexer->peek();
-	if (tok == NULL) throw_error__missing_delimiter(lexer);
-	if (tok->type == stops_at) return NULL;
-	if (tok->type == TOKEN_DELIMITER) {
-	    // in case stops_at is not ';', but we encounter a ';' anyways
-	    throw_error__used_delimiter_in_a_non_statement(lexer);
-	}
-	if (op_prec(tok->type) < PREC_UNARY) {
-	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
-	}
-	tok_expr = parse_primary_subexpression(lexer, tok);
-	curr_expression->left = tok_expr;
+        tok = lexer->peek();
+        if (tok == NULL)
+            throw_error__missing_delimiter(lexer);
+        if (tok->type == stops_at)
+            return NULL;
+        if (tok->type == TOKEN_DELIMITER) {
+            // in case stops_at is not ';', but we encounter a ';' anyways
+            throw_error__used_delimiter_in_a_non_statement(lexer);
+        }
+        if (op_prec(tok->type) < PREC_UNARY) {
+            throw_parser_error("SYNTAX ERROR: Invalid expression. Expected "
+                               "identifier/literal.",
+                               lexer);
+        }
+        tok_expr = parse_primary_subexpression(lexer, tok);
+        curr_expression->left = tok_expr;
     } else {
-	curr_expression->left = left;
+        curr_expression->left = left;
     }
 
     while (1) {
-	tok = lexer->peek();
-	if (tok != NULL && tok->type == stops_at) break;
-	if (tok != NULL && tok->type == TOKEN_DELIMITER) {
-	    throw_error__used_delimiter_in_a_non_statement(lexer);
-	}
-	if (tok == NULL || !is_binary_op(tok)) {
-	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
-	}
-	curr_expression->op = tok->type;
+        tok = lexer->peek();
+        if (tok != NULL && tok->type == stops_at)
+            break;
+        if (tok != NULL && tok->type == TOKEN_DELIMITER) {
+            throw_error__used_delimiter_in_a_non_statement(lexer);
+        }
+        if (tok == NULL || !is_binary_op(tok)) {
+            throw_parser_error(
+                "SYNTAX ERROR: Invalid expression. Expected binary operator.",
+                lexer);
+        }
+        curr_expression->op = tok->type;
 
-	tok = lexer->get_next_token();
-	if (tok == NULL || op_prec(tok->type) < PREC_UNARY) {
-	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected identifier/literal.", lexer);
-	}
-	tok_expr = parse_primary_subexpression(lexer, tok);
-	Token *op = lexer->peek();
+        tok = lexer->get_next_token();
+        if (tok == NULL || op_prec(tok->type) < PREC_UNARY) {
+            throw_parser_error("SYNTAX ERROR: Invalid expression. Expected "
+                               "identifier/literal.",
+                               lexer);
+        }
+        tok_expr = parse_primary_subexpression(lexer, tok);
+        Token *op = lexer->peek();
 
-	if (op == NULL) {
-	    throw_parser_error("SYNTAX ERROR: Missing delimiter at the end of expression.", lexer);
-	}
-	if (op->type == stops_at) {
-	    curr_expression->right = tok_expr;
-	    break;
-	}
-	if (op->type == TOKEN_DELIMITER) {
-	    throw_error__used_delimiter_in_a_non_statement(lexer);
-	}
-	if (!is_binary_op(op)) {
-	    throw_parser_error("SYNTAX ERROR: Invalid expression. Expected binary operator.", lexer);
-	}
+        if (op == NULL) {
+            throw_parser_error(
+                "SYNTAX ERROR: Missing delimiter at the end of expression.",
+                lexer);
+        }
+        if (op->type == stops_at) {
+            curr_expression->right = tok_expr;
+            break;
+        }
+        if (op->type == TOKEN_DELIMITER) {
+            throw_error__used_delimiter_in_a_non_statement(lexer);
+        }
+        if (!is_binary_op(op)) {
+            throw_parser_error(
+                "SYNTAX ERROR: Invalid expression. Expected binary operator.",
+                lexer);
+        }
 
-	Precedence new_prec = op_prec(op->type);
-	if (new_prec < curr_precedence) {
-	    curr_expression->right = tok_expr;
-	    auto *updated_expression = parse_decreasing_precedence(lexer, curr_expression, new_prec, stops_at);
+        Precedence new_prec = op_prec(op->type);
+        if (new_prec < curr_precedence) {
+            curr_expression->right = tok_expr;
+            auto *updated_expression = parse_decreasing_precedence(
+                lexer, curr_expression, new_prec, stops_at);
 
-	    if (prev_expression == NULL) return updated_expression;
-	    prev_expression->right = updated_expression;
-	    break;
-	}
+            if (prev_expression == NULL)
+                return updated_expression;
+            prev_expression->right = updated_expression;
+            break;
+        }
 
-	prev_expression = curr_expression;
-	curr_expression->right = new AST_Binary_Expression;
-	curr_expression = (AST_Binary_Expression*)curr_expression->right;
-	curr_expression->left = tok_expr;
-	curr_precedence = new_prec;
+        prev_expression = curr_expression;
+        curr_expression->right = new AST_Binary_Expression;
+        curr_expression = (AST_Binary_Expression *)curr_expression->right;
+        curr_expression->left = tok_expr;
+        curr_precedence = new_prec;
     }
     return expr;
 }
-
 
 /*
 
@@ -765,8 +830,7 @@ TODO:
 // this is also the most "complicated" part, so to speak. the main thing
 // that makes it complicated is handling operations. here I will be trying
 // to implement a recursive descent kind of parser.
-AST_Expression *parse_ast_expression(Lexer *lexer)
-{
+AST_Expression *parse_ast_expression(Lexer *lexer) {
     // what are all possible kinds of expressions?
     // well there are a lot. so we will need to find
     // a way to look through the tokens and figure out
@@ -780,12 +844,12 @@ AST_Expression *parse_ast_expression(Lexer *lexer)
     // In that case we will have to form a block expression
 
     if (tok->type == TOKEN_LEFT_BRACE) {
-	auto *ast_block = new AST_Block_Expression;
+        auto *ast_block = new AST_Block_Expression;
 
-	lexer->symbol_table.push();
-	parse_ast_block(ast_block->block, lexer);
-	lexer->symbol_table.pop();
-	return ast_block;
+        lexer->symbol_table.push();
+        parse_ast_block(ast_block->block, lexer);
+        lexer->symbol_table.pop();
+        return ast_block;
     }
 
     //     POSSIBILITY 1 : starts with a keyword
@@ -797,13 +861,21 @@ AST_Expression *parse_ast_expression(Lexer *lexer)
     //     break; OR continue;
 
     if (tok->type == TOKEN_KEYWORD) {
-	if (tok->val == "if") return parse_ast_if_expression(lexer);
-	else if (tok->val == "for") return parse_ast_for_expression(lexer);
-	else if (tok->val == "while") return parse_ast_while_expression(lexer);
-	else if (tok->val == "return") return parse_ast_return_expression(lexer);
-	else if (tok->val == "break") return parse_ast_jump_expression(lexer, "break");
-	else if (tok->val == "continue") return parse_ast_jump_expression(lexer, "continue");
-	else throw_parser_error("SYNTAX ERROR: Keyword could not be parsed.", lexer);
+        if (tok->val == "if")
+            return parse_ast_if_expression(lexer);
+        else if (tok->val == "for")
+            return parse_ast_for_expression(lexer);
+        else if (tok->val == "while")
+            return parse_ast_while_expression(lexer);
+        else if (tok->val == "return")
+            return parse_ast_return_expression(lexer);
+        else if (tok->val == "break")
+            return parse_ast_jump_expression(lexer, "break");
+        else if (tok->val == "continue")
+            return parse_ast_jump_expression(lexer, "continue");
+        else
+            throw_parser_error("SYNTAX ERROR: Keyword could not be parsed.",
+                               lexer);
     }
 
     // POSSIBILITY 2 : does not start with a keyword
@@ -815,20 +887,20 @@ AST_Expression *parse_ast_expression(Lexer *lexer)
 
     For instance:
 
-	int x = 3 * func(5) - y - ++y;
+        int x = 3 * func(5) - y - ++y;
 
     We need the AST tree for this part of the expression
     to look something like:
 
-	           (=)
-		   / \
-	      int x   (-)
-	              / \
-		    (-)  (PRE ++)
-		    / \     |
-	          (*)  y    y
-		  / \
-		 3   func(5)
+                   (=)
+                   / \
+              int x   (-)
+                      / \
+                    (-)  (PRE ++)
+                    / \     |
+                  (*)  y    y
+                  / \
+                 3   func(5)
 
     To do this, we will read through tokens, till we reach the
     semicolon (;) at the end. Then, we will take all the operators
@@ -841,81 +913,92 @@ AST_Expression *parse_ast_expression(Lexer *lexer)
     return parse_ast_subexpression(lexer, PREC_MIN);
 }
 
-
 // TODO: params could be pointers (to handle *)
 
 // parses the function params, and adds them to ast_function->params
-void parse_ast_function_params(AST_Function_Definition *ast_function, Lexer *lexer)
-{
+void parse_ast_function_params(AST_Function_Definition *ast_function,
+                               Lexer *lexer) {
     // here we are assuming that the current token is '('
     // so we need to start reading from the next token
 
     /*
     Function parameter syntax:
-	( <data_type1> <name_1>, <data_type2> <name_2>, ... )
+        ( <data_type1> <name_1>, <data_type2> <name_2>, ... )
     */
 
     Token *tok = lexer->get_next_token();
     if (tok == NULL) {
-	throw_error__insufficient_tokens_func_def(lexer);
+        throw_error__insufficient_tokens_func_def(lexer);
     }
 
     while (tok != NULL && tok->type != TOKEN_RIGHT_PAREN) {
-	if (tok->type != TOKEN_DATA_TYPE) {
-	    throw_parser_error("SYNTAX ERROR: Invalid data type for function parameter.", lexer);
-	}
-	auto *function_param = new Function_Parameter;
-	function_param->type = type_map(tok->val);
+        if (tok->type != TOKEN_DATA_TYPE) {
+            throw_parser_error(
+                "SYNTAX ERROR: Invalid data type for function parameter.",
+                lexer);
+        }
+        auto *function_param = new Function_Parameter;
+        function_param->type = type_map(tok->val);
 
-	tok = lexer->get_next_token();
-	if (tok == NULL) {
-	    throw_error__insufficient_tokens_func_def(lexer);
-	}
-	if (tok->type != TOKEN_IDENTIFIER) {
-	    throw_parser_error("SYNTAX ERROR: Invalid identifier for function parameter.", lexer);
-	}
-	function_param->name = tok->val;
+        tok = lexer->get_next_token();
+        if (tok == NULL) {
+            throw_error__insufficient_tokens_func_def(lexer);
+        }
+        if (tok->type != TOKEN_IDENTIFIER) {
+            throw_parser_error(
+                "SYNTAX ERROR: Invalid identifier for function parameter.",
+                lexer);
+        }
+        function_param->name = tok->val;
 
-	if (lexer->symbol_table.exists(tok->val, SYM_VARIABLE)) {
-	    throw_parser_error("SYNTAX ERROR: Invalid parameter name. A variable with this name already exists.", lexer);
-	}
+        if (lexer->symbol_table.exists(tok->val, SYM_VARIABLE)) {
+            throw_parser_error(
+                "SYNTAX ERROR: Invalid parameter name. A variable "
+                "with this name already exists.",
+                lexer);
+        }
 
-	auto *symbol = new Symbol;
-	symbol->identifier = tok->val;
-	symbol->symbol_type = SYM_VARIABLE;
-	symbol->is_declaration = false;
-	symbol->return_type = function_param->type;
-	lexer->symbol_table.insert(symbol);
+        auto *symbol = new Symbol;
+        symbol->identifier = tok->val;
+        symbol->symbol_type = SYM_VARIABLE;
+        symbol->is_declaration = false;
+        symbol->return_type = function_param->type;
+        lexer->symbol_table.insert(symbol);
 
-	// add this param to the list of parameters
-	ast_function->params.push_back(function_param);
+        // add this param to the list of parameters
+        ast_function->params.push_back(function_param);
 
-	// if next token is a comma, peek the token just after it
-	// if it is not a comma, it must be a right parenthesis
-	tok = lexer->get_next_token();
-	if (tok == NULL) {
-	    throw_error__insufficient_tokens_func_def(lexer);
-	}
-	if (tok->type == TOKEN_SEPARATOR) tok = lexer->get_next_token();
-	else if (tok->type == TOKEN_RIGHT_PAREN) break;
-	else {
-	    throw_parser_error("SYNTAX ERROR: Missing separator (\',\') in function parameters.", lexer);
-	}
+        // if next token is a comma, peek the token just after it
+        // if it is not a comma, it must be a right parenthesis
+        tok = lexer->get_next_token();
+        if (tok == NULL) {
+            throw_error__insufficient_tokens_func_def(lexer);
+        }
+        if (tok->type == TOKEN_SEPARATOR)
+            tok = lexer->get_next_token();
+        else if (tok->type == TOKEN_RIGHT_PAREN)
+            break;
+        else {
+            throw_parser_error("SYNTAX ERROR: Missing separator (\',\') in "
+                               "function parameters.",
+                               lexer);
+        }
     }
-    if (tok == NULL) throw_error__insufficient_tokens_func_def(lexer);
+    if (tok == NULL)
+        throw_error__insufficient_tokens_func_def(lexer);
 }
 
-
 // parses the entire function (and everything within it)
-AST_Function_Definition *parse_ast_function(Lexer *lexer)
-{
+AST_Function_Definition *parse_ast_function(Lexer *lexer) {
     // Function syntax:
     // <return_type> <name>(...) <block>|<expr>
 
     // return type
     Token *tok_return_type = lexer->peek();
     if (tok_return_type->type != TOKEN_DATA_TYPE) {
-	throw_parser_error("SYNTAX ERROR: Invalid return type for function definition.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Invalid return type for function definition.",
+            lexer);
     }
 
     auto *ast_function = new AST_Function_Definition;
@@ -924,29 +1007,36 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer)
     // function name
     Token *tok_name = lexer->get_next_token();
     if (tok_name == NULL) {
-	throw_error__insufficient_tokens_func_def(lexer);
+        throw_error__insufficient_tokens_func_def(lexer);
     }
     if (tok_name->type != TOKEN_IDENTIFIER) {
-	throw_parser_error("SYNTAX ERROR: Invalid identifier used in function definition.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Invalid identifier used in function definition.",
+            lexer);
     }
     ast_function->function_name = tok_name->val;
 
     if (lexer->symbol_table.exists(ast_function->function_name, SYM_FUNCTION)) {
-	throw_parser_error("SYNTAX ERROR: Invalid function definition. Function with the same name already exists.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Invalid function definition. Function "
+            "with the same name already exists.",
+            lexer);
     }
 
     // left parenthesis
     Token *tok_left_paren = lexer->get_next_token();
     if (tok_left_paren == NULL) {
-	throw_error__insufficient_tokens_func_def(lexer);
+        throw_error__insufficient_tokens_func_def(lexer);
     }
     if (tok_left_paren->type != TOKEN_LEFT_PAREN) {
-	throw_parser_error("SYNTAX ERROR: Missing token \'(\' in function definition.", lexer);
+        throw_parser_error(
+            "SYNTAX ERROR: Missing token \'(\' in function definition.", lexer);
     }
 
     // reading function parameters (if they exist)
     // after this is completed, the current token is ')'
-    lexer->symbol_table.push(); // params will be considered to be within the function scope
+    lexer->symbol_table
+        .push(); // params will be considered to be within the function scope
     parse_ast_function_params(ast_function, lexer);
 
     auto *symbol = new Symbol;
@@ -956,94 +1046,107 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer)
     symbol->signature = new std::vector<Data_Type>();
 
     for (auto *param : ast_function->params) {
-	symbol->signature->push_back(param->type);
+        symbol->signature->push_back(param->type);
     }
 
     // At the end of the function definition there are two possibilities
     //    1. We get a { --> this is a statement block
     //    2. We get a single statement
-    //    3. We get a ; --> no statement --> so this whole thing is a function prototype
+    //    3. We get a ; --> no statement --> so this whole thing is a function
+    //    prototype
 
     Token *tok = lexer->get_next_token();
     if (tok == NULL) {
-	throw_parser_error("SYNTAX ERROR: Function definition must be followed by a statement.", lexer);
+        throw_parser_error("SYNTAX ERROR: Function definition must be followed "
+                           "by a statement.",
+                           lexer);
     }
     if (tok->type == TOKEN_DELIMITER) {
-	// this is a function prototype
-	// we will have to add it in the prototypes map in our symbol table
+        // this is a function prototype
+        // we will have to add it in the prototypes map in our symbol table
 
-	if (lexer->symbol_table.prototype_exists(ast_function->function_name)) {
-	    throw_parser_error("SYNTAX ERROR: Function prototype with this name already exists.", lexer);
-	}
-	ast_function->is_prototype = true;
-	lexer->symbol_table.function_prototypes.insert(ast_function->function_name, symbol);
+        if (lexer->symbol_table.prototype_exists(ast_function->function_name)) {
+            throw_parser_error("SYNTAX ERROR: Function prototype with this "
+                               "name already exists.",
+                               lexer);
+        }
+        ast_function->is_prototype = true;
+        lexer->symbol_table.function_prototypes.insert(
+            ast_function->function_name, symbol);
     } else {
-	lexer->symbol_table.insert(symbol); // normal function symbol insertion
-	parse_ast_block(ast_function->block, lexer);
+        lexer->symbol_table.insert(symbol); // normal function symbol insertion
+        parse_ast_block(ast_function->block, lexer);
     }
 
     lexer->symbol_table.pop();
     return ast_function;
 }
 
-
 // parse global declarations (with or without initialization)
-AST_Expression *parse_ast_global_declaration(Lexer *lexer)
-{
+AST_Expression *parse_ast_global_declaration(Lexer *lexer) {
     AST_Declaration *ast_decl = parse_ast_declaration(lexer);
 
     if (lexer->peek()->type == TOKEN_ASSIGN) {
-	auto *ast_binary = new AST_Binary_Expression;
-	ast_binary->left = ast_decl;
-	ast_binary->op = TOKEN_ASSIGN;
+        auto *ast_binary = new AST_Binary_Expression;
+        ast_binary->left = ast_decl;
+        ast_binary->op = TOKEN_ASSIGN;
 
-	if (lexer->get_next_token() == NULL) {
-	    throw_parser_error("SYNTAX ERROR: Missing expression after \'=\' in global variable initialization.", lexer);
-	}
-	ast_binary->right = parse_ast_subexpression(lexer, PREC_MIN);
-	return ast_binary;
+        if (lexer->get_next_token() == NULL) {
+            throw_parser_error(
+                "SYNTAX ERROR: Missing expression after \'=\' in "
+                "global variable initialization.",
+                lexer);
+        }
+        ast_binary->right = parse_ast_subexpression(lexer, PREC_MIN);
+        return ast_binary;
     }
     return ast_decl;
 }
 
-
-std::vector<AST_Expression*> *parse_tokens(Lexer *lexer)
-{
+std::vector<AST_Expression *> *parse_tokens(Lexer *lexer) {
     if (lexer->tokens.size() == 0) {
-	throw_parser_error("ERROR: No tokens found.", lexer);
+        throw_parser_error("ERROR: No tokens found.", lexer);
     }
 
-    auto *ast = new std::vector<AST_Expression*>; // abstract syntax tree initialized
+    auto *ast =
+        new std::vector<AST_Expression *>; // abstract syntax tree initialized
     bool entry_point_exists = false;
 
     do {
-	// at the outermost, we only have function definitions
-	// or global declarations
+        // at the outermost, we only have function definitions
+        // or global declarations
 
-	// both declarations and function definitions start with
-	// <data_type> <identifier>. so the difference is at the
-	// third token.
+        // both declarations and function definitions start with
+        // <data_type> <identifier>. so the difference is at the
+        // third token.
 
-	// TODO : this does not handle pointers/arrays
+        // TODO : this does not handle pointers/arrays
 
-	Token *tok = lexer->peek(2);
-	if (tok == NULL) {
-	    throw_parser_error("SYNTAX ERROR: Incomplete top-level expression encountered.", lexer);
-	}
+        Token *tok = lexer->peek(2);
+        if (tok == NULL) {
+            throw_parser_error(
+                "SYNTAX ERROR: Incomplete top-level expression encountered.",
+                lexer);
+        }
 
-	if (tok->type == TOKEN_LEFT_PAREN) {
-	    AST_Function_Definition *ast_function = parse_ast_function(lexer);
-	    ast->push_back(ast_function);
+        if (tok->type == TOKEN_LEFT_PAREN) {
+            AST_Function_Definition *ast_function = parse_ast_function(lexer);
+            ast->push_back(ast_function);
 
-	    if (ast_function->function_name == "main") entry_point_exists = true;
-	} else {
-	    auto *global_decl = parse_ast_global_declaration(lexer);
-	    ast->push_back(global_decl);
-	}
+            if (ast_function->function_name == "main")
+                entry_point_exists = true;
+        } else {
+            auto *global_decl = parse_ast_global_declaration(lexer);
+            ast->push_back(global_decl);
+        }
     } while (lexer->get_next_token() != NULL);
 
-    if (!entry_point_exists) {
-	throw_parser_error("SYNTAX ERROR: No entry point (main) found.", lexer);
+    if (entry_point_exists) {
+        if (lexer->entry_point_found) {
+            throw_parser_error("SYNTAX ERROR: Duplicate entry points found.",
+                               lexer);
+        }
+        lexer->entry_point_found = true;
     }
 
     return ast;

@@ -2,18 +2,11 @@
 // type_checker.cpp
 //
 
-
 #include "parser.h"
 
+void perform_type_checking(std::vector<AST_Expression *> *ast) {}
 
-void perform_type_checking(std::vector<AST_Expression*> *ast)
-{
-
-}
-
-
-int main()
-{
+int main() {
     Lexer *lexer = perform_lexical_analysis("program.txt");
     auto *ast = parse_tokens(lexer);
 

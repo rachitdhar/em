@@ -1,6 +1,6 @@
 @echo off
 
-set OPT_FLAG=/W0
+set OPT_FLAG=/O2
 set DEBUG_FLAG=
 
 if "%1"=="Clean" (
@@ -11,7 +11,7 @@ if "%1"=="Clean" (
 
 if "%1"=="Debug" (
    set OPT_FLAG=/Od
-   set DEBUG_FLAG=/DEBUG
+   set DEBUG_FLAG=/Zi /DEBUG
 )
 
 echo Build type: %1
@@ -24,7 +24,7 @@ clang-cl ^
 /D__STDC_CONSTANT_MACROS ^
 /D__STDC_FORMAT_MACROS ^
 /D__STDC_LIMIT_MACROS ^
-/Zi ^
+%DEBUG_FLAG% ^
 /I "D:\softwares\clang+llvm-21.1.8-x86_64-pc-windows-msvc\include" ^
 lexer.cpp parser.cpp ir_generator.cpp main.cpp ^
 /link ^
@@ -159,5 +159,4 @@ LLVMTargetParser.lib ^
 LLVMTableGen.lib ^
 LLVMSupport.lib ^
 LLVMDemangle.lib ^
-%DEBUG_FLAG% ^
 /OUT:emc.exe

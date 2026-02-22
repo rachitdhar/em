@@ -55,10 +55,12 @@ struct Flag_Settings {
 };
 
 struct Compilation_Metrics {
-    int total_lines = 0;
-    double frontend_time = 0;
-    double backend_time = 0;
-    double total_time = 0;
+    size_t total_lines = 0;
+    size_t num_threads = 1;
+    double aggregate_frontend_time = 0;  // sum of frontend times of each thread
+    double frontend_time = 0;      // total fronend time taken
+    double backend_time = 0;       // total backend time taken (mainly by LLVM)
+    double total_time = 0;         // total time for entire compilation process
 };
 
 const std::string cpu_to_target[][2] = {
@@ -184,12 +186,18 @@ link_modules(std::vector<std::unique_ptr<llvm::Module>> module_list) {
 
 // displays the total lines, and the frontend, backend, and total elapsed times.
 void print_benchmark_metrics(Compilation_Metrics *metrics) {
-    printf("\n         Performance metrics\n");
-    printf("-------------------------------------\n");
-    printf("Total lines of code: \t%d lines\n", metrics->total_lines);
-    printf("Frontend time elapsed: \t%.6f sec\n", metrics->frontend_time);
-    printf("Backend time elapsed: \t%.6f sec\n", metrics->backend_time);
-    printf("Total execution time: \t%.6f sec\n", metrics->total_time);
+    printf("\n                                 Performance metrics\n");
+    printf("-------------------------------------------------------------------------------------------\n");
+    printf("Total lines of code: \t\t\t%d lines\n", metrics->total_lines);
+    printf("Number of threads: \t\t\t%d (Equivalent to number of files compiled)\n\n", metrics->num_threads);
+
+    printf("Aggregate frontend time elapsed: \t%.6f sec (Sum of frontend times of each thread)\n", metrics->aggregate_frontend_time);
+    printf("Frontend time elapsed: \t\t\t%.6f sec\n", metrics->frontend_time);
+    printf("Backend time elapsed: \t\t\t%.6f sec\n\n", metrics->backend_time);
+
+    printf("-------------------------------------------------------------------------------------------\n");
+    printf("Total execution time: \t\t\t%.6f sec\n", metrics->total_time);
+    printf("-------------------------------------------------------------------------------------------\n");
 }
 
 // check the extension of a file (ext is to be passed without a dot)
@@ -261,7 +269,7 @@ int compile(
         // calculating the elapsed time duration in seconds
         std::chrono::duration<double> frontend_elapsed_time =
             frontend_end - frontend_start;
-        metrics->frontend_time += frontend_elapsed_time.count();
+        metrics->aggregate_frontend_time += frontend_elapsed_time.count();
     }
 
     // cleaning up allocated memory
@@ -332,6 +340,7 @@ int main(int argc, char **argv) {
     std::atomic<bool> error_occurred(false);
 
     int last_file_arg_index = flags_exist ? flags_start_index - 1 : argc - 1;
+    metrics.num_threads = last_file_arg_index;
 
     for (int i = 1; i <= last_file_arg_index; i++) {
         threads.emplace_back([&, i]() {
@@ -359,6 +368,7 @@ int main(int argc, char **argv) {
 
     // backend process begins
     auto backend_start = std::chrono::high_resolution_clock::now();
+    metrics.frontend_time = ((std::chrono::duration<double>)(backend_start - frontend_start)).count();
 
     // in order to link all the modules together
     // we must first bring them all under a single
@@ -440,7 +450,7 @@ int main(int argc, char **argv) {
     metrics.backend_time = backend_elapsed_time.count();
 
     if (show_benchmarking_metrics) {
-        metrics.total_time = metrics.frontend_time + metrics.backend_time;
+        metrics.total_time = ((std::chrono::duration<double>)(backend_end - frontend_start)).count();
         print_benchmark_metrics(&metrics);
     }
     return 0;

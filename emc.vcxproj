@@ -91,10 +91,7 @@
     <None Include="build-msvc.bat" />
     <None Include="build.bat" />
     <None Include="em-mode.el" />
-    <None Include="h1.em" />
     <None Include="LICENSE" />
-    <None Include="p1.em" />
-    <None Include="p2.em" />
     <None Include="README.md" />
     <None Include="SPEC.md" />
   </ItemGroup>

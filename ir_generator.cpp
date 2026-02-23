@@ -147,13 +147,13 @@ llvm::Value *AST_Function_Definition::generate_ir(LLVM_IR *ir) {
     // if return type is void, add a return void instruction
     // (for other types, the return expression should be present
     // in the block itself).
-    if (!has_return_expression_in_block && llvm_return_type->isVoidTy()) {
-        ir->_builder->CreateRetVoid();
+    if (!has_return_expression_in_block) {
+	if (llvm_return_type->isVoidTy()) ir->_builder->CreateRetVoid();
+	else throw_ir_error("Explicit return could not be found in function block for a function with non-void return type.");
     }
 
     // verify function
     if (llvm::verifyFunction(*_f, &llvm::errs())) {
-        print_ir(ir->_module);
         throw_ir_error("Invalid function. Could not be verified.");
     }
 
@@ -618,7 +618,6 @@ llvm::Value *AST_Return_Expression::generate_ir(LLVM_IR *ir) {
         if (val->getType()->isIntegerTy() && retTy->isIntegerTy()) {
             val = ir->_builder->CreateIntCast(val, retTy, true, "retcast");
         } else {
-            print_ir(ir->_module);
             throw_ir_error(
                 "Return value type does not match the function return type.");
         }

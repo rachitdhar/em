@@ -47,7 +47,7 @@ namespace fs = std::filesystem;
 int main()
 {
     // Preliminary check: run emc without arguments and check output
-    FILE* pipe = _popen("\"d:\\github\\compiler\\emc.exe\" 2>&1", "r");
+    FILE* pipe = _popen("\"d:\\github\\emc\\emc.exe\" 2>&1", "r");
     if (!pipe) {
         std::cout << "\033[31mABORT: emc compiler not detected / displaying undefined behavior. Testing halted.\033[0m" << std::endl;
         return 1;
@@ -86,17 +86,17 @@ int main()
     std::cout << "Running Positive Test Cases:" << std::endl;
     std::cout << "=============================" << std::endl;
     for (const auto& file : positive_files) {
-        std::string command = "d:/github/compiler/emc.exe " + file + " >nul 2>>test_logs.txt";
+        std::string command = "d:/github/emc/emc.exe " + file + " >nul 2>>test_logs.txt";
         int result = system(command.c_str());
         std::string status = (result == 0) ? "passed" : "failed";
         std::cout << std::left << std::setw(50) << file << (status == "passed" ? "\033[32mpassed\033[0m" : "\033[31mfailed\033[0m") << std::endl;
     }
 
     // Run negative tests
-    std::cout << "Running Negative Test Cases:" << std::endl;
+    std::cout << "\nRunning Negative Test Cases:" << std::endl;
     std::cout << "=============================" << std::endl;
     for (const auto& file : negative_files) {
-        std::string command = "d:/github/compiler/emc.exe " + file + " >nul 2>>test_logs.txt";
+        std::string command = "d:/github/emc/emc.exe " + file + " >nul 2>>test_logs.txt";
         int result = system(command.c_str());
         std::string status = (result != 0) ? "passed" : "failed";
         std::cout << std::left << std::setw(50) << file << (status == "passed" ? "\033[32mpassed\033[0m" : "\033[31mfailed\033[0m") << std::endl;

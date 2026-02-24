@@ -188,8 +188,8 @@ link_modules(std::vector<std::unique_ptr<llvm::Module>> module_list) {
 void print_benchmark_metrics(Compilation_Metrics *metrics) {
     printf("\n                                 Performance metrics\n");
     printf("-------------------------------------------------------------------------------------------\n");
-    printf("Total lines of code: \t\t\t%d lines\n", metrics->total_lines);
-    printf("Number of threads: \t\t\t%d (Equivalent to number of files compiled)\n\n", metrics->num_threads);
+    printf("Total lines of code: \t\t\t%zu lines\n", metrics->total_lines);
+    printf("Number of threads: \t\t\t%zu (Equivalent to number of files compiled)\n\n", metrics->num_threads);
 
     printf("Aggregate frontend time elapsed: \t%.6f sec (Sum of frontend times of each thread)\n", metrics->aggregate_frontend_time);
     printf("Frontend time elapsed: \t\t\t%.6f sec\n", metrics->frontend_time);

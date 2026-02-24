@@ -82,6 +82,13 @@ enum Partial_Token_Type {
     PTOK_ALNUM,   // both alphabets and numbers (starts with alpha)
 };
 
+// only using this for #define definition mappings
+struct Partial_Token {
+    std::string val;
+    Partial_Token_Type type = PTOK_ALNUM;
+    std::string file_name;
+};
+
 struct Token {
     std::string val;
     Token_Type type = TOKEN_NONE;
@@ -266,6 +273,8 @@ struct Lexer {
 
     Symbol_Table symbol_table; // to store symbols during parsing
     bool entry_point_found = false;
+
+    smap<Partial_Token *> preprocessor_definitions_map; // mapping #define definitions to actual token
 };
 
 inline Token *Lexer::get_next_token() {

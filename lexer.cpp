@@ -74,7 +74,7 @@ and this is NOT a continuation.
 void handle_preprocessor_directive(Lexer *lexer,
                                    std::string preprocessor_directive_name,
                                    int pos) {
-    if (preprocessor_directive_name == "import") {
+    if (preprocessor_directive_name == "include") {
         // the next token should be a string containing the file path
 
         // skip whitespace
@@ -83,7 +83,7 @@ void handle_preprocessor_directive(Lexer *lexer,
             pos++;
 
         if (!lexer->line[pos] || lexer->line[pos] != '\"') {
-            throw_error("SYNTAX ERROR: import file path not specified.",
+            throw_error("SYNTAX ERROR: included file path not specified.",
                         lexer->line, lexer->line_num, pos, lexer->file_name);
         }
         pos++;
@@ -102,7 +102,7 @@ void handle_preprocessor_directive(Lexer *lexer,
 
         if (!is_valid_string) {
             throw_error(
-                "SYNTAX ERROR: Invalid string provided for import file path.",
+                "SYNTAX ERROR: Invalid string provided for included file path.",
                 lexer->line, lexer->line_num, pos, lexer->file_name);
         }
 
@@ -134,6 +134,83 @@ void handle_preprocessor_directive(Lexer *lexer,
         lexer->total_lines_postprocessing +=
             import_lexer->total_lines_postprocessing;
         return;
+    } else if (preprocessor_directive_name == "define") {
+	/*
+	 We will handle defines as:
+
+	    #define <TOKEN_DEFINED> <ACTUAL_TOKEN>
+
+	 where <TOKEN_DEFINED> is going to be replaced during
+	 the preprocessing stage. It must start with
+	 either an _ or an alphabet.
+	 */
+
+	// skip whitespace
+        while (lexer->line[pos] &&
+               (lexer->line[pos] == ' ' || lexer->line[pos] == '\t'))
+            pos++;
+
+        if (!lexer->line[pos]) {
+            throw_error("SYNTAX ERROR: #define is missing a definition.",
+                        lexer->line, lexer->line_num, pos, lexer->file_name);
+        }
+
+        std::string token_defined;
+	bool is_first_char = true;
+
+	while (lexer->line[pos] && lexer->line[pos] != ' ' && lexer->line[pos] != '\t') {
+	    if (is_first_char && lexer->line[pos] != '_' && !is_alpha(lexer->line[pos])) {
+		throw_error("SYNTAX ERROR: #define definition must begin with either an alphabet or underscore.",
+                        lexer->line, lexer->line_num, pos, lexer->file_name);
+	    }
+	    is_first_char = false;
+            token_defined += lexer->line[pos];
+            pos++;
+        }
+
+	// skip whitespace
+        while (lexer->line[pos] &&
+               (lexer->line[pos] == ' ' || lexer->line[pos] == '\t'))
+            pos++;
+
+        if (!lexer->line[pos]) {
+            throw_error("SYNTAX ERROR: #define definition is incomplete.",
+                        lexer->line, lexer->line_num, pos, lexer->file_name);
+        }
+
+	auto *actual_token = new Partial_Token{"", PTOK_ALNUM, lexer->file_name};
+	is_first_char = true;
+
+        while (lexer->line[pos] && lexer->line[pos] != ' ' && lexer->line[pos] != '\t') {
+	    if (is_first_char) {
+		if (is_numeric(lexer->line[pos])) actual_token->type = PTOK_NUMERIC;
+		is_first_char = false;
+	    }
+
+	    if (actual_token->type == PTOK_ALNUM) {
+		if (
+		    lexer->line[pos] != '_' &&
+		    !is_alpha(lexer->line[pos]) &&
+		    !is_numeric(lexer->line[pos])
+		) {
+		    throw_error("SYNTAX ERROR: Invalid #define statement: Only alpha-numerics or underscores are allowed.",
+                        lexer->line, lexer->line_num, pos, lexer->file_name);
+		}
+	    } else if (
+		lexer->line[pos] != '.' &&
+		!is_numeric(lexer->line[pos])
+	    ) {
+		throw_error("SYNTAX ERROR: Invalid #define statement: Invalid numeric literal",
+			    lexer->line, lexer->line_num, pos, lexer->file_name);
+	    }
+
+            actual_token->val += lexer->line[pos];
+            pos++;
+        }
+
+	// create a mapping
+	lexer->preprocessor_definitions_map.insert(token_defined, actual_token);
+	return;
     }
 
     // throw an error if invalid directive passed
@@ -290,7 +367,18 @@ bool generate_tokens(Lexer *lexer, bool inside_multiline_comment) {
         // which is different from whatever token the symbol will be in
 
         if (curr != "") {
-            make_token_as_per_ptok(lexer, curr, ptok, pos);
+	    // it is possible that a #define for this exists.
+	    // if that is the case, we will replace it with the
+	    // actual value.
+
+	    Partial_Token *actual_token = lexer->preprocessor_definitions_map[curr];
+
+	    if (actual_token != NULL) {
+		make_token_as_per_ptok(lexer, actual_token->val, actual_token->type, pos);
+	    } else {
+		make_token_as_per_ptok(lexer, curr, ptok, pos);
+	    }
+
             curr.clear();
         }
 

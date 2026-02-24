@@ -97,7 +97,10 @@ Assignment: `= += -= *= /= %= <<= >>= &= |= ^= &&= ||=`
 ## 6. Preprocessor
 
 ```em
-#import "module.em"
+#include "module.em"
+
+#define __PI 3.14
+#define PI __PI
 ```
 
 ---

@@ -211,6 +211,30 @@ void handle_preprocessor_directive(Lexer *lexer,
 	// create a mapping
 	lexer->preprocessor_definitions_map.insert(token_defined, actual_token);
 	return;
+    } else if (preprocessor_directive_name == "undef") {
+	// to undefine a previously defined macro
+	// if that macro exists in the definitions
+	// (else it is just ignored)
+
+	// skip whitespace
+        while (lexer->line[pos] &&
+               (lexer->line[pos] == ' ' || lexer->line[pos] == '\t'))
+            pos++;
+
+        if (!lexer->line[pos]) {
+            throw_error(E083,
+                        lexer->line, lexer->line_num, pos, lexer->file_name);
+        }
+
+        std::string token_defined;
+	while (lexer->line[pos] && lexer->line[pos] != ' ' && lexer->line[pos] != '\t') {
+            token_defined += lexer->line[pos];
+            pos++;
+        }
+
+	// remove the defined token if it exists
+	lexer->preprocessor_definitions_map.remove(token_defined);
+	return;
     }
 
     // throw an error if invalid directive passed

@@ -5,7 +5,7 @@
 // here we shall define all the error strings
 // instead of having them scattered all across
 // the codebase in a raw form.
-// 
+//
 // also, for each error, we will use a code number
 // which will be of the form E<NUMBER>.
 
@@ -27,6 +27,7 @@
 #define E012 "SYNTAX ERROR: Invalid character \'\\t\' in string literal"
 #define E013 "SYNTAX ERROR: Invalid string literal. Closing quote not found."
 #define E014 "SYNTAX ERROR: Invalid token encountered."
+#define E083 "SYNTAX ERROR: #undef must be provided a definition."
 
 /* errors originating in parser */
 #define E015 "\nFATAL (Parser): Could not find current token."

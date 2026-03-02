@@ -26,6 +26,7 @@ with:     smap<V>
 functions that are needed:
 
     - insert(std::string, T)
+    - remove(std::string)
     - [] operator (std::string)
 */
 
@@ -52,6 +53,7 @@ template <typename T> struct smap {
     ~smap() { delete[] data; }
 
     void insert(const std::string &key, const T &value);
+    void remove(const std::string &key);
     T operator[](const std::string &key);
     void rehash();
     void resize(size_t new_capacity);
@@ -88,6 +90,20 @@ inline void smap<T>::insert(const std::string& key, const T& value) {
             data[index].value = value;
             return;
         }
+        index = (index + 1) & (capacity - 1);
+    }
+}
+
+template <typename T>
+inline void smap<T>::remove(const std::string& key) {
+    size_t hash = fnv1a_hash(key);
+    size_t index = hash & (capacity - 1);
+
+    while (data[index].occupied) {
+        if (!data[index].deleted && data[index].key == key) {
+            data[index].deleted = true;
+	    break;
+	}
         index = (index + 1) & (capacity - 1);
     }
 }
@@ -129,10 +145,10 @@ template <typename T> inline void smap<T>::resize(size_t new_capacity) {
 
 
 // returns true if the integer string can fit in a 32 bit int
-// 
+//
 // NOTE: this function is only meant to be called for TOKEN_NUMERICAL_LITERAL
 // of an integer type, and hence it assumes:
-// 
+//
 //    (1) the string has a non-zero length
 //    (2) it is a valid integer string (may have a sign at the beginning)
 

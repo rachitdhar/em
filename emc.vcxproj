@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -87,6 +87,7 @@
   <ItemDefinitionGroup>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <None Include=".gitattributes" />
     <None Include=".gitignore" />
     <None Include="build-msvc.bat" />
     <None Include="build.bat" />
@@ -97,13 +98,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ast.h" />
-    <ClInclude Include="data_structures.h" />
+    <ClInclude Include="dsa.h" />
+    <ClInclude Include="errors.h" />
     <ClInclude Include="ir_generator.h" />
     <ClInclude Include="lexer.h" />
     <ClInclude Include="llvm.h" />
     <ClInclude Include="parser.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="dsa.cpp" />
     <ClCompile Include="ir_generator.cpp" />
     <ClCompile Include="lexer.cpp" />
     <ClCompile Include="main.cpp" />

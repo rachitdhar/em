@@ -21,8 +21,12 @@ to help describe what IR instructions are meant to be generated.
 inline llvm::Type *llvm_type_map(const Data_Type type,
                                  llvm::LLVMContext &_context) {
     switch (type) {
-    case T_INT:
+    case T_S32:
+    case T_U32:
         return llvm::Type::getInt32Ty(_context);
+    case T_S64:
+    case T_U64:
+        return llvm::Type::getInt64Ty(_context);
     case T_FLOAT:
         return llvm::Type::getFloatTy(_context);
     case T_BOOL:
@@ -74,7 +78,7 @@ inline llvm::Value *cast_llvm_value_to_bool(llvm::Value *val,
                 llvm::cast<llvm::PointerType>(val->getType())),
             "tobool");
     }
-    throw_ir_error("Non-integer type in logical expression.");
+    throw_ir_error(E063);
     return NULL;
 }
 

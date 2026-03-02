@@ -26,7 +26,7 @@ clang-cl ^
 /D__STDC_LIMIT_MACROS ^
 %DEBUG_FLAG% ^
 /I "D:\softwares\clang+llvm-21.1.8-x86_64-pc-windows-msvc\include" ^
-lexer.cpp parser.cpp ir_generator.cpp main.cpp ^
+lexer.cpp parser.cpp ir_generator.cpp dsa.cpp main.cpp ^
 /link ^
 ntdll.lib ^
 /LIBPATH:"D:\softwares\clang+llvm-21.1.8-x86_64-pc-windows-msvc\lib" ^

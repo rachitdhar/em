@@ -26,12 +26,13 @@
     <None Include="LICENSE" />
     <None Include="README.md" />
     <None Include="SPEC.md" />
+    <None Include=".gitattributes" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ast.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="data_structures.h">
+    <ClInclude Include="dsa.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ir_generator.h">
@@ -44,6 +45,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="errors.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -61,6 +65,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="type_checker.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dsa.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

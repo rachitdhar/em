@@ -3,7 +3,8 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include "data_structures.h"
+#include "dsa.h"
+#include "errors.h"
 #include <fstream>
 #include <iterator>
 #include <stack>
@@ -116,7 +117,10 @@ enum Data_Type {
     T_UNIDENTIFIED,
     T_VOID,
     T_BOOL,
-    T_INT,
+    T_U32,
+    T_U64,
+    T_S32,
+    T_S64,
     T_FLOAT,
     T_CHAR,
     T_STRING

@@ -1,17 +1,21 @@
 //
-// data_structures.h
+// dsa.h
 //
 
 /*
-
-here i am implementing some of the data structures that
-are being used in several places all over this project.
+here i am implementing some of the data structures and
+algorithms that are being used in several places all over
+this project.
 
 the goal is to minimize the use of any standard libraries
 that are unnecessarily large or unoptimized, or where there
 is a way to write a uniquely specialized implementation.
-
 */
+
+#ifndef DATA_STRUCTURES_H
+#define DATA_STRUCTURES_H
+
+#include <string>
 
 /*
 implementation for hash maps from std::string -> T
@@ -25,17 +29,7 @@ functions that are needed:
     - [] operator (std::string)
 */
 
-#include <string>
-
 #define SMAP_CAPACITY_INIT 8
-
-// an implementation for the FNV-1a hash function
-inline size_t fnv1a_hash(const std::string &s) {
-    size_t hash = 1469598103934665603ull;
-    for (unsigned char c : s)
-        hash = (hash ^ c) * 1099511628211ull;
-    return hash;
-}
 
 template <typename T> struct smap_pair {
     std::string key;
@@ -63,8 +57,17 @@ template <typename T> struct smap {
     void resize(size_t new_capacity);
 };
 
+
+// an implementation for the FNV-1a hash function
+inline size_t fnv1a_hash(const std::string& s) {
+    size_t hash = 1469598103934665603ull;
+    for (unsigned char c : s)
+        hash = (hash ^ c) * 1099511628211ull;
+    return hash;
+}
+
 template <typename T>
-inline void smap<T>::insert(const std::string &key, const T &value) {
+inline void smap<T>::insert(const std::string& key, const T& value) {
     if ((size + 1.0) / capacity > 0.75) {
         resize(capacity * 2);
     }
@@ -80,7 +83,8 @@ inline void smap<T>::insert(const std::string &key, const T &value) {
             data[index].deleted = false;
             ++size;
             return;
-        } else if (data[index].key == key) {
+        }
+        else if (data[index].key == key) {
             data[index].value = value;
             return;
         }
@@ -88,7 +92,7 @@ inline void smap<T>::insert(const std::string &key, const T &value) {
     }
 }
 
-template <typename T> inline T smap<T>::operator[](const std::string &key) {
+template <typename T> inline T smap<T>::operator[](const std::string& key) {
     size_t hash = fnv1a_hash(key);
     size_t index = hash & (capacity - 1);
 
@@ -101,7 +105,7 @@ template <typename T> inline T smap<T>::operator[](const std::string &key) {
 }
 
 template <typename T> inline void smap<T>::resize(size_t new_capacity) {
-    smap_pair<T> *old_data = data;
+    smap_pair<T>* old_data = data;
     size_t old_capacity = capacity;
 
     data = new smap_pair<T>[new_capacity];
@@ -116,3 +120,22 @@ template <typename T> inline void smap<T>::resize(size_t new_capacity) {
 
     delete[] old_data;
 }
+
+
+// string to int conversion handling
+
+#define MAX_POS "2147483647"
+#define MAX_NEG "2147483648"
+
+
+// returns true if the integer string can fit in a 32 bit int
+// 
+// NOTE: this function is only meant to be called for TOKEN_NUMERICAL_LITERAL
+// of an integer type, and hence it assumes:
+// 
+//    (1) the string has a non-zero length
+//    (2) it is a valid integer string (may have a sign at the beginning)
+
+bool fits_s32(std::string& str);
+
+#endif

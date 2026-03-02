@@ -1,0 +1,103 @@
+//
+// errors.h
+//
+
+// here we shall define all the error strings
+// instead of having them scattered all across
+// the codebase in a raw form.
+// 
+// also, for each error, we will use a code number
+// which will be of the form E<NUMBER>.
+
+#ifndef ERRORS_H
+#define ERRORS_H
+
+/* errors originating in lexer */
+#define E001 "SYNTAX ERROR: included file path not specified."
+#define E002 "SYNTAX ERROR: Invalid string provided for included file path."
+#define E003 "SYNTAX ERROR: #define is missing a definition."
+#define E004 "SYNTAX ERROR: #define definition must begin with either an alphabet or underscore."
+#define E005 "SYNTAX ERROR: #define definition is incomplete."
+#define E006 "SYNTAX ERROR: Invalid #define statement: Only alpha-numerics or underscores are allowed."
+#define E007 "SYNTAX ERROR: Invalid #define statement: Invalid numeric literal"
+#define E008 "SYNTAX ERROR: Invalid preprocessor directive encountered."
+#define E009 "SYNTAX ERROR: Invalid token. Identifiers cannot start with numeric characters."
+#define E010 "SYNTAX ERROR: Invalid character literal"
+#define E011 "SYNTAX ERROR: Invalid character literal. Closing quote not found."
+#define E012 "SYNTAX ERROR: Invalid character \'\\t\' in string literal"
+#define E013 "SYNTAX ERROR: Invalid string literal. Closing quote not found."
+#define E014 "SYNTAX ERROR: Invalid token encountered."
+
+/* errors originating in parser */
+#define E015 "\nFATAL (Parser): Could not find current token."
+#define E016 "SYNTAX ERROR: Insufficient tokens for function definition."
+#define E017 "SYNTAX ERROR: Missing delimiter \';\' at the end of the statement."
+#define E018 "SYNTAX ERROR: Incomplete function call expression."
+#define E019 "SYNTAX ERROR: Invalid expression. Used \';\' in an expression that is not a statement."
+#define E020 "SYNTAX ERROR: Missing \'}\' from scope."
+#define E021 "SYNTAX ERROR: Incomplete \'if\' statement encountered."
+#define E022 "SYNTAX ERROR: Missing \'(\' from if statement condition."
+#define E023 "SYNTAX ERROR: \'if\' condition cannot contain a keyword."
+#define E024 "SYNTAX ERROR: Incomplete \'else\' statement encountered."
+#define E025 "SYNTAX ERROR: Incomplete \'for\' statement encountered."
+#define E026 "SYNTAX ERROR: Missing \'(\' from for statement condition."
+#define E027 "SYNTAX ERROR: Incomplete \'for\' statement encountered."
+#define E028 "SYNTAX ERROR: \'for\' initialization cannot contain a keyword."
+#define E029 "SYNTAX ERROR: \'for\' condition cannot contain a keyword."
+#define E030 "SYNTAX ERROR: \'for\' loop expression cannot contain a keyword."
+#define E031 "SYNTAX ERROR: Incomplete \'while\' statement encountered."
+#define E032 "SYNTAX ERROR: Missing \'(\' from while statement condition."
+#define E033 "SYNTAX ERROR: \'while\' condition cannot contain a keyword."
+#define E034 "SYNTAX ERROR: Incomplete \'return\' statement encountered."
+#define E035 "SYNTAX ERROR: return statement cannot contain another keyword."
+#define E036 "SYNTAX ERROR: Undefined function encountered."
+#define E037 "SYNTAX ERROR: Missing arguments in function call."
+#define E038 "SYNTAX ERROR: Undeclared identifier encountered."
+#define E039 "SYNTAX ERROR: Invalid declaration. Data type not specified for identifier."
+#define E040 "SYNTAX ERROR: Invalid declaration. Missing identifier after data type"
+#define E041 "SYNTAX ERROR: Invalid declaration. A variable with this name already exists in the current / parent scope."
+#define E042 "SYNTAX ERROR: Missing expression after \'(\'."
+#define E043 "SYNTAX ERROR: Unary prefix operator must be followed by an expression."
+#define E044 "SYNTAX ERROR (Parser): Failed to parse primary expression."
+#define E045 "SYNTAX ERROR: Invalid expression. Expected binary operator."
+#define E046 "SYNTAX ERROR: Invalid expression. Expected identifier/literal."
+#define E047 "SYNTAX ERROR: Missing delimiter at the end of expression."
+#define E048 "SYNTAX ERROR: Keyword could not be parsed."
+#define E049 "SYNTAX ERROR: Invalid data type for function parameter."
+#define E050 "SYNTAX ERROR: Invalid identifier for function parameter."
+#define E051 "SYNTAX ERROR: Invalid parameter name. A variable with this name already exists."
+#define E052 "SYNTAX ERROR: Missing separator (\',\') in function parameters."
+#define E053 "SYNTAX ERROR: Invalid return type for function definition."
+#define E054 "SYNTAX ERROR: Invalid identifier used in function definition."
+#define E055 "SYNTAX ERROR: Invalid function definition. Function with the same name already exists."
+#define E056 "SYNTAX ERROR: Missing token \'(\' in function definition."
+#define E057 "SYNTAX ERROR: Function definition must be followed by a statement."
+#define E058 "SYNTAX ERROR: Function prototype with this name already exists."
+#define E059 "SYNTAX ERROR: Missing expression after \'=\' in global variable initialization."
+#define E060 "ERROR: No tokens found."
+#define E061 "SYNTAX ERROR: Incomplete top-level expression encountered."
+#define E062 "SYNTAX ERROR: Duplicate entry points found."
+
+/* errors originating in ir_generator */
+#define E063 "Non-integer type in logical expression."
+#define E064 "Undefined identifier encountered."
+#define E065 "Unidentified literal type encountered."
+#define E066 "Explicit return could not be found in function block for a function with non-void return type."
+#define E067 "Invalid function. Could not be verified."
+#define E068 "(FATAL) Cannot find parent IR block for \'if\' statement."
+#define E069 "(FATAL) Cannot find parent IR block for \'for\' statement."
+#define E070 "(FATAL) Cannot find parent IR block for \'while\' statement."
+#define E071 "(FATAL) Cannot find parent IR block for declaration."
+#define E072 "Cannot increment/decrement a non-lvalue expression."
+#define E073 "Invalid unary operator encountered."
+#define E074 "(FATAL) Cannot find parent IR block for function call."
+#define E075 "Invalid function call."
+#define E076 "Return value type does not match the function return type."
+#define E077 "\'break\'/\'continue\' cannot be used outside a loop."
+#define E078 "Invalid jump type encountered."
+#define E079 "(FATAL) Cannot find parent IR block for jump statement."
+#define E080 "Global declaration can only be of assignment type."
+#define E081 "Global initializers must be constant expressions."
+#define E082 "Invalid top-level expression encountered."
+
+#endif

@@ -83,7 +83,7 @@ void handle_preprocessor_directive(Lexer *lexer,
             pos++;
 
         if (!lexer->line[pos] || lexer->line[pos] != '\"') {
-            throw_error("SYNTAX ERROR: included file path not specified.",
+            throw_error(E001,
                         lexer->line, lexer->line_num, pos, lexer->file_name);
         }
         pos++;
@@ -102,7 +102,7 @@ void handle_preprocessor_directive(Lexer *lexer,
 
         if (!is_valid_string) {
             throw_error(
-                "SYNTAX ERROR: Invalid string provided for included file path.",
+                E002,
                 lexer->line, lexer->line_num, pos, lexer->file_name);
         }
 
@@ -151,7 +151,7 @@ void handle_preprocessor_directive(Lexer *lexer,
             pos++;
 
         if (!lexer->line[pos]) {
-            throw_error("SYNTAX ERROR: #define is missing a definition.",
+            throw_error(E003,
                         lexer->line, lexer->line_num, pos, lexer->file_name);
         }
 
@@ -160,7 +160,7 @@ void handle_preprocessor_directive(Lexer *lexer,
 
 	while (lexer->line[pos] && lexer->line[pos] != ' ' && lexer->line[pos] != '\t') {
 	    if (is_first_char && lexer->line[pos] != '_' && !is_alpha(lexer->line[pos])) {
-		throw_error("SYNTAX ERROR: #define definition must begin with either an alphabet or underscore.",
+		throw_error(E004,
                         lexer->line, lexer->line_num, pos, lexer->file_name);
 	    }
 	    is_first_char = false;
@@ -174,7 +174,7 @@ void handle_preprocessor_directive(Lexer *lexer,
             pos++;
 
         if (!lexer->line[pos]) {
-            throw_error("SYNTAX ERROR: #define definition is incomplete.",
+            throw_error(E005,
                         lexer->line, lexer->line_num, pos, lexer->file_name);
         }
 
@@ -193,14 +193,14 @@ void handle_preprocessor_directive(Lexer *lexer,
 		    !is_alpha(lexer->line[pos]) &&
 		    !is_numeric(lexer->line[pos])
 		) {
-		    throw_error("SYNTAX ERROR: Invalid #define statement: Only alpha-numerics or underscores are allowed.",
+		    throw_error(E006,
                         lexer->line, lexer->line_num, pos, lexer->file_name);
 		}
 	    } else if (
 		lexer->line[pos] != '.' &&
 		!is_numeric(lexer->line[pos])
 	    ) {
-		throw_error("SYNTAX ERROR: Invalid #define statement: Invalid numeric literal",
+		throw_error(E007,
 			    lexer->line, lexer->line_num, pos, lexer->file_name);
 	    }
 
@@ -214,7 +214,7 @@ void handle_preprocessor_directive(Lexer *lexer,
     }
 
     // throw an error if invalid directive passed
-    throw_error("SYNTAX ERROR: Invalid preprocessor directive encountered.",
+    throw_error(E008,
                 lexer->line, lexer->line_num, pos, lexer->file_name);
 }
 
@@ -348,8 +348,7 @@ bool generate_tokens(Lexer *lexer, bool inside_multiline_comment) {
             // invalid to have identifier starting with numbers
             if (curr != "" && ptok == PTOK_NUMERIC) {
                 throw_error(
-                    "SYNTAX ERROR: Invalid token. Identifiers cannot start "
-                    "with numeric characters.",
+                    E009,
                     lexer->line, lexer->line_num, pos, lexer->file_name);
             }
 
@@ -429,7 +428,7 @@ bool generate_tokens(Lexer *lexer, bool inside_multiline_comment) {
         case '\'': {
             char literal_val = lexer->line[++pos];
             if (!literal_val || literal_val == '\t') {
-                throw_error("SYNTAX ERROR: Invalid character literal",
+                throw_error(E010,
                             lexer->line, lexer->line_num, pos,
                             lexer->file_name);
             }
@@ -440,8 +439,7 @@ bool generate_tokens(Lexer *lexer, bool inside_multiline_comment) {
 
             char closing_quote = lexer->line[++pos];
             if (!closing_quote || closing_quote != '\'') {
-                throw_error("SYNTAX ERROR: Invalid character literal. Closing "
-                            "quote not found.",
+                throw_error(E011,
                             lexer->line, lexer->line_num, pos,
                             lexer->file_name);
             }
@@ -455,8 +453,7 @@ bool generate_tokens(Lexer *lexer, bool inside_multiline_comment) {
 
             while (literal_char && literal_char != '\"') {
                 if (literal_char == '\t') {
-                    throw_error("SYNTAX ERROR: Invalid character \'\\t\' in "
-                                "string literal",
+                    throw_error(E012,
                                 lexer->line, lexer->line_num, pos,
                                 lexer->file_name);
                 }
@@ -467,8 +464,7 @@ bool generate_tokens(Lexer *lexer, bool inside_multiline_comment) {
             }
 
             if (!literal_char) {
-                throw_error("SYNTAX ERROR: Invalid string literal. Closing "
-                            "quote not found.",
+                throw_error(E013,
                             lexer->line, lexer->line_num, pos,
                             lexer->file_name);
             }
@@ -767,7 +763,7 @@ bool generate_tokens(Lexer *lexer, bool inside_multiline_comment) {
             break;
         }
         default: {
-            throw_error("SYNTAX ERROR: Invalid token encountered.", lexer->line,
+            throw_error(E014, lexer->line,
                         lexer->line_num, pos, lexer->file_name);
         }
         }

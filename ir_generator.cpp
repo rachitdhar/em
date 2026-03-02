@@ -31,7 +31,7 @@ is hardware architecture independent).
 llvm::Value *AST_Identifier::generate_ir_pointer(LLVM_IR *ir) {
     LLVM_Symbol_Info *sym_info = ir->llvm_symbol_table[name];
     if (sym_info == NULL || !sym_info->val) {
-        throw_ir_error("Undefined identifier encountered.");
+        throw_ir_error(E064);
     }
     return sym_info->val; // a pointer to the identifier
 }
@@ -40,7 +40,7 @@ llvm::Value *AST_Identifier::generate_ir(LLVM_IR *ir) {
     // returns the value contained in a particular variable
     LLVM_Symbol_Info *sym_info = ir->llvm_symbol_table[name];
     if (sym_info == NULL) {
-        throw_ir_error("Undefined identifier encountered.");
+        throw_ir_error(E064);
     }
 
     return ir->_builder->CreateLoad(sym_info->type, sym_info->val,
@@ -52,9 +52,18 @@ llvm::Value *AST_Literal::generate_ir(LLVM_IR *ir) {
     case T_BOOL:
         return llvm::ConstantInt::get(
             llvm::Type::getInt1Ty(ir->_builder->getContext()), value.b ? 1 : 0);
-    case T_INT:
+    case T_S32:
         return llvm::ConstantInt::get(
-            llvm::Type::getInt32Ty(ir->_builder->getContext()), value.i);
+            llvm::Type::getInt32Ty(ir->_builder->getContext()), value.i_u32);
+    case T_U32:
+        return llvm::ConstantInt::get(
+            llvm::Type::getInt32Ty(ir->_builder->getContext()), value.i_s32);
+    case T_S64:
+        return llvm::ConstantInt::get(
+            llvm::Type::getInt64Ty(ir->_builder->getContext()), value.i_s64);
+    case T_U64:
+        return llvm::ConstantInt::get(
+            llvm::Type::getInt64Ty(ir->_builder->getContext()), value.i_u64);
     case T_FLOAT:
         return llvm::ConstantFP::get(
             llvm::Type::getFloatTy(ir->_builder->getContext()), value.f);
@@ -86,7 +95,7 @@ llvm::Value *AST_Literal::generate_ir(LLVM_IR *ir) {
             *(value.s)); // local string literal
     }
     default:
-        throw_ir_error("Unidentified literal type encountered.");
+        throw_ir_error(E065);
     }
     return nullptr; // added to prevent warnings (should never reach here)
 }
@@ -149,12 +158,12 @@ llvm::Value *AST_Function_Definition::generate_ir(LLVM_IR *ir) {
     // in the block itself).
     if (!has_return_expression_in_block) {
 	if (llvm_return_type->isVoidTy()) ir->_builder->CreateRetVoid();
-	else throw_ir_error("Explicit return could not be found in function block for a function with non-void return type.");
+	else throw_ir_error(E066);
     }
 
     // verify function
     if (llvm::verifyFunction(*_f, &llvm::errs())) {
-        throw_ir_error("Invalid function. Could not be verified.");
+        throw_ir_error(E067);
     }
 
     return _f;
@@ -171,7 +180,7 @@ llvm::Value *AST_If_Expression::generate_ir(LLVM_IR *ir) {
 
     if (ir->_builder->GetInsertBlock() == nullptr) {
         throw_ir_error(
-            "(FATAL) Cannot find parent IR block for \'if\' statement.");
+            E068);
     }
 
     // create labels (then:, else:, and ifend:)
@@ -212,7 +221,7 @@ llvm::Value *AST_If_Expression::generate_ir(LLVM_IR *ir) {
 llvm::Value *AST_For_Expression::generate_ir(LLVM_IR *ir) {
     if (ir->_builder->GetInsertBlock() == nullptr) {
         throw_ir_error(
-            "(FATAL) Cannot find parent IR block for \'for\' statement.");
+            E069);
     }
 
     llvm::Function *f = ir->_builder->GetInsertBlock()->getParent();
@@ -286,7 +295,7 @@ llvm::Value *AST_While_Expression::generate_ir(LLVM_IR *ir) {
 
     if (ir->_builder->GetInsertBlock() == nullptr) {
         throw_ir_error(
-            "(FATAL) Cannot find parent IR block for \'while\' statement.");
+            E070);
     }
 
     llvm::Function *f = ir->_builder->GetInsertBlock()->getParent();
@@ -340,7 +349,7 @@ llvm::Value *AST_While_Expression::generate_ir(LLVM_IR *ir) {
 
 llvm::Value *AST_Declaration::generate_ir(LLVM_IR *ir) {
     if (ir->_builder->GetInsertBlock() == nullptr) {
-        throw_ir_error("(FATAL) Cannot find parent IR block for declaration.");
+        throw_ir_error(E071);
     }
 
     llvm::Function *f = ir->_builder->GetInsertBlock()->getParent();
@@ -383,7 +392,7 @@ llvm::Value *AST_Unary_Expression::generate_ir(LLVM_IR *ir) {
 
         if (expr->expr_type != EXPR_IDENT) {
             throw_ir_error(
-                "Cannot increment/decrement a non-lvalue expression).");
+                E072);
         }
 
         llvm::Value *val_addr =
@@ -402,7 +411,7 @@ llvm::Value *AST_Unary_Expression::generate_ir(LLVM_IR *ir) {
         return (is_postfix) ? val : new_val;
     }
     default:
-        throw_ir_error("Invalid unary operator encountered.");
+        throw_ir_error(E073);
     }
     return nullptr; // added to prevent warnings (should never reach here)
 }
@@ -574,13 +583,13 @@ llvm::Value *AST_Binary_Expression::generate_ir(LLVM_IR *ir) {
 llvm::Value *AST_Function_Call::generate_ir(LLVM_IR *ir) {
     if (ir->_builder->GetInsertBlock() == nullptr) {
         throw_ir_error(
-            "(FATAL) Cannot find parent IR block for function call.");
+            E074);
     }
 
     // find the function in the module
     llvm::Function *callee = ir->_module->getFunction(function_name);
     if (!callee) {
-        throw_ir_error("Invalid function call.");
+        throw_ir_error(E075);
     }
 
     // generate instructions for each argument
@@ -619,7 +628,7 @@ llvm::Value *AST_Return_Expression::generate_ir(LLVM_IR *ir) {
             val = ir->_builder->CreateIntCast(val, retTy, true, "retcast");
         } else {
             throw_ir_error(
-                "Return value type does not match the function return type.");
+                E076);
         }
     }
 
@@ -632,7 +641,7 @@ llvm::Value *AST_Jump_Expression::generate_ir(LLVM_IR *ir) {
     // of the loop where we need to jump to.
 
     if (ir->loop_terminals.empty()) {
-        throw_ir_error("\'break\'/\'continue\' cannot be used outside a loop.");
+        throw_ir_error(E077);
     }
 
     Loop_Terminals *current = ir->loop_terminals.top();
@@ -645,12 +654,12 @@ llvm::Value *AST_Jump_Expression::generate_ir(LLVM_IR *ir) {
         ir->_builder->CreateBr(current->loop_condition);
         break;
     default:
-        throw_ir_error("Invalid jump type encountered.");
+        throw_ir_error(E078);
     }
 
     if (ir->_builder->GetInsertBlock() == nullptr) {
         throw_ir_error(
-            "(FATAL) Cannot find parent IR block for jump statement.");
+            E079);
     }
 
     llvm::Function *f = ir->_builder->GetInsertBlock()->getParent();
@@ -690,7 +699,7 @@ llvm::Value *generate_ir__global_declaration(LLVM_IR *ir,
 
         if (bin->op != TOKEN_ASSIGN) {
             throw_ir_error(
-                "Global declaration can only be of assignment type.");
+                E080);
         }
 
         // left branch must be a declaration
@@ -700,7 +709,7 @@ llvm::Value *generate_ir__global_declaration(LLVM_IR *ir,
         llvm::Value *right_val = bin->right->generate_ir(ir);
         llvm::Constant *init = llvm::dyn_cast<llvm::Constant>(right_val);
         if (!init) {
-            throw_ir_error("Global initializers must be constant expressions.");
+            throw_ir_error(E081);
         }
 
         auto *global = new llvm::GlobalVariable(
@@ -712,7 +721,7 @@ llvm::Value *generate_ir__global_declaration(LLVM_IR *ir,
         return global;
     }
     default: {
-        throw_ir_error("Invalid top-level expression encountered.");
+        throw_ir_error(E082);
     }
     }
     return nullptr;

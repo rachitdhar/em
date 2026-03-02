@@ -341,7 +341,7 @@ inline void throw_parser_error(const char *message, Lexer *lexer) {
 
     Token *tok = lexer->peek(0);
     if (tok == NULL) {
-        fprintf(stderr, "\nFATAL (Parser): Could not find current token.");
+        fprintf(stderr, E015);
         exit(1);
     }
 
@@ -365,24 +365,23 @@ inline void throw_parser_error(const char *message, Lexer *lexer) {
 // insufficient token errors
 inline void throw_error__insufficient_tokens_func_def(Lexer *lexer) {
     throw_parser_error(
-        "SYNTAX ERROR: Insufficient tokens for function definition.", lexer);
+        E016, lexer);
 }
 
 // missing delimiter ';' at end of statement
 inline void throw_error__missing_delimiter(Lexer *lexer) {
     throw_parser_error(
-        "SYNTAX ERROR: Missing delimiter \';\' at the end of the statement.",
+        E017,
         lexer);
 }
 
 inline void throw_error__incomplete_func_call(Lexer *lexer) {
-    throw_parser_error("SYNTAX ERROR: Incomplete function call expression.",
+    throw_parser_error(E018,
                        lexer);
 }
 
 inline void throw_error__used_delimiter_in_a_non_statement(Lexer *lexer) {
-    throw_parser_error("SYNTAX ERROR: Invalid expression. Used \';\' in an "
-                       "expression that is not a statement.",
+    throw_parser_error(E019,
                        lexer);
 }
 

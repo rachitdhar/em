@@ -13,7 +13,7 @@
 #define ERRORS_H
 
 /* errors originating in lexer */
-#define E001 "SYNTAX ERROR: included file path not specified."
+#define E001 "SYNTAX ERROR: Included file path not specified."
 #define E002 "SYNTAX ERROR: Invalid string provided for included file path."
 #define E003 "SYNTAX ERROR: #define is missing a definition."
 #define E004 "SYNTAX ERROR: #define definition must begin with either an alphabet or underscore."
@@ -28,6 +28,8 @@
 #define E013 "SYNTAX ERROR: Invalid string literal. Closing quote not found."
 #define E014 "SYNTAX ERROR: Invalid token encountered."
 #define E083 "SYNTAX ERROR: #undef must be provided a definition."
+#define E084 "SYNTAX ERROR: #ifdef/#ifndef must be provided a definition."
+#define E085 "SYNTAX ERROR: \'#\' must be the first non-whitespace character on a line."
 
 /* errors originating in parser */
 #define E015 "\nFATAL (Parser): Could not find current token."

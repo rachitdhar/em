@@ -279,6 +279,8 @@ struct Lexer {
     bool entry_point_found = false;
 
     smap<Partial_Token *> preprocessor_definitions_map; // mapping #define definitions to actual token
+    bool can_read_tokens = true; // to control reading #ifdef, #ifndef blocks
+    int endif_nesting_level = 0; // is incremented when can_read_tokens is false and we see a #ifdef/#ifndef
 };
 
 inline Token *Lexer::get_next_token() {

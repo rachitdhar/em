@@ -235,6 +235,38 @@ void handle_preprocessor_directive(Lexer *lexer,
 	// remove the defined token if it exists
 	lexer->preprocessor_definitions_map.remove(token_defined);
 	return;
+    } else if (preprocessor_directive_name == "ifdef" || preprocessor_directive_name == "ifndef") {
+	// to conditionally read a block of code
+	// as per whether or not some macro has been
+	// defined or not.
+	//
+	//    #ifdef <TOKEN_DEFINED>
+	//    ...
+	//    #endif
+
+	// skip whitespace
+        while (lexer->line[pos] &&
+               (lexer->line[pos] == ' ' || lexer->line[pos] == '\t'))
+            pos++;
+
+        if (!lexer->line[pos]) {
+            throw_error(E084,
+                        lexer->line, lexer->line_num, pos, lexer->file_name);
+        }
+
+        std::string token_defined;
+	while (lexer->line[pos] && lexer->line[pos] != ' ' && lexer->line[pos] != '\t') {
+            token_defined += lexer->line[pos];
+            pos++;
+        }
+
+	bool definition_exists = lexer->preprocessor_definitions_map[token_defined] != NULL;
+	lexer->can_read_tokens = preprocessor_directive_name == "ifdef"
+	                         ? definition_exists
+	                         : !definition_exists;
+	return;
+    } else if (preprocessor_directive_name == "endif") {
+	return;
     }
 
     // throw an error if invalid directive passed
@@ -276,9 +308,7 @@ inline void make_token_as_per_ptok(Lexer *lexer, std::string &curr,
 }
 
 // generates tokens for a line
-// it returns a boolean telling whether we are inside a multiline comment
-// at the start of the next line
-bool generate_tokens(Lexer *lexer, bool inside_multiline_comment) {
+void generate_tokens(Lexer *lexer, bool *inside_multiline_comment) {
     int pos = 0;
     bool currently_reading_token = false;
     bool encountered_comment = false;
@@ -287,16 +317,52 @@ bool generate_tokens(Lexer *lexer, bool inside_multiline_comment) {
     Partial_Token_Type ptok;
 
     while (lexer->line[pos] && !encountered_comment) {
+	if (!lexer->can_read_tokens) {
+	    // we would be here in case there
+	    // previously was some #ifdef / #ifndef
+	    // whose condition was not met, and so
+	    // we will be skipping the entire block
+	    // of code up until a #endif
+	    //
+	    // NOTE: if the first non-whitespace char
+	    // is not a #, then we will just skip that
+	    // line directly, since preprocessor directives
+	    // must start at the beginning of a line.
+
+	    // skip whitespace
+            while (lexer->line[pos] &&
+                   (lexer->line[pos] == ' ' || lexer->line[pos] == '\t'))
+                   pos++;
+
+            if (lexer->line[pos] != '#') break;
+            pos++;
+
+	    std::string preprocessor_directive_name;
+	    while (lexer->line[pos] && lexer->line[pos] != ' ' && lexer->line[pos] != '\t') {
+		preprocessor_directive_name += lexer->line[pos];
+		pos++;
+	    }
+
+	    if (preprocessor_directive_name == "endif") {
+		if (lexer->endif_nesting_level > 0) lexer->endif_nesting_level--;
+		else lexer->can_read_tokens = true;
+	    } else if (preprocessor_directive_name == "ifdef" || preprocessor_directive_name == "ifndef") {
+		lexer->endif_nesting_level++;
+	    }
+
+	    break; // go read the next line
+	}
+
         if (!currently_reading_token) {
             // if in a multiline comment, keep reading
             // until we reach '*/'
 
-            if (inside_multiline_comment) {
+            if (*inside_multiline_comment) {
                 while (lexer->line[pos]) {
                     if (lexer->line[pos] == '*') {
                         pos++;
                         if (lexer->line[pos] && lexer->line[pos] == '/') {
-                            inside_multiline_comment = false;
+                            *inside_multiline_comment = false;
                             pos++;
                             break;
                         }
@@ -318,6 +384,13 @@ bool generate_tokens(Lexer *lexer, bool inside_multiline_comment) {
 
         // handling preprocessor directives
         if (c == '#') {
+	    // first we will ensure that this is the
+	    // first non-whitespace character on this
+	    // line (else throw an error)
+	    for (int i = 0; i < pos; i++)
+	        if (lexer->line[i] != ' ' && lexer->line[i] != '\t')
+	            throw_error(E085, lexer->line, lexer->line_num, pos, lexer->file_name);
+
             pos++;
 
             // read the name of the directive
@@ -619,7 +692,7 @@ bool generate_tokens(Lexer *lexer, bool inside_multiline_comment) {
             } else if (next && next == '*') {
                 // encountered a multi-line comment
 
-                inside_multiline_comment = true;
+                *inside_multiline_comment = true;
                 pos++;
                 break;
             }
@@ -794,8 +867,7 @@ bool generate_tokens(Lexer *lexer, bool inside_multiline_comment) {
 
         currently_reading_token = false; // to handle possible whitespace
     }
-
-    return inside_multiline_comment;
+    return;
 }
 
 // reads the file line by line and generates tokens
@@ -813,8 +885,7 @@ Lexer *perform_lexical_analysis(const char *file_name) {
 
     while (std::getline(file, lexer->line)) {
         lexer->line_num++;
-        inside_multiline_comment =
-            generate_tokens(lexer, inside_multiline_comment);
+        generate_tokens(lexer, &inside_multiline_comment);
     }
     lexer->total_lines_postprocessing += lexer->line_num;
 

@@ -10,7 +10,7 @@ clang++ ^
 %DEBUG_FLAG% ^
 lexer.cpp parser.cpp ir_generator.cpp dsa.cpp main.cpp ^
 -o ^
-emc ^
+bin/emc ^
 -I ^
 -std=c++17 ^
 -fno-exceptions ^

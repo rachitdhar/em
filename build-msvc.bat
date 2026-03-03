@@ -4,7 +4,7 @@ set OPT_FLAG=/O2
 set DEBUG_FLAG=
 
 if "%1"=="Clean" (
-	del /Q *.exe *.pdb *.obj *.ilk *.idb
+	del /Q bin\*
 	echo Cleaned build artifacts.
 	exit /B 0
 )
@@ -159,4 +159,4 @@ LLVMTargetParser.lib ^
 LLVMTableGen.lib ^
 LLVMSupport.lib ^
 LLVMDemangle.lib ^
-/OUT:emc.exe
+/OUT:bin/emc.exe

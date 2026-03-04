@@ -316,7 +316,7 @@ inline void Lexer::move_to_next_token() {
 //          list of keywords for the language
 // *****************************************************
 
-const std::string DATA_TYPES[] = {"void",  "bool", "int",
+const std::string DATA_TYPES[] = {"void",  "bool", "int", "u32", "u64", "s32", "s64",
                                   "float", "char", "string"};
 
 const std::string KEYWORDS[] = {

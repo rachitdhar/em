@@ -102,7 +102,7 @@ get_module_from_bitcode(const std::string &filename,
         llvm::MemoryBuffer::getFile(filename);
 
     if (!buffer_or_error) {
-        llvm::errs() << "Error: could not open bitcode file '" << filename
+        llvm::errs() << "ERROR: Could not open bitcode file '" << filename
                      << "': " << buffer_or_error.getError().message() << "\n";
         exit(1);
     }
@@ -113,7 +113,7 @@ get_module_from_bitcode(const std::string &filename,
                                context);
 
     if (!module_or_error) {
-        llvm::errs() << "Error: failed to parse bitcode file '" << filename
+        llvm::errs() << "ERROR: Failed to parse bitcode file '" << filename
                      << "': ";
         llvm::handleAllErrors(module_or_error.takeError(),
                               [](const llvm::ErrorInfoBase &EIB) {

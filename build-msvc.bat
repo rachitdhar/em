@@ -4,7 +4,7 @@ set OPT_FLAG=/O2
 set DEBUG_FLAG=
 
 if "%1"=="Clean" (
-	del /Q bin\*
+	del /Q bin\emc.exe bin\emc.ilk bin\emc.pdb
 	echo Cleaned build artifacts.
 	exit /B 0
 )
@@ -26,7 +26,7 @@ clang-cl ^
 /D__STDC_LIMIT_MACROS ^
 %DEBUG_FLAG% ^
 /I "D:\softwares\clang+llvm-21.1.8-x86_64-pc-windows-msvc\include" ^
-lexer.cpp parser.cpp ir_generator.cpp dsa.cpp main.cpp ^
+lexer.cpp parser.cpp ir_generator.cpp dsa.cpp linker.cpp main.cpp ^
 /link ^
 ntdll.lib ^
 /LIBPATH:"D:\softwares\clang+llvm-21.1.8-x86_64-pc-windows-msvc\lib" ^

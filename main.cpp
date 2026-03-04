@@ -37,61 +37,9 @@ of threads to run the compilation process in parallel.
 
 */
 
-#include "ir_generator.h"
-#include <chrono>
-#include <mutex>
-#include <thread>
+#include "emc.h"
 
-#define LANGUAGE_FILE_EXTENSION "em"
 
-enum Output_File_Type { OBJ, ASM, LL };
-
-struct Flag_Settings {
-    bool print_ast = false;
-    bool print_ir = false;
-    Output_File_Type output_file_type = OBJ;
-    std::string cpu_type;
-    std::string output_file_name = "out";
-};
-
-struct Compilation_Metrics {
-    size_t total_lines = 0;
-    size_t num_threads = 1;
-    double aggregate_frontend_time = 0;  // sum of frontend times of each thread
-    double frontend_time = 0;      // total fronend time taken
-    double backend_time = 0;       // total backend time taken (mainly by LLVM)
-    double total_time = 0;         // total time for entire compilation process
-};
-
-const std::string cpu_to_target[][2] = {
-    /* Windows/Linux x86 systems */
-    {"x86-64", "x86_64-unknown-linux-gnu"},
-
-    /* Embedded / microcontrollers (ARM 32-bit) */
-    {"cortex-m3", "armv7m-none-eabi"},
-    {"cortex-m4", "armv7em-none-eabi"},
-    {"cortex-m7", "armv7em-none-eabi"},
-
-    /* Raspberry Pi / ARM 64-bit */
-    {"cortex-a7", "armv7a-unknown-linux-gnueabihf"}, // Pi 2
-    {"cortex-a53", "aarch64-unknown-linux-gnu"},     // Pi 3
-    {"cortex-a72", "aarch64-unknown-linux-gnu"},     // Pi 4
-
-    /* Modern phones */
-    {"cortex-a76", "aarch64-unknown-linux-gnu"},
-    {"cortex-a78", "aarch64-unknown-linux-gnu"},
-    {"cortex-x1", "aarch64-unknown-linux-gnu"},
-
-    /* Apple */
-    {"apple-m1", "arm64-apple-darwin"},
-    {"apple-m2", "arm64-apple-darwin"},
-
-    /* Cloud ARM servers */
-    {"neoverse-n1", "aarch64-unknown-linux-gnu"},
-    {"neoverse-v1", "aarch64-unknown-linux-gnu"},
-    {"neoverse-n2", "aarch64-unknown-linux-gnu"}};
-
-const int NUM_CPU_TYPES = sizeof(cpu_to_target) / sizeof(cpu_to_target[0]);
 
 // to generate the executable / assembly file for the particular target
 void run_llvm_backend(llvm::Module *_module, const std::string &out_file_name,
@@ -160,29 +108,7 @@ void run_llvm_backend(llvm::Module *_module, const std::string &out_file_name,
     dest.flush();
 }
 
-// to link all the LLVM modules
-std::unique_ptr<llvm::Module>
-link_modules(std::vector<std::unique_ptr<llvm::Module>> module_list) {
-    if (module_list.empty()) {
-        fprintf(stderr, "LINKER ERROR: No modules found.\n");
-        exit(1);
-    }
 
-    std::unique_ptr<llvm::Module> linked_module = std::move(module_list[0]);
-    module_list[0] = nullptr;
-    llvm::Linker linker(*linked_module);
-
-    for (size_t i = 1; i < module_list.size(); ++i) {
-        if (!module_list[i])
-            continue;
-        if (linker.linkInModule(std::move(module_list[i]))) {
-            fprintf(stderr, "LINKER ERROR: Failed to link module %zu.\n", i);
-            exit(1);
-        }
-        module_list[i] = nullptr;
-    }
-    return linked_module;
-}
 
 // displays the total lines, and the frontend, backend, and total elapsed times.
 void print_benchmark_metrics(Compilation_Metrics *metrics) {
@@ -381,23 +307,29 @@ int main(int argc, char **argv) {
     unified_modules.reserve(module_list.size());
 
     // clone the module into the shared_context
-    if (module_list.size() > 1) {
-        for (size_t i = 0; i < module_list.size(); ++i) {
-            if (llvm::verifyModule(*module_list[i], &llvm::errs())) {
-                error_occurred = true;
-                break;
-            }
-            auto cloned_module =
-                move_module_to_context(module_list[i].get(), shared_context);
-            unified_modules.push_back(std::move(cloned_module));
-            module_list[i].release();
+    for (size_t i = 0; i < module_list.size(); ++i) {
+        if (llvm::verifyModule(*module_list[i], &llvm::errs())) {
+            error_occurred = true;
+            break;
         }
+        auto cloned_module = move_module_to_context(module_list[i].get(), shared_context);
+        unified_modules.push_back(std::move(cloned_module));
+        module_list[i].release();
     }
 
+    // include libs that are needed, by converting
+    // .bc files to LLVM modules.
+    //
+    // TODO:
+    //
+    // right now I have hardcoded this to only
+    // work for windows, but this should be changed later.
+#ifdef _WIN32
+    unified_modules.push_back(std::move(get_module_from_bitcode("lib/win_runtime.bc", shared_context)));
+#endif
+
     // link the modules into a single module
-    std::unique_ptr<llvm::Module> linked_module =
-        (module_list.size() > 1) ? link_modules(std::move(unified_modules))
-                                 : std::move(module_list[0]);
+    std::unique_ptr<llvm::Module> linked_module = link_modules(std::move(unified_modules));
 
     if (llvm::verifyModule(*linked_module, &llvm::errs())) {
         fprintf(stderr, "LINKER ERROR: Merged module verification failed.\n");
@@ -442,6 +374,10 @@ int main(int argc, char **argv) {
                          target_triple);
     } else
         write_llvm_ir_to_file(output_file_name.c_str(), linked_module.get());
+
+    // make an executable from the object file (if the output was .o)
+    if (flag_settings.output_file_type == OBJ)
+        make_executable_from_object(flag_settings.output_file_name);
 
     auto backend_end = std::chrono::high_resolution_clock::now();
 

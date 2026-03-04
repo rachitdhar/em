@@ -99,9 +99,11 @@
   <ItemGroup>
     <ClInclude Include="ast.h" />
     <ClInclude Include="dsa.h" />
+    <ClInclude Include="emc.h" />
     <ClInclude Include="errors.h" />
     <ClInclude Include="ir_generator.h" />
     <ClInclude Include="lexer.h" />
+    <ClInclude Include="linker.h" />
     <ClInclude Include="llvm.h" />
     <ClInclude Include="parser.h" />
   </ItemGroup>
@@ -109,6 +111,7 @@
     <ClCompile Include="dsa.cpp" />
     <ClCompile Include="ir_generator.cpp" />
     <ClCompile Include="lexer.cpp" />
+    <ClCompile Include="linker.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="parser.cpp" />
     <ClCompile Include="tests\test.cpp" />

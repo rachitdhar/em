@@ -97,25 +97,25 @@
     <None Include="SPEC.md" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ast.h" />
-    <ClInclude Include="dsa.h" />
-    <ClInclude Include="emc.h" />
-    <ClInclude Include="errors.h" />
-    <ClInclude Include="ir_generator.h" />
-    <ClInclude Include="lexer.h" />
-    <ClInclude Include="linker.h" />
-    <ClInclude Include="llvm.h" />
-    <ClInclude Include="parser.h" />
+    <ClCompile Include="src\dsa.cpp" />
+    <ClCompile Include="src\ir_generator.cpp" />
+    <ClCompile Include="src\lexer.cpp" />
+    <ClCompile Include="src\linker.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\parser.cpp" />
+    <ClCompile Include="src\type_checker.cpp" />
+    <ClCompile Include="tests\test.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="dsa.cpp" />
-    <ClCompile Include="ir_generator.cpp" />
-    <ClCompile Include="lexer.cpp" />
-    <ClCompile Include="linker.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="parser.cpp" />
-    <ClCompile Include="tests\test.cpp" />
-    <ClCompile Include="type_checker.cpp" />
+    <ClInclude Include="src\ast.h" />
+    <ClInclude Include="src\dsa.h" />
+    <ClInclude Include="src\emc.h" />
+    <ClInclude Include="src\errors.h" />
+    <ClInclude Include="src\ir_generator.h" />
+    <ClInclude Include="src\lexer.h" />
+    <ClInclude Include="src\linker.h" />
+    <ClInclude Include="src\llvm.h" />
+    <ClInclude Include="src\parser.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

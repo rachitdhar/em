@@ -8,7 +8,7 @@ if "%1"=="-debug" (
 
 clang++ ^
 %DEBUG_FLAG% ^
-lexer.cpp parser.cpp ir_generator.cpp dsa.cpp linker.cpp main.cpp ^
+src/lexer.cpp src/parser.cpp src/ir_generator.cpp src/dsa.cpp src/linker.cpp src/main.cpp ^
 -o ^
 bin/emc ^
 -I ^

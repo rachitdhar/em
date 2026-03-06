@@ -5,6 +5,7 @@
 
 #include "dsa.h"
 #include "errors.h"
+#include "linker.h"
 #include <fstream>
 #include <iterator>
 #include <stack>
@@ -281,6 +282,8 @@ struct Lexer {
     smap<Partial_Token *> preprocessor_definitions_map; // mapping #define definitions to actual token
     bool can_read_tokens = true; // to control reading #ifdef, #ifndef blocks
     int endif_nesting_level = 0; // is incremented when can_read_tokens is false and we see a #ifdef/#ifndef
+
+    std::vector<std::string> libs_to_link;
 };
 
 inline Token *Lexer::get_next_token() {

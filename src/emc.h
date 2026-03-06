@@ -6,7 +6,6 @@
 #define EMC_H
 
 #include "ir_generator.h"
-#include "linker.h"
 #include <chrono>
 #include <mutex>
 #include <thread>

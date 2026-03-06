@@ -22,10 +22,22 @@ involves two kinds of linking:
 
 #include "llvm.h"
 #include <filesystem>
+#include <string>
+
+#if defined(_WIN32)
+#include <windows.h>
+#elif defined(__APPLE__)
+#include <mach-o/dyld.h>
+#elif defined(__linux__)
+#include <unistd.h>
+#endif
 
 std::unique_ptr<llvm::Module>
 link_modules(std::vector<std::unique_ptr<llvm::Module>> module_list);
 
 void make_executable_from_object(std::string object_file_name);
+std::filesystem::path get_compiler_executable_path();
+std::string get_include_path();
+std::string get_lib_path();
 
 #endif

@@ -142,7 +142,8 @@ int compile(
     bool *entry_point_found,
     std::chrono::time_point<std::chrono::high_resolution_clock> frontend_start,
     Compilation_Metrics *metrics, std::mutex *metrics_mutex,
-    std::vector<std::unique_ptr<llvm::Module>> *module_list) {
+    std::vector<std::unique_ptr<llvm::Module>> *module_list,
+    std::vector<std::string> *libs_to_link) {
     if (!has_extension(file_name, LANGUAGE_FILE_EXTENSION)) {
         fprintf(
             stderr,
@@ -154,6 +155,12 @@ int compile(
     Lexer *lexer = perform_lexical_analysis(file_name);
     if (!lexer)
         return 1; // Assume perform_lexical_analysis returns nullptr on error
+
+    libs_to_link->insert(
+        libs_to_link->end(),
+	std::make_move_iterator(lexer->libs_to_link.begin()),
+	std::make_move_iterator(lexer->libs_to_link.end())
+    );
 
     auto *ast = parse_tokens(lexer);
     if (!ast) {
@@ -263,6 +270,7 @@ int main(int argc, char **argv) {
     std::mutex metrics_mutex;
     std::vector<std::thread> threads;
     std::vector<std::unique_ptr<llvm::Module>> module_list;
+    std::vector<std::string> libs_to_link;
     std::atomic<bool> error_occurred(false);
 
     int last_file_arg_index = flags_exist ? flags_start_index - 1 : argc - 1;
@@ -272,7 +280,7 @@ int main(int argc, char **argv) {
         threads.emplace_back([&, i]() {
             if (compile(argv[i], &flag_settings, &entry_point_found,
                         frontend_start, &metrics, &metrics_mutex,
-                        &module_list) != 0)
+                        &module_list, &libs_to_link) != 0)
                 error_occurred = true;
         });
     }
@@ -324,9 +332,17 @@ int main(int argc, char **argv) {
     //
     // right now I have hardcoded this to only
     // work for windows, but this should be changed later.
+    std::string lib_path = get_lib_path();
+
 #ifdef _WIN32
-    unified_modules.push_back(std::move(get_module_from_bitcode("lib/win_runtime.bc", shared_context)));
+    unified_modules.push_back(std::move(get_module_from_bitcode(lib_path + "win_runtime.bc", shared_context)));
 #endif
+
+    for (std::string& lib_to_link: libs_to_link) {
+	unified_modules.push_back(std::move(
+	    get_module_from_bitcode(lib_path + lib_to_link, shared_context)
+	));
+    }
 
     // link the modules into a single module
     std::unique_ptr<llvm::Module> linked_module = link_modules(std::move(unified_modules));

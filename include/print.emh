@@ -1,0 +1,13 @@
+
+//
+// print.emh
+//
+
+// header file for the print.c library
+
+#ifndef __EM_HEADER__PRINT
+#define __EM_HEADER__PRINT 1
+
+void print(string text, u32 len);
+
+#endif

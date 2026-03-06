@@ -30,6 +30,8 @@
 #define E083 "SYNTAX ERROR: #undef must be provided a definition."
 #define E084 "SYNTAX ERROR: #ifdef/#ifndef must be provided a definition."
 #define E085 "SYNTAX ERROR: \'#\' must be the first non-whitespace character on a line."
+#define E086 "SYNTAX ERROR: Included file name must be in the format: <FILE_NAME>.<EXTENSION>"
+#define E087 "ERROR: Could not find the file: %s"
 
 /* errors originating in parser */
 #define E015 "\nFATAL (Parser): Could not find current token."

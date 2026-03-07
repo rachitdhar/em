@@ -83,6 +83,7 @@ inline Precedence op_prec(Token_Type type) {
 
     // Primary tokens
     case TOKEN_IDENTIFIER:
+    case TOKEN_KEYWORD:
     case TOKEN_DATA_TYPE:
     case TOKEN_NUMERIC_LITERAL:
     case TOKEN_CHAR_LITERAL:

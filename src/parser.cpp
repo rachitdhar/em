@@ -375,14 +375,18 @@ inline AST_Function_Call *parse_ast_function_call(Lexer *lexer) {
     ast_call->function_name = tok->val;
 
     // get the number of arguments that are expected
+    // (NOTE: this excludes the variadic portion)
     int num_expected_args;
+    bool has_variadic_args;
 
     if (lexer->symbol_table.functions[tok->val] != NULL) {
         num_expected_args =
-            lexer->symbol_table.functions[tok->val]->signature->size();
+        lexer->symbol_table.functions[tok->val]->signature->size();
+	has_variadic_args = lexer->symbol_table.functions[tok->val]->has_variadic_args;
     } else if (lexer->symbol_table.function_prototypes[tok->val] != NULL) {
         num_expected_args = lexer->symbol_table.function_prototypes[tok->val]
-                                ->signature->size();
+        ->signature->size();
+	has_variadic_args = lexer->symbol_table.function_prototypes[tok->val]->has_variadic_args;
     } else {
         throw_parser_error(E036,
                            lexer);
@@ -431,9 +435,14 @@ inline AST_Function_Call *parse_ast_function_call(Lexer *lexer) {
         i++;
     }
 
-    if (num_expected_args != num_separators + 1) {
-        throw_parser_error(E037,
-                           lexer);
+    if (
+        (num_expected_args > num_separators + 1) ||
+        (
+            !has_variadic_args &&
+            num_expected_args < num_separators + 1
+        )
+    ) {
+	throw_parser_error(E037, lexer);
     }
 
     for (int arg_num = 0; arg_num < num_separators + 1; arg_num++) {
@@ -478,6 +487,33 @@ inline AST_Expression *parse_ast_identifier(Lexer *lexer) {
     lexer->move_to_next_token();
 
     return ast_ident;
+}
+
+inline AST_Varg *parse_ast_varg(Lexer *lexer) {
+    // this expression is supposed to pop the
+    // next variadic arg from the va_list params
+    // and also identify the data type of that arg.
+    //
+    // the syntax is like: varg(<DATA_TYPE>)
+
+    Token *tok = lexer->get_next_token();
+    if (tok == NULL || tok->type != TOKEN_LEFT_PAREN)
+        throw_parser_error(E089, lexer);
+
+    tok = lexer->get_next_token();
+    if (tok == NULL || tok->type != TOKEN_DATA_TYPE)
+        throw_parser_error(E090, lexer);
+
+    auto *ast_varg = new AST_Varg;
+    ast_varg->data_type = type_map(tok->val);
+
+    tok = lexer->get_next_token();
+    if (tok == NULL || tok->type != TOKEN_RIGHT_PAREN)
+        throw_parser_error(E091, lexer);
+
+    lexer->move_to_next_token();
+
+    return ast_varg;
 }
 
 inline AST_Declaration *parse_ast_declaration(Lexer *lexer) {
@@ -617,6 +653,13 @@ inline AST_Expression *parse_primary_subexpression(Lexer *lexer, Token *tok) {
     case TOKEN_LEFT_PAREN:
         expr = parse_ast_parenthesized_expression(lexer);
         break;
+    case TOKEN_KEYWORD:
+	if (tok->val == "varg") {
+	    expr = parse_ast_varg(lexer);
+	    break;
+	}
+	// other keywords are not supposed to be inside
+	// a primary subexpression
     default:
         throw_parser_error(
             E044,
@@ -936,7 +979,34 @@ void parse_ast_function_params(AST_Function_Definition *ast_function,
     }
 
     while (tok != NULL && tok->type != TOKEN_RIGHT_PAREN) {
+	// there is one special case that we need to
+	// check for, in addition to the normal kind
+	// of argument. we can allow an "argument" of the
+	// form: "..."
+	// this would be the last "argument" of the function,
+	// and would be used to tell the compiler that
+	// this function allows variadic args here onwards.
+
         if (tok->type != TOKEN_DATA_TYPE) {
+	    if (tok->type == TOKEN_DOT) {
+		for (int i = 0; i < 2; ++i) {
+		    tok = lexer->get_next_token();
+		    if (tok == NULL || tok->type != TOKEN_DOT) goto invalid_arg;
+		}
+
+		// now we have got a variadic arg marker
+		// but we still need to ensure that the next
+		// token is ')'
+		tok = lexer->get_next_token();
+		if (tok == NULL || tok->type != TOKEN_RIGHT_PAREN) {
+		    throw_parser_error(E088, lexer);
+		}
+
+		ast_function->has_variadic_args = true;
+		break;
+	    }
+
+	invalid_arg:
             throw_parser_error(
                 E049,
                 lexer);
@@ -1045,6 +1115,7 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer) {
     symbol->symbol_type = SYM_FUNCTION;
     symbol->return_type = ast_function->return_type;
     symbol->signature = new std::vector<Data_Type>();
+    symbol->has_variadic_args = ast_function->has_variadic_args;
 
     for (auto *param : ast_function->params) {
         symbol->signature->push_back(param->type);

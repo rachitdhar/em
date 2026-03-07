@@ -110,8 +110,15 @@ llvm::Value *AST_Function_Definition::generate_ir(LLVM_IR *ir) {
         llvm_param_types.push_back(llvm_type_map(param->type, ir->_context));
     }
 
+    // we need to handle the scenario where the function may
+    // have variadic args. in LLVM, we pass the flag for this,
+    // which specifically creates a function of variadic/non-variadic
+    // type accordingly.
+    // (NOTE: LLVM does not require any space to be allocated for the
+    // variadic args here directly. It has a va_list mechanism that
+    // handles those separately)
     llvm::FunctionType *f_type =
-        llvm::FunctionType::get(llvm_return_type, llvm_param_types, false);
+        llvm::FunctionType::get(llvm_return_type, llvm_param_types, has_variadic_args);
     llvm::Function *_f = llvm::Function::Create(
         f_type, llvm::Function::ExternalLinkage, function_name, ir->_module);
 
@@ -150,6 +157,31 @@ llvm::Value *AST_Function_Definition::generate_ir(LLVM_IR *ir) {
         ir->llvm_symbol_table.insert(param_name, sym_info);
     }
 
+
+    // before we emit the function body, we should handle the scenario
+    // where there may be variadic args. In that case, we would want
+    // to allocate a va_list, and call a va_start.
+    if (has_variadic_args) {
+	llvm::Type *i8_ptr_ty = llvm::Type::getInt8Ty(ir->_context)->getPointerTo();
+
+	// allocate va_list
+	llvm::AllocaInst *va_list_alloca =
+        ir->_builder->CreateAlloca(i8_ptr_ty, nullptr, "ap");
+
+	ir->current_va_list = va_list_alloca;
+
+	// declare llvm.va_start
+    llvm::Function* va_start =
+        llvm::Intrinsic::getDeclaration(
+            ir->_module,
+            llvm::Intrinsic::vastart,
+            { i8_ptr_ty }
+        );
+
+	// call va_start
+	ir->_builder->CreateCall(va_start, va_list_alloca);
+    }
+
     // emit body
     bool has_return_expression_in_block = generate_block_ir(ir, block);
 
@@ -157,6 +189,8 @@ llvm::Value *AST_Function_Definition::generate_ir(LLVM_IR *ir) {
     // (for other types, the return expression should be present
     // in the block itself).
     if (!has_return_expression_in_block) {
+	if (has_variadic_args) emit_va_end(ir);
+
 	if (llvm_return_type->isVoidTy()) ir->_builder->CreateRetVoid();
 	else throw_ir_error(E066);
     }
@@ -612,6 +646,12 @@ llvm::Value *AST_Function_Call::generate_ir(LLVM_IR *ir) {
 }
 
 llvm::Value *AST_Return_Expression::generate_ir(LLVM_IR *ir) {
+    // in case the function within which this return
+    // is being called, was a variadic args function,
+    // we should first call va_end before emitting the
+    // return instruction.
+    if (ir->current_va_list) emit_va_end(ir);
+
     if (!value)
         return ir->_builder->CreateRetVoid(); // ret void
 
@@ -667,6 +707,16 @@ llvm::Value *AST_Jump_Expression::generate_ir(LLVM_IR *ir) {
     ir->_builder->SetInsertPoint(jumpend);
 
     return nullptr; // break and continue don't return any value
+}
+
+llvm::Value *AST_Varg::generate_ir(LLVM_IR *ir) {
+    llvm::Type *llvm_type = llvm_type_map(data_type, ir->_context);
+
+    return ir->_builder->CreateVAArg(
+        ir->current_va_list,
+        llvm_type,
+        "vaarg"
+    );
 }
 
 llvm::Value *AST_Block_Expression::generate_ir(LLVM_IR *ir) {

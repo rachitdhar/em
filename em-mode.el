@@ -26,7 +26,7 @@
   '("void" "bool" "char" "int" "u32" "u64" "s32" "s64" "float" "string"))
 
 (defun em-keywords ()
-  '("if" "else" "for" "while" "return" "break" "continue" "true" "false"))
+  '("if" "else" "for" "while" "return" "break" "continue" "varg" "true" "false"))
 
 (defun em-font-lock-keywords ()
   (list

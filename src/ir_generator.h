@@ -21,18 +21,24 @@ to help describe what IR instructions are meant to be generated.
 inline llvm::Type *llvm_type_map(const Data_Type type,
                                  llvm::LLVMContext &_context) {
     switch (type) {
+    case T_S8:
+    case T_U8:
+        return llvm::Type::getInt8Ty(_context);
+    case T_S16:
+    case T_U16:
+        return llvm::Type::getInt16Ty(_context);
     case T_S32:
     case T_U32:
         return llvm::Type::getInt32Ty(_context);
     case T_S64:
     case T_U64:
         return llvm::Type::getInt64Ty(_context);
-    case T_FLOAT:
+    case T_F32:
         return llvm::Type::getFloatTy(_context);
+    case T_F64:
+        return llvm::Type::getDoubleTy(_context);
     case T_BOOL:
         return llvm::Type::getInt1Ty(_context);
-    case T_CHAR:
-        return llvm::Type::getInt8Ty(_context);
     case T_STRING:
         return llvm::Type::getInt8Ty(_context)->getPointerTo();
     case T_VOID:

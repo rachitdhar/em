@@ -13,18 +13,26 @@ inline Data_Type type_map(const std::string &type) {
         return T_VOID;
     if (type == "bool")
         return T_BOOL;
+    if (type == "u8")
+        return T_U8;
+    if (type == "u16")
+        return T_U16;
     if (type == "u32")
         return T_U32;
     if (type == "u64")
         return T_U64;
+    if (type == "char" || type == "s8")
+        return T_S8;
+    if (type == "s16")
+        return T_S16;
     if (type == "int" || type == "s32")
         return T_S32;
     if (type == "s64")
         return T_S64;
-    if (type == "float")
-        return T_FLOAT;
-    if (type == "char")
-        return T_CHAR;
+    if (type == "float" || type == "f32")
+        return T_F32;
+    if (type == "double" || type == "f64")
+        return T_F64;
     if (type == "string")
         return T_STRING;
 
@@ -128,12 +136,16 @@ struct AST_Literal : AST_Expression {
 
     union {
         bool b;
-        int i_s32;
-        long long i_s64;
-        unsigned int i_u32;
-        unsigned long long i_u64;
-        float f;
-        char c;
+        int8_t i_s8;
+        int16_t i_s16;
+        int32_t i_s32;
+        int64_t i_s64;
+        uint8_t i_u8;
+        uint16_t i_u16;
+        uint32_t i_u32;
+        uint64_t i_u64;
+        float f_32;
+        double f_64;
         std::string *s; // storing the address of the string
     } value;
 

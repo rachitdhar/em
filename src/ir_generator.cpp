@@ -52,6 +52,18 @@ llvm::Value *AST_Literal::generate_ir(LLVM_IR *ir) {
     case T_BOOL:
         return llvm::ConstantInt::get(
             llvm::Type::getInt1Ty(ir->_builder->getContext()), value.b ? 1 : 0);
+    case T_S8:
+        return llvm::ConstantInt::get(
+            llvm::Type::getInt8Ty(ir->_builder->getContext()), value.i_u8);
+    case T_U8:
+        return llvm::ConstantInt::get(
+            llvm::Type::getInt8Ty(ir->_builder->getContext()), value.i_s8);
+    case T_S16:
+        return llvm::ConstantInt::get(
+            llvm::Type::getInt16Ty(ir->_builder->getContext()), value.i_u16);
+    case T_U16:
+        return llvm::ConstantInt::get(
+            llvm::Type::getInt16Ty(ir->_builder->getContext()), value.i_s16);
     case T_S32:
         return llvm::ConstantInt::get(
             llvm::Type::getInt32Ty(ir->_builder->getContext()), value.i_u32);
@@ -64,12 +76,12 @@ llvm::Value *AST_Literal::generate_ir(LLVM_IR *ir) {
     case T_U64:
         return llvm::ConstantInt::get(
             llvm::Type::getInt64Ty(ir->_builder->getContext()), value.i_u64);
-    case T_FLOAT:
+    case T_F32:
         return llvm::ConstantFP::get(
-            llvm::Type::getFloatTy(ir->_builder->getContext()), value.f);
-    case T_CHAR:
-        return llvm::ConstantInt::get(
-            llvm::Type::getInt8Ty(ir->_builder->getContext()), value.c);
+            llvm::Type::getFloatTy(ir->_builder->getContext()), value.f_32);
+    case T_F64:
+        return llvm::ConstantFP::get(
+            llvm::Type::getDoubleTy(ir->_builder->getContext()), value.f_64);
     case T_STRING: {
         // in LLVM, if a string literal is global, then it
         // must be created as a constant. we need to thus

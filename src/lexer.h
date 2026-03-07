@@ -11,6 +11,7 @@
 #include <stack>
 #include <stdio.h>
 #include <vector>
+#include <stdint.h>
 
 enum Token_Type {
     TOKEN_NONE = 0, // NO TOKEN ASSIGNED (not a real token)
@@ -118,12 +119,16 @@ enum Data_Type {
     T_UNIDENTIFIED,
     T_VOID,
     T_BOOL,
+    T_U8,
+    T_U16,
     T_U32,
     T_U64,
+    T_S8,
+    T_S16,
     T_S32,
     T_S64,
-    T_FLOAT,
-    T_CHAR,
+    T_F32,
+    T_F64,
     T_STRING
 };
 
@@ -319,8 +324,13 @@ inline void Lexer::move_to_next_token() {
 //          list of keywords for the language
 // *****************************************************
 
-const std::string DATA_TYPES[] = {"void",  "bool", "int", "u32", "u64", "s32", "s64",
-                                  "float", "char", "string"};
+const std::string DATA_TYPES[] = {
+    "void", "bool", "int",
+    "u8", "u16", "u32", "u64",
+    "s8", "s16", "s32", "s64",
+    "float", "f32", "double", "f64",
+    "char", "string"
+};
 
 const std::string KEYWORDS[] = {
     /* control flow */

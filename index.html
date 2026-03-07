@@ -18,7 +18,7 @@ Em is a systems programming language with a C-style syntax that emphasizes clean
 </p>
 
 <p>
-Last updated: March 7, 2026
+Last updated: March 8, 2026
 </p>
 
 <div>
@@ -397,14 +397,29 @@ Em provides the following primitive data types:
     <td>1 byte</td>
 </tr>
 <tr>
+    <td><code>s8</code> or <code>char</code></td>
+    <td>Signed 8-bit integer / Single character</td>
+    <td>-128 to 127</td>
+</tr>
+<tr>
+    <td><code>u8</code></td>
+    <td>Unsigned 8-bit integer</td>
+    <td>0 to 255</td>
+</tr>
+<tr>
+    <td><code>s16</code></td>
+    <td>Signed 16-bit integer</td>
+    <td>-32,768 to 32,767</td>
+</tr>
+<tr>
+    <td><code>u16</code></td>
+    <td>Unsigned 16-bit integer</td>
+    <td>0 to 65,535</td>
+</tr>
+<tr>
     <td><code>int</code> or <code>s32</code></td>
     <td>Signed 32-bit integer</td>
     <td>-2,147,483,648 to 2,147,483,647</td>
-</tr>
-<tr>
-    <td><code>s64</code></td>
-    <td>Signed 64-bit integer</td>
-    <td>-9,223,372,036,854,775,808 to 9,223,372,036,854,775,807</td>
 </tr>
 <tr>
     <td><code>u32</code></td>
@@ -412,19 +427,24 @@ Em provides the following primitive data types:
     <td>0 to 4,294,967,295</td>
 </tr>
 <tr>
+    <td><code>s64</code></td>
+    <td>Signed 64-bit integer</td>
+    <td>-9,223,372,036,854,775,808 to 9,223,372,036,854,775,807</td>
+</tr>
+<tr>
     <td><code>u64</code></td>
     <td>Unsigned 64-bit integer</td>
     <td>0 to 18,446,744,073,709,551,615</td>
 </tr>
 <tr>
-    <td><code>float</code></td>
+    <td><code>float</code> or <code>f32</code></td>
     <td>32-bit floating-point number</td>
     <td>IEEE 754 single precision</td>
 </tr>
 <tr>
-    <td><code>char</code></td>
-    <td>Single character</td>
-    <td>8-bit</td>
+    <td><code>f64</code> or <code>double</code></td>
+    <td>64-bit floating-point number</td>
+    <td>IEEE 754 double precision</td>
 </tr>
 <tr>
     <td><code>string</code></td>

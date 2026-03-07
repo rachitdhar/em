@@ -571,8 +571,8 @@ inline AST_Literal *parse_ast_literal(Lexer *lexer) {
         // try using s64.
 
         if (tok->val.find('.') != std::string::npos) {
-            ast_literal->value.f = std::stof(tok->val);
-            ast_literal->type = T_FLOAT;
+            ast_literal->value.f_64 = std::stod(tok->val);
+            ast_literal->type = T_F64;
         } else if (fits_s32(tok->val)) {
             ast_literal->value.i_s32 = std::stoi(tok->val);
             ast_literal->type = T_S32;
@@ -585,8 +585,8 @@ inline AST_Literal *parse_ast_literal(Lexer *lexer) {
         ast_literal->value.b = tok->val == "true";
         ast_literal->type = T_BOOL;
     } else if (tok->type == TOKEN_CHAR_LITERAL) {
-        ast_literal->value.c = tok->val[0];
-        ast_literal->type = T_CHAR;
+        ast_literal->value.i_s8 = tok->val[0];
+        ast_literal->type = T_S8;
     } else {
         ast_literal->value.s = &(tok->val);
         ast_literal->type = T_STRING;

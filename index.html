@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Em Programming Language Specification</title>
+</head>
+
+<body>
+
+<div style="width:600px; margin:auto;">
+
+<a id="top"></a>
+
+<h1>Em Programming Language Specification</h1>
+
+<p>
+Em is a systems programming language with a C-style syntax that emphasizes clean, simple, and minimal features with high performance. This document describes the complete syntax and semantics of the Em programming language.
+</p>
+
+<p>
+Last updated: March 7, 2026
+</p>
+
+<div>
+<h2>Table of Contents</h2>
+<ul>
+<li><a href="#intro">1 Introduction</a>
+    <ul>
+    <li><a href="#project-info">1.1 Project Information</a></li>
+    <li><a href="#releases">1.2 Releases / Downloads</a></li>
+    </ul>
+</li>
+<li><a href="#usage">2 Usage and Compilation</a>
+    <ul>
+    <li><a href="#basic-usage">2.1 Basic Usage</a></li>
+    <li><a href="#multiple-files">2.2 Compiling Multiple Files</a></li>
+    <li><a href="#header-files">2.3 Header Files (.emh)</a></li>
+    <li><a href="#compiler-flags">2.4 Compiler Flags</a></li>
+    <li><a href="#cpu-targets">2.5 CPU Targets</a></li>
+    </ul>
+</li>
+<li><a href="#hello-world">3 Hello World Example</a></li>
+<li><a href="#lex">4 Lexical Structure</a>
+    <ul>
+    <li><a href="#tokens">4.1 Tokens</a></li>
+    <li><a href="#identifiers">4.2 Identifiers</a></li>
+    <li><a href="#literals">4.3 Literals</a></li>
+    </ul>
+</li>
+<li><a href="#types">5 Data Types</a>
+    <ul>
+    <li><a href="#primitive-types">5.1 Primitive Types</a></li>
+    </ul>
+</li>
+<li><a href="#keywords">6 Keywords</a></li>
+<li><a href="#operators">7 Operators</a>
+    <ul>
+    <li><a href="#operator-types">7.1 Operator Types</a></li>
+    <li><a href="#operator-precedence">7.2 Operator Precedence</a></li>
+    </ul>
+</li>
+<li><a href="#expressions">8 Expressions and Statements</a>
+    <ul>
+    <li><a href="#declarations">8.1 Variable Declarations</a></li>
+    <li><a href="#identifiers-expr">8.2 Identifiers</a></li>
+    <li><a href="#literals-expr">8.3 Literals</a></li>
+    <li><a href="#unary-expr">8.4 Unary Expressions</a></li>
+    <li><a href="#binary-expr">8.5 Binary Expressions</a></li>
+    <li><a href="#assignments">8.6 Assignments</a></li>
+    <li><a href="#func-calls">8.7 Function Calls</a></li>
+    <li><a href="#if-else">8.8 If-Else Statements</a></li>
+    <li><a href="#for-loop">8.9 For Loops</a></li>
+    <li><a href="#while-loop">8.10 While Loops</a></li>
+    <li><a href="#break-continue">8.11 Break and Continue</a></li>
+    <li><a href="#return">8.12 Return Statements</a></li>
+    <li><a href="#func-def">8.13 Function Definitions</a></li>
+    <li><a href="#func-proto">8.14 Function Prototypes</a></li>
+    <li><a href="#varg">8.15 Variadic Arguments</a></li>
+    <li><a href="#blocks">8.16 Block Expressions</a></li>
+    </ul>
+</li>
+<li><a href="#preprocessor">9 Preprocessor Directives</a>
+    <ul>
+    <li><a href="#pp-include">9.1 #include</a></li>
+    <li><a href="#pp-define">9.2 #define</a></li>
+    <li><a href="#pp-undef">9.3 #undef</a></li>
+    <li><a href="#pp-ifdef">9.4 #ifdef</a></li>
+    <li><a href="#pp-ifndef">9.5 #ifndef</a></li>
+    <li><a href="#pp-endif">9.6 #endif</a></li>
+    </ul>
+</li>
+</ul>
+</div>
+
+<hr>
+
+<h2 id="intro">1 Introduction</h2>
+
+<p>
+Em is a systems programming language designed for simplicity and control over low-level details. The compiler, known as <code>emc</code>, generates efficient machine code through LLVM. Em supports modern programming constructs while maintaining minimal syntax overhead.
+</p>
+
+<h3 id="project-info">1.1 Project Information</h3>
+
+<p>
+<strong>Source Code:</strong> <a href="https://github.com/rachitdhar/em">https://github.com/rachitdhar/em</a>
+</p>
+<p>
+Copyright © 2025 Rachit Dhar. Licensed under the Apache License 2.0.
+</p>
+
+<h3 id="releases">1.2 Releases / Downloads</h3>
+
+<p>
+The Em programming language is currently in early development. There are no official releases available yet, but the initial release is expected soon.
+</p>
+
+<p>
+Please check <a href="https://github.com/rachitdhar/em/releases">https://github.com/rachitdhar/em/releases</a> periodically for future releases and downloads.
+</p>
+
+<hr>
+
+<h2 id="usage">2 Usage and Compilation</h2>
+
+<h3 id="basic-usage">2.1 Basic Usage</h3>
+
+<p>
+To compile an Em source file, use the Em compiler <code>emc</code>:
+</p>
+
+<pre>emc program.em</pre>
+
+<p>
+The source file must have a <code>.em</code> file extension. The compiler will produce an executable with the same name as the source file (minus the extension).
+</p>
+
+<h3 id="multiple-files">2.2 Compiling Multiple Files</h3>
+
+<p>
+To compile multiple Em source files together:
+</p>
+
+<pre>emc file1.em file2.em file3.em</pre>
+
+<p>
+All specified files will be compiled and linked together into a single executable.
+</p>
+
+<h3 id="header-files">2.3 Header Files (.emh)</h3>
+
+<p>
+Em uses header files with the <code>.emh</code> extension to provide declarations and function prototypes. Header files are included in source files using the <code>#include</code> preprocessor directive. Associated compiled header libraries with <code>.bc</code> extension are automatically linked during compilation when headers are included. This allows code to be organized into reusable libraries and modules.
+</p>
+
+<h3 id="compiler-flags">2.4 Compiler Flags</h3>
+
+<p>
+Compiler flags are specified after the list of files to compile. A flag starts with a hyphen (-):
+</p>
+
+<pre>emc file1.em file2.em [flags]</pre>
+
+<table>
+<tr>
+    <th>Flag</th>
+    <th>Description</th>
+</tr>
+<tr>
+    <td><code>-pout</code></td>
+    <td>Prints the parser output (AST structure)</td>
+</tr>
+<tr>
+    <td><code>-llout</code></td>
+    <td>Prints the generated LLVM IR</td>
+</tr>
+<tr>
+    <td><code>-ll</code></td>
+    <td>Generates a .ll file (LLVM IR) instead of an executable</td>
+</tr>
+<tr>
+    <td><code>-asm</code></td>
+    <td>Generates a .s file (Assembly) instead of an executable</td>
+</tr>
+<tr>
+    <td><code>-cpu &lt;type&gt;</code></td>
+    <td>Specifies the target CPU type. Must be followed by a CPU name (see section 2.5)</td>
+</tr>
+<tr>
+    <td><code>-o &lt;filename&gt;</code></td>
+    <td>Names the output file. Must be followed by the desired filename</td>
+</tr>
+<tr>
+    <td><code>-benchmark</code></td>
+    <td>Prints compilation performance metrics</td>
+</tr>
+</table>
+
+<p>
+<strong>Example:</strong>
+</p>
+
+<pre>emc prog.em -asm -cpu x86-64 -o prog.s</pre>
+
+<p>
+This command compiles <code>prog.em</code>, generates assembly output for x86-64, and saves it to <code>prog.s</code>.
+</p>
+
+<h3 id="cpu-targets">2.5 CPU Targets</h3>
+
+<p>
+The following CPU types can be specified with the <code>-cpu</code> flag:
+</p>
+
+<pre>x86-64
+cortex-m3
+cortex-m4
+cortex-m7
+cortex-a7
+cortex-a53
+cortex-a72
+cortex-a76
+cortex-a78
+cortex-x1
+apple-m1
+apple-m2
+neoverse-n1
+neoverse-v1
+neoverse-n2</pre>
+
+<p>
+If no target CPU is specified, the compiler automatically detects the host machine's CPU type.
+</p>
+
+<hr>
+
+<h2 id="hello-world">3 Hello World Example</h2>
+
+<p>
+Here is a simple Hello World program in Em. Note that Em does not include built-in I/O functions; this example demonstrates the basic structure of an Em program with a main function:
+</p>
+
+<pre>
+#include &lt;print.emh&gt;
+
+int main()
+{
+    print("hello world!", 12);
+    return 0;
+}
+</pre>
+
+<p>
+This program defines a <code>main</code> function that takes no parameters and returns 0. To use I/O operations, you would need to use included header files from the standard library.
+</p>
+
+<hr>
+
+<h2 id="lex">4 Lexical Structure</h2>
+
+<h3 id="tokens">4.1 Tokens</h3>
+
+<p>
+The lexical structure of Em is composed of the following token types:
+</p>
+
+<table>
+<tr>
+    <th>Token Type</th>
+    <th>Examples</th>
+    <th>Description</th>
+</tr>
+<tr>
+    <td>Identifier</td>
+    <td><code>x</code>, <code>foo_bar</code>, <code>var123</code></td>
+    <td>Names for variables, functions, and other identifiers</td>
+</tr>
+<tr>
+    <td>Keyword</td>
+    <td><code>if</code>, <code>while</code>, <code>return</code></td>
+    <td>Reserved words in the language</td>
+</tr>
+<tr>
+    <td>Data Type</td>
+    <td><code>int</code>, <code>float</code>, <code>bool</code></td>
+    <td>Type identifiers</td>
+</tr>
+<tr>
+    <td>Numeric Literal</td>
+    <td><code>42</code>, <code>3.14</code>, <code>0xFF</code></td>
+    <td>Integer and floating-point constants</td>
+</tr>
+<tr>
+    <td>Character Literal</td>
+    <td><code>'A'</code>, <code>'0'</code></td>
+    <td>Single character in single quotes</td>
+</tr>
+<tr>
+    <td>String Literal</td>
+    <td><code>"hello"</code>, <code>"world\n"</code></td>
+    <td>Sequences of characters in double quotes</td>
+</tr>
+<tr>
+    <td>Boolean Literal</td>
+    <td><code>true</code>, <code>false</code></td>
+    <td>Boolean constants</td>
+</tr>
+<tr>
+    <td>Separator</td>
+    <td><code>,</code></td>
+    <td>Separates items in lists</td>
+</tr>
+<tr>
+    <td>Delimiter</td>
+    <td><code>;</code></td>
+    <td>Terminates statements</td>
+</tr>
+<tr>
+    <td>Brackets</td>
+    <td><code>{</code> <code>}</code> <code>(</code> <code>)</code> <code>[</code> <code>]</code></td>
+    <td>Group code and expressions</td>
+</tr>
+<tr>
+    <td>Operators</td>
+    <td><code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, etc.</td>
+    <td>Perform operations on values</td>
+</tr>
+</table>
+
+<h3 id="identifiers">4.2 Identifiers</h3>
+
+<p>
+Identifiers are names for variables, functions, and other program elements. An identifier:
+</p>
+
+<ul>
+<li>Must start with a letter (a-z, A-Z) or underscore (_)</li>
+<li>Can contain letters, digits (0-9), and underscores</li>
+<li>Is case-sensitive</li>
+<li>Cannot be a reserved keyword</li>
+</ul>
+
+<p>
+Valid identifiers: <code>x</code>, <code>_private</code>, <code>myFunction</code>, <code>var_123</code>
+</p>
+
+<p>
+Invalid identifiers: <code>123var</code> (starts with digit), <code>my-var</code> (contains hyphen), <code>if</code> (reserved keyword)
+</p>
+
+<h3 id="literals">4.3 Literals</h3>
+
+<p>
+Literals represent constant values in the program:
+</p>
+
+<p>
+<strong>Numeric Literals:</strong> Decimal integers and floating-point numbers. Examples: <code>0</code>, <code>42</code>, <code>-17</code>, <code>3.14</code>, <code>2.5e-3</code>
+</p>
+
+<p>
+<strong>Character Literals:</strong> A single character enclosed in single quotes. Examples: <code>'A'</code>, <code>'0'</code>, <code>' '</code> (space)
+</p>
+
+<p>
+<strong>String Literals:</strong> Sequences of characters enclosed in double quotes. Supports escape sequences like <code>\n</code> (newline), <code>\t</code> (tab), etc. Examples: <code>"hello"</code>, <code>"line1\nline2"</code>
+</p>
+
+<p>
+<strong>Boolean Literals:</strong> <code>true</code> and <code>false</code>
+</p>
+
+<hr>
+
+<h2 id="types">5 Data Types</h2>
+
+<h3 id="primitive-types">5.1 Primitive Types</h3>
+
+<p>
+Em provides the following primitive data types:
+</p>
+
+<table>
+<tr>
+    <th>Type</th>
+    <th>Description</th>
+    <th>Size/Range</th>
+</tr>
+<tr>
+    <td><code>void</code></td>
+    <td>No type; used for functions that don't return a value</td>
+    <td>N/A</td>
+</tr>
+<tr>
+    <td><code>bool</code></td>
+    <td>Boolean value (true or false)</td>
+    <td>1 byte</td>
+</tr>
+<tr>
+    <td><code>int</code> or <code>s32</code></td>
+    <td>Signed 32-bit integer</td>
+    <td>-2,147,483,648 to 2,147,483,647</td>
+</tr>
+<tr>
+    <td><code>s64</code></td>
+    <td>Signed 64-bit integer</td>
+    <td>-9,223,372,036,854,775,808 to 9,223,372,036,854,775,807</td>
+</tr>
+<tr>
+    <td><code>u32</code></td>
+    <td>Unsigned 32-bit integer</td>
+    <td>0 to 4,294,967,295</td>
+</tr>
+<tr>
+    <td><code>u64</code></td>
+    <td>Unsigned 64-bit integer</td>
+    <td>0 to 18,446,744,073,709,551,615</td>
+</tr>
+<tr>
+    <td><code>float</code></td>
+    <td>32-bit floating-point number</td>
+    <td>IEEE 754 single precision</td>
+</tr>
+<tr>
+    <td><code>char</code></td>
+    <td>Single character</td>
+    <td>8-bit</td>
+</tr>
+<tr>
+    <td><code>string</code></td>
+    <td>String of characters</td>
+    <td>Variable length</td>
+</tr>
+</table>
+
+<hr>
+
+<h2 id="keywords">6 Keywords</h2>
+
+<p>
+The following words are reserved keywords in Em and cannot be used as identifiers:
+</p>
+
+<table>
+<tr>
+    <th>Category</th>
+    <th>Keywords</th>
+</tr>
+<tr>
+    <td>Control Flow</td>
+    <td><code>if</code>, <code>else</code>, <code>for</code>, <code>while</code></td>
+</tr>
+<tr>
+    <td>Jump Statements</td>
+    <td><code>return</code>, <code>break</code>, <code>continue</code></td>
+</tr>
+<tr>
+    <td>Special Builtins</td>
+    <td><code>varg</code></td>
+</tr>
+</table>
+
+<hr>
+
+<h2 id="operators">7 Operators</h2>
+
+<h3 id="operator-types">7.1 Operator Types</h3>
+
+<p>
+Em supports various operators organized by category:
+</p>
+
+<h4>Arithmetic Operators</h4>
+
+<table>
+<tr>
+    <th>Operator</th>
+    <th>Name</th>
+    <th>Example</th>
+    <th>Result</th>
+</tr>
+<tr>
+    <td><code>+</code></td>
+    <td>Addition</td>
+    <td><code>a + b</code></td>
+    <td>Sum of a and b</td>
+</tr>
+<tr>
+    <td><code>-</code></td>
+    <td>Subtraction</td>
+    <td><code>a - b</code></td>
+    <td>Difference of a and b</td>
+</tr>
+<tr>
+    <td><code>*</code></td>
+    <td>Multiplication</td>
+    <td><code>a * b</code></td>
+    <td>Product of a and b</td>
+</tr>
+<tr>
+    <td><code>/</code></td>
+    <td>Division</td>
+    <td><code>a / b</code></td>
+    <td>Quotient of a and b</td>
+</tr>
+<tr>
+    <td><code>%</code></td>
+    <td>Modulo</td>
+    <td><code>a % b</code></td>
+    <td>Remainder of a divided by b</td>
+</tr>
+</table>
+
+<h4>Assignment Operators</h4>
+
+<table>
+<tr>
+    <th>Operator</th>
+    <th>Name</th>
+    <th>Example</th>
+    <th>Equivalent To</th>
+</tr>
+<tr>
+    <td><code>=</code></td>
+    <td>Assignment</td>
+    <td><code>a = b</code></td>
+    <td>Assign b to a</td>
+</tr>
+<tr>
+    <td><code>+=</code></td>
+    <td>Add-Assign</td>
+    <td><code>a += b</code></td>
+    <td><code>a = a + b</code></td>
+</tr>
+<tr>
+    <td><code>-=</code></td>
+    <td>Subtract-Assign</td>
+    <td><code>a -= b</code></td>
+    <td><code>a = a - b</code></td>
+</tr>
+<tr>
+    <td><code>*=</code></td>
+    <td>Multiply-Assign</td>
+    <td><code>a *= b</code></td>
+    <td><code>a = a * b</code></td>
+</tr>
+<tr>
+    <td><code>/=</code></td>
+    <td>Divide-Assign</td>
+    <td><code>a /= b</code></td>
+    <td><code>a = a / b</code></td>
+</tr>
+<tr>
+    <td><code>%=</code></td>
+    <td>Modulo-Assign</td>
+    <td><code>a %= b</code></td>
+    <td><code>a = a % b</code></td>
+</tr>
+</table>
+
+<h4>Comparison Operators</h4>
+
+<table>
+<tr>
+    <th>Operator</th>
+    <th>Name</th>
+    <th>Example</th>
+</tr>
+<tr>
+    <td><code>==</code></td>
+    <td>Equal To</td>
+    <td><code>a == b</code></td>
+</tr>
+<tr>
+    <td><code>!=</code></td>
+    <td>Not Equal To</td>
+    <td><code>a != b</code></td>
+</tr>
+<tr>
+    <td><code>&lt;</code></td>
+    <td>Less Than</td>
+    <td><code>a &lt; b</code></td>
+</tr>
+<tr>
+    <td><code>&gt;</code></td>
+    <td>Greater Than</td>
+    <td><code>a &gt; b</code></td>
+</tr>
+<tr>
+    <td><code>&lt;=</code></td>
+    <td>Less Than or Equal To</td>
+    <td><code>a &lt;= b</code></td>
+</tr>
+<tr>
+    <td><code>&gt;=</code></td>
+    <td>Greater Than or Equal To</td>
+    <td><code>a &gt;= b</code></td>
+</tr>
+</table>
+
+<h4>Logical Operators</h4>
+
+<table>
+<tr>
+    <th>Operator</th>
+    <th>Name</th>
+    <th>Example</th>
+</tr>
+<tr>
+    <td><code>&amp;&amp;</code></td>
+    <td>Logical AND</td>
+    <td><code>a &amp;&amp; b</code></td>
+</tr>
+<tr>
+    <td><code>||</code></td>
+    <td>Logical OR</td>
+    <td><code>a || b</code></td>
+</tr>
+<tr>
+    <td><code>!</code></td>
+    <td>Logical NOT</td>
+    <td><code>!a</code></td>
+</tr>
+</table>
+
+<h4>Bitwise Operators</h4>
+
+<table>
+<tr>
+    <th>Operator</th>
+    <th>Name</th>
+    <th>Example</th>
+</tr>
+<tr>
+    <td><code>&amp;</code></td>
+    <td>Bitwise AND</td>
+    <td><code>a &amp; b</code></td>
+</tr>
+<tr>
+    <td><code>|</code></td>
+    <td>Bitwise OR</td>
+    <td><code>a | b</code></td>
+</tr>
+<tr>
+    <td><code>^</code></td>
+    <td>Bitwise XOR</td>
+    <td><code>a ^ b</code></td>
+</tr>
+<tr>
+    <td><code>~</code></td>
+    <td>Bitwise NOT</td>
+    <td><code>~a</code></td>
+</tr>
+<tr>
+    <td><code>&lt;&lt;</code></td>
+    <td>Left Shift</td>
+    <td><code>a &lt;&lt; b</code></td>
+</tr>
+<tr>
+    <td><code>&gt;&gt;</code></td>
+    <td>Right Shift</td>
+    <td><code>a &gt;&gt; b</code></td>
+</tr>
+</table>
+
+<h4>Bitwise Assignment Operators</h4>
+
+<table>
+<tr>
+    <th>Operator</th>
+    <th>Name</th>
+    <th>Equivalent To</th>
+</tr>
+<tr>
+    <td><code>&amp;=</code></td>
+    <td>Bitwise AND-Assign</td>
+    <td><code>a = a &amp; b</code></td>
+</tr>
+<tr>
+    <td><code>|=</code></td>
+    <td>Bitwise OR-Assign</td>
+    <td><code>a = a | b</code></td>
+</tr>
+<tr>
+    <td><code>^=</code></td>
+    <td>Bitwise XOR-Assign</td>
+    <td><code>a = a ^ b</code></td>
+</tr>
+<tr>
+    <td><code>&lt;&lt;=</code></td>
+    <td>Left Shift-Assign</td>
+    <td><code>a = a &lt;&lt; b</code></td>
+</tr>
+<tr>
+    <td><code>&gt;&gt;=</code></td>
+    <td>Right Shift-Assign</td>
+    <td><code>a = a &gt;&gt; b</code></td>
+</tr>
+</table>
+
+<h4>Increment and Decrement Operators</h4>
+
+<table>
+<tr>
+    <th>Operator</th>
+    <th>Name</th>
+    <th>Example</th>
+    <th>Description</th>
+</tr>
+<tr>
+    <td><code>++</code></td>
+    <td>Increment</td>
+    <td><code>a++</code> or <code>++a</code></td>
+    <td>Increases a by 1</td>
+</tr>
+<tr>
+    <td><code>--</code></td>
+    <td>Decrement</td>
+    <td><code>a--</code> or <code>--a</code></td>
+    <td>Decreases a by 1</td>
+</tr>
+</table>
+
+<h4>Unary Operators</h4>
+
+<table>
+<tr>
+    <th>Operator</th>
+    <th>Name</th>
+    <th>Example</th>
+    <th>Description</th>
+</tr>
+<tr>
+    <td><code>&amp;</code></td>
+    <td>Address-Of</td>
+    <td><code>&amp;a</code></td>
+    <td>Gets the address of a</td>
+</tr>
+<tr>
+    <td><code>*</code></td>
+    <td>Dereference</td>
+    <td><code>*ptr</code></td>
+    <td>Accesses the value pointed to by ptr</td>
+</tr>
+<tr>
+    <td><code>-</code></td>
+    <td>Negation</td>
+    <td><code>-a</code></td>
+    <td>Negates the value of a</td>
+</tr>
+<tr>
+    <td><code>!</code></td>
+    <td>Logical NOT</td>
+    <td><code>!a</code></td>
+    <td>Logical negation</td>
+</tr>
+<tr>
+    <td><code>~</code></td>
+    <td>Bitwise NOT</td>
+    <td><code>~a</code></td>
+    <td>Bitwise negation</td>
+</tr>
+</table>
+
+<h3 id="operator-precedence">7.2 Operator Precedence and Associativity</h3>
+
+<p>
+Operators are evaluated according to their precedence level. Operators with higher precedence are evaluated first. Operators at the same precedence level are evaluated according to their associativity (left-to-right or right-to-left).
+</p>
+
+<p>
+The following table lists operators in order from highest to lowest precedence:
+</p>
+
+<table>
+<tr>
+    <th>Precedence Level</th>
+    <th>Operators</th>
+    <th>Associativity</th>
+    <th>Description</th>
+</tr>
+<tr>
+    <td>1 (Highest)</td>
+    <td><code>++</code> <code>--</code> <code>()</code> <code>[]</code></td>
+    <td>Left-to-Right</td>
+    <td>Postfix increment/decrement, function calls, array access</td>
+</tr>
+<tr>
+    <td>2</td>
+    <td><code>++</code> <code>--</code> <code>!</code> <code>~</code> <code>+</code> <code>-</code> <code>&amp;</code> <code>*</code></td>
+    <td>Right-to-Left</td>
+    <td>Prefix unary operators</td>
+</tr>
+<tr>
+    <td>3</td>
+    <td><code>*</code> <code>/</code> <code>%</code></td>
+    <td>Left-to-Right</td>
+    <td>Multiplicative operators</td>
+</tr>
+<tr>
+    <td>4</td>
+    <td><code>+</code> <code>-</code></td>
+    <td>Left-to-Right</td>
+    <td>Additive operators</td>
+</tr>
+<tr>
+    <td>5</td>
+    <td><code>&lt;&lt;</code> <code>&gt;&gt;</code></td>
+    <td>Left-to-Right</td>
+    <td>Bitwise shift operators</td>
+</tr>
+<tr>
+    <td>6</td>
+    <td><code>&lt;</code> <code>&lt;=</code> <code>&gt;</code> <code>&gt;=</code></td>
+    <td>Left-to-Right</td>
+    <td>Comparison operators</td>
+</tr>
+<tr>
+    <td>7</td>
+    <td><code>==</code> <code>!=</code></td>
+    <td>Left-to-Right</td>
+    <td>Equality operators</td>
+</tr>
+<tr>
+    <td>8</td>
+    <td><code>&amp;</code></td>
+    <td>Left-to-Right</td>
+    <td>Bitwise AND</td>
+</tr>
+<tr>
+    <td>9</td>
+    <td><code>^</code></td>
+    <td>Left-to-Right</td>
+    <td>Bitwise XOR</td>
+</tr>
+<tr>
+    <td>10</td>
+    <td><code>|</code></td>
+    <td>Left-to-Right</td>
+    <td>Bitwise OR</td>
+</tr>
+<tr>
+    <td>11</td>
+    <td><code>&amp;&amp;</code></td>
+    <td>Left-to-Right</td>
+    <td>Logical AND</td>
+</tr>
+<tr>
+    <td>12</td>
+    <td><code>||</code></td>
+    <td>Left-to-Right</td>
+    <td>Logical OR</td>
+</tr>
+<tr>
+    <td>13 (Lowest)</td>
+    <td><code>=</code> <code>+=</code> <code>-=</code> <code>*=</code> <code>/=</code> <code>%=</code> <code>&amp;=</code> <code>|=</code> <code>^=</code> <code>&lt;&lt;=</code> <code>&gt;&gt;=</code> <code>&amp;&amp;=</code> <code>||=</code></td>
+    <td>Right-to-Left</td>
+    <td>Assignment operators</td>
+</tr>
+</table>
+
+<hr>
+
+<h2 id="expressions">8 Expressions and Statements</h2>
+
+<h3 id="declarations">8.1 Variable Declarations</h3>
+
+<p>
+Variables are declared using a data type followed by an identifier:
+</p>
+
+<pre>int x;
+float pi = 3.14;
+bool flag;
+string message = "Hello";</pre>
+
+<p>
+Variables can be initialized at declaration time with a value. If not initialized, the variable contains an undefined value.
+</p>
+
+<p>
+<strong>Syntax:</strong>
+</p>
+
+<pre>&lt;data_type&gt; &lt;identifier&gt;;
+&lt;data_type&gt; &lt;identifier&gt; = &lt;expression&gt;;</pre>
+
+<h3 id="identifiers-expr">8.2 Identifiers</h3>
+
+<p>
+An identifier refers to a variable or function that has been previously declared. Using an identifier retrieves the value stored in that variable or refers to the function.
+</p>
+
+<pre>int x = 10;
+int y = x;  // y gets the value of x</pre>
+
+<h3 id="literals-expr">8.3 Literals</h3>
+
+<p>
+Literals are constant values written directly in the code:
+</p>
+
+<pre>int a = 42;           // numeric literal
+float b = 3.14;       // floating-point literal
+char c = 'A';         // character literal
+string s = "hello";   // string literal
+bool flag = true;     // boolean literal</pre>
+
+<h3 id="unary-expr">8.4 Unary Expressions</h3>
+
+<p>
+Unary expressions apply an operator to a single operand. Em supports both prefix and postfix unary operators:
+</p>
+
+<h4>Prefix Unary Operators</h4>
+
+<pre>int x = 5;
+int y = -x;       // negation: y = -5
+bool flag = !true; // logical NOT: flag = false
+int a = ~7;       // bitwise NOT
+int b = ++x;      // prefix increment: x is incremented, then value is used
+int c = --x;      // prefix decrement: x is decremented, then value is used
+int* ptr = &x;    // address-of operator
+int val = *ptr;   // dereference operator</pre>
+
+<h4>Postfix Unary Operators</h4>
+
+<pre>int x = 5;
+int y = x++;      // postfix increment: value is used, then x is incremented
+int z = x--;      // postfix decrement: value is used, then x is decremented</pre>
+
+<h3 id="binary-expr">8.5 Binary Expressions</h3>
+
+<p>
+Binary expressions combine two operands with a binary operator. The operator's precedence and associativity determine the order of evaluation:
+</p>
+
+<pre>int a = 5 + 3;      // addition
+int b = 10 - 4;     // subtraction
+int c = 6 * 2;      // multiplication
+int d = 15 / 3;     // division
+int e = 17 % 5;     // modulo
+bool f = a &lt; b;    // comparison
+bool g = a == 5;    // equality
+int h = a &lt;&lt; 2;   // left shift
+int i = a &gt;&gt; 1;   // right shift
+int j = a &amp; b;    // bitwise AND
+int k = a | b;      // bitwise OR
+int l = a ^ b;      // bitwise XOR
+bool m = a &amp;&amp; b;  // logical AND
+bool n = a || b;    // logical OR</pre>
+
+<h3 id="assignments">8.6 Assignments</h3>
+
+<p>
+Assignment expressions assign a value to a variable. The basic assignment operator is <code>=</code>, and there are also compound assignment operators:
+</p>
+
+<pre>int x = 10;
+x = 20;           // simple assignment
+x += 5;           // equivalent to x = x + 5
+x -= 3;           // equivalent to x = x - 3
+x *= 2;           // equivalent to x = x * 2
+x /= 4;           // equivalent to x = x / 4
+x %= 3;           // equivalent to x = x % 3
+x &lt;&lt;= 1;         // equivalent to x = x &lt;&lt; 1
+x &gt;&gt;= 1;         // equivalent to x = x &gt;&gt; 1
+x &amp;= 0xFF;       // equivalent to x = x &amp; 0xFF
+x |= 0x0F;        // equivalent to x = x | 0x0F
+x ^= 0xAA;        // equivalent to x = x ^ 0xAA
+bool flag = true;
+flag &amp;&amp;= false;  // equivalent to flag = flag &amp;&amp; false
+flag ||= true;    // equivalent to flag = flag || true</pre>
+
+<h3 id="func-calls">8.7 Function Calls</h3>
+
+<p>
+A function call invokes a previously defined function with arguments:
+</p>
+
+<pre>// Function definition
+int add(int a, int b) {
+    return a + b;
+}
+
+// Function calls
+int result = add(3, 5);      // result = 8
+int sum = add(result, 10);   // sum = 18
+
+// Function with no parameters
+int getValue() {
+    return 42;
+}
+
+int value = getValue();      // value = 42
+
+// Function with no return value
+void printValue(int x) {
+    // printing logic would go here
+}
+
+printValue(42);</pre>
+
+<p>
+<strong>Syntax:</strong>
+</p>
+
+<pre>&lt;function_name&gt;(&lt;arg1&gt;, &lt;arg2&gt;, ...)</pre>
+
+<h3 id="if-else">8.8 If-Else Statements</h3>
+
+<p>
+Conditional execution using if-else statements:
+</p>
+
+<pre>int x = 10;
+
+if (x &gt; 5) {
+    // executed if x is greater than 5
+}
+
+if (x == 10) {
+    // executed if x equals 10
+} else {
+    // executed if x does not equal 10
+}
+
+if (x &lt; 0) {
+    // x is negative
+} else if (x == 0) {
+    // x is zero
+} else {
+    // x is positive
+}</pre>
+
+<p>
+The condition must be a boolean expression. If the condition is true, the code block after <code>if</code> is executed. If the condition is false and an <code>else</code> block is present, that block is executed.
+</p>
+
+<h3 id="for-loop">8.9 For Loops</h3>
+
+<p>
+A for loop repeats a block of code a specified number of times:
+</p>
+
+<pre>// Basic for loop
+for (int i = 0; i &lt; 10; i++) {
+    // this block executes 10 times (i goes from 0 to 9)
+}
+
+// For loop with external variable
+int i;
+for (i = 0; i &lt; 5; i++) {
+    // executes 5 times
+}
+
+// For loop with break
+for (int i = 0; i &lt; 10; i++) {
+    if (i == 5) {
+        break;  // exits the loop when i equals 5
+    }
+}
+
+// For loop with continue
+for (int i = 0; i &lt; 5; i++) {
+    if (i == 2) {
+        continue;  // skips to the next iteration
+    }
+}</pre>
+
+<p>
+<strong>Syntax:</strong>
+</p>
+
+<pre>for (&lt;initialization&gt;; &lt;condition&gt;; &lt;update&gt;) {
+    &lt;body&gt;
+}</pre>
+
+<p>
+The for loop has three parts:
+<ul>
+<li><code>initialization</code>: Executed once before the loop starts</li>
+<li><code>condition</code>: Checked before each iteration; if false, the loop ends</li>
+<li><code>update</code>: Executed after each iteration</li>
+</ul>
+</p>
+
+<h3 id="while-loop">8.10 While Loops</h3>
+
+<p>
+A while loop repeats a block of code as long as a condition is true:
+</p>
+
+<pre>int i = 0;
+while (i &lt; 10) {
+    // this block repeats while i is less than 10
+    i++;
+}
+
+// While loop with break
+int x = 0;
+while (true) {
+    x++;
+    if (x == 10) {
+        break;  // exits the loop
+    }
+}
+
+// While loop with continue
+int y = 0;
+while (y &lt; 5) {
+    y++;
+    if (y == 2) {
+        continue;  // skips the rest of this iteration
+    }
+}</pre>
+
+<p>
+<strong>Syntax:</strong>
+</p>
+
+<pre>while (&lt;condition&gt;) {
+    &lt;body&gt;
+}</pre>
+
+<p>
+The while loop continues executing the body block as long as the condition is true. If the condition is initially false, the body never executes.
+</p>
+
+<h3 id="break-continue">8.11 Break and Continue Statements</h3>
+
+<p>
+<code>break</code> and <code>continue</code> are jump statements used within loops:
+</p>
+
+<p>
+<strong>break:</strong> Immediately exits the nearest enclosing loop.
+</p>
+
+<pre>for (int i = 0; i &lt; 10; i++) {
+    if (i == 5) {
+        break;  // exits the for loop
+    }
+}</pre>
+
+<p>
+<strong>continue:</strong> Skips the rest of the current iteration and jumps to the next iteration.
+</p>
+
+<pre>for (int i = 0; i &lt; 10; i++) {
+    if (i %% 2 == 0) {
+        continue;  // skips even numbers
+    }
+    // process odd numbers
+}</pre>
+
+<h3 id="return">8.12 Return Statements</h3>
+
+<p>
+A return statement exits a function and optionally returns a value:
+</p>
+
+<pre>int add(int a, int b) {
+    return a + b;  // returns the sum
+}
+
+void printMessage(string msg) {
+    // some code here
+    return;  // can return without a value in void functions
+}
+
+int getValue() {
+    if (someCondition) {
+        return 10;
+    } else {
+        return 20;
+    }
+}</pre>
+
+<p>
+<strong>Syntax:</strong>
+</p>
+
+<pre>return;           // for void functions
+return &lt;value&gt;;  // returns a value</pre>
+
+<p>
+The return type of the value must match the function's declared return type.
+</p>
+
+<h3 id="func-def">8.13 Function Definitions</h3>
+
+<p>
+A function definition declares a function that can be called elsewhere in the program:
+</p>
+
+<pre>// Simple function
+int add(int a, int b) {
+    return a + b;
+}
+
+// Function with no parameters
+int getConstant() {
+    return 42;
+}
+
+// Function with no return value
+void printNumber(int num) {
+    // printing logic
+}
+
+// Function with multiple statements
+float calculateAverage(float a, float b, float c) {
+    float sum = a + b + c;
+    float average = sum / 3;
+    return average;
+}
+
+// Recursive function
+int factorial(int n) {
+    if (n &lt;= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}</pre>
+
+<p>
+<strong>Syntax:</strong>
+</p>
+
+<pre>&lt;return_type&gt; &lt;function_name&gt;(&lt;param1_type&gt; &lt;param1_name&gt;, &lt;param2_type&gt; &lt;param2_name&gt;, ...) {
+    &lt;function_body&gt;
+}</pre>
+
+<p>
+A function definition includes:
+<ul>
+<li><code>return_type</code>: The type of value the function returns</li>
+<li><code>function_name</code>: The name of the function</li>
+<li><code>parameters</code>: A list of parameter declarations</li>
+<li><code>function_body</code>: The code that executes when the function is called</li>
+</ul>
+</p>
+
+<h3 id="func-proto">8.14 Function Prototypes</h3>
+
+<p>
+A function prototype declares a function without implementing its body. This is useful for forward declarations and for declaring functions that will be defined elsewhere (e.g., in another file or in a header):
+</p>
+
+<pre>// Function prototype
+int add(int a, int b);
+
+// Later in the same file or in another file:
+int add(int a, int b) {
+    return a + b;
+}
+
+// Function prototype with no parameters
+void printMessage();
+
+void printMessage() {
+    // implementation
+}</pre>
+
+<p>
+<strong>Syntax:</strong>
+</p>
+
+<pre>&lt;return_type&gt; &lt;function_name&gt;(&lt;param_types&gt;);</pre>
+
+<p>
+Function prototypes allow you to use a function before its full definition appears in the code, or to declare interfaces for functions defined elsewhere.
+</p>
+
+<h3 id="varg">8.15 Variadic Arguments</h3>
+
+<p>
+Functions can accept a variable number of arguments using the <code>varg</code> keyword to access them:
+</p>
+
+<pre>int sum(int count, ...) {
+    int total = 0;
+    int i = 0;
+    while (i &lt; count) {
+        total += varg(int);
+        i++;
+    }
+    return total;
+}
+
+// Called with varying numbers of arguments
+int result1 = sum(2, 5, 10);      // sum of 5 and 10
+int result2 = sum(3, 1, 2, 3);    // sum of 1, 2, and 3</pre>
+
+<p>
+<strong>Syntax:</strong>
+</p>
+
+<pre>&lt;return_type&gt; &lt;function_name&gt;(&lt;fixed_params&gt;, ...) {
+    // use varg(&lt;type&gt;) to retrieve variadic arguments
+}</pre>
+
+<p>
+The <code>varg</code> keyword is used within the function to retrieve each variadic argument. The function must know or determine how many variadic arguments were passed.
+</p>
+
+<h3 id="blocks">8.16 Block Expressions</h3>
+
+<p>
+Em supports scoped block expressions that create a new scope for variables:
+</p>
+
+<pre>int x = 10;
+
+{
+    // new scope
+    int x = 20;  // shadow the outer x
+    int y = 30;
+}
+
+// x is still 10 here
+// y is not accessible
+</pre>
+
+<p>
+Block expressions are useful for limiting variable scope and avoiding naming conflicts.
+</p>
+
+<hr>
+
+<h2 id="preprocessor">9 Preprocessor Directives</h2>
+
+<p>
+Em supports preprocessor directives that are processed before compilation. These directives allow conditional compilation, file inclusion, and macro definitions.
+</p>
+
+<h3 id="pp-include">9.1 #include</h3>
+
+<p>
+The <code>#include</code> directive includes code from another file. There are two forms:
+</p>
+
+<p>
+<strong>Local includes:</strong>
+</p>
+
+<pre>#include "myheader.emh"</pre>
+
+<p>
+Includes the specified file from the current directory.
+</p>
+
+<p>
+<strong>Standard library includes:</strong>
+</p>
+
+<pre>#include &lt;standardlib.emh&gt;</pre>
+
+<p>
+Includes a file from the Em standard library. Associated compiled library files (<code>.bc</code>) are automatically linked.
+</p>
+
+<h3 id="pp-define">9.2 #define</h3>
+
+<p>
+The <code>#define</code> directive defines a macro that will be replaced wherever it appears:
+</p>
+
+<pre>#define MAX_SIZE 100
+#define PI 3.14159
+#define DEBUG_MODE 1
+
+int array[MAX_SIZE];  // MAX_SIZE is replaced with 100</pre>
+
+<p>
+<strong>Syntax:</strong>
+</p>
+
+<pre>#define &lt;TOKEN_NAME&gt; &lt;REPLACEMENT&gt;</pre>
+
+<p>
+The token name must start with a letter or underscore. The replacement can be a number, identifier, or other token.
+</p>
+
+<h3 id="pp-undef">9.3 #undef</h3>
+
+<p>
+The <code>#undef</code> directive undefines a previously defined macro:
+</p>
+
+<pre>#define FEATURE 1
+// ... code using FEATURE ...
+#undef FEATURE
+// FEATURE is no longer defined</pre>
+
+<p>
+<strong>Syntax:</strong>
+</p>
+
+<pre>#undef &lt;TOKEN_NAME&gt;</pre>
+
+<h3 id="pp-ifdef">9.4 #ifdef</h3>
+
+<p>
+The <code>#ifdef</code> directive includes code only if a specific macro is defined:
+</p>
+
+<pre>#define DEBUG
+
+#ifdef DEBUG
+    // this code only compiles if DEBUG is defined
+    int flag = 1;
+#endif</pre>
+
+<p>
+<strong>Syntax:</strong>
+</p>
+
+<pre>#ifdef &lt;MACRO_NAME&gt;
+    &lt;code to include if macro is defined&gt;
+#endif</pre>
+
+<h3 id="pp-ifndef">9.5 #ifndef</h3>
+
+<p>
+The <code>#ifndef</code> directive includes code only if a specific macro is NOT defined:
+</p>
+
+<pre>#ifndef PRODUCTION
+    // this code compiles in development but not in production
+    int debugFlag = 1;
+#endif</pre>
+
+<p>
+<strong>Syntax:</strong>
+</p>
+
+<pre>#ifndef &lt;MACRO_NAME&gt;
+    &lt;code to include if macro is NOT defined&gt;
+#endif</pre>
+
+<h3 id="pp-endif">9.6 #endif</h3>
+
+<p>
+The <code>#endif</code> directive marks the end of a conditional block started by <code>#ifdef</code> or <code>#ifndef</code>:
+</p>
+
+<pre>#ifdef FEATURE
+    // conditional code
+#endif</pre>
+
+<hr>
+
+<p>
+End of Em Programming Language Specification
+</p>
+
+</div>
+
+</body>
+
+</html>

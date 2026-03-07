@@ -180,6 +180,22 @@ inline bool generate_block_ir(LLVM_IR *ir,
     return false;
 }
 
+// handle the emission of va_end call, just before a return
+// or just before the end of a function that has variadic args
+inline void emit_va_end(LLVM_IR *ir) {
+    llvm::Type* i8_ptr_ty = llvm::Type::getInt8Ty(ir->_context)->getPointerTo();
+
+    llvm::Function* va_end =
+        llvm::Intrinsic::getDeclaration(
+            ir->_module,
+            llvm::Intrinsic::vaend,
+            { i8_ptr_ty }
+        );
+
+    ir->_builder->CreateCall(va_end, ir->current_va_list);
+    ir->current_va_list = nullptr;
+}
+
 //                       Function declarations
 // ******************************************************************
 

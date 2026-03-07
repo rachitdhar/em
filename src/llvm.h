@@ -10,6 +10,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/IR/Intrinsics.h"
 
 /* for running LLVM backend */
 #include "llvm/IR/LegacyPassManager.h"

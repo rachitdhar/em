@@ -67,7 +67,7 @@
 #define E045 "SYNTAX ERROR: Invalid expression. Expected binary operator."
 #define E046 "SYNTAX ERROR: Invalid expression. Expected identifier/literal."
 #define E047 "SYNTAX ERROR: Missing delimiter at the end of expression."
-#define E048 "SYNTAX ERROR: Keyword could not be parsed."
+#define E048 "SYNTAX ERROR: This keyword cannot occur at the start of an expression."
 #define E049 "SYNTAX ERROR: Invalid data type for function parameter."
 #define E050 "SYNTAX ERROR: Invalid identifier for function parameter."
 #define E051 "SYNTAX ERROR: Invalid parameter name. A variable with this name already exists."
@@ -82,6 +82,10 @@
 #define E060 "ERROR: No tokens found."
 #define E061 "SYNTAX ERROR: Incomplete top-level expression encountered."
 #define E062 "SYNTAX ERROR: Duplicate entry points found."
+#define E088 "SYNTAX ERROR: Invalid function definition: Variadic arg marker \'...\' must be followed by \')\'."
+#define E089 "SYNTAX ERROR: Invalid varg syntax: Expected \'(\'."
+#define E090 "SYNTAX ERROR: Invalid varg syntax: Expected data type."
+#define E091 "SYNTAX ERROR: Invalid varg syntax: Expected \')\'."
 
 /* errors originating in ir_generator */
 #define E063 "Non-integer type in logical expression."

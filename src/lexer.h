@@ -156,8 +156,8 @@ struct Symbol {
     Symbol_Type symbol_type;
     bool is_declaration = true;
     Data_Type return_type = T_UNIDENTIFIED; // data_type in case of variables
-    std::vector<Data_Type> *signature =
-        NULL; // param types (only for functions)
+    std::vector<Data_Type> *signature = NULL; // param types (only for functions)
+    bool has_variadic_args = false; // (only for functions)
 };
 
 struct Scope {
@@ -333,6 +333,9 @@ const std::string KEYWORDS[] = {
     "return",
     "break",
     "continue",
+
+    /* special builtins */
+    "varg",
 };
 
 const size_t TOTAL_KEYWORDS = sizeof(KEYWORDS) / sizeof(KEYWORDS[0]);

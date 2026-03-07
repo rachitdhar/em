@@ -44,7 +44,8 @@ enum Expression_Type {
     EXPR_FUNC_CALL,
     EXPR_RETURN,
     EXPR_JUMP,
-    EXPR_BLOCK
+    EXPR_BLOCK,
+    EXPR_VARG
 };
 
 enum Jump_Type { J_BREAK, J_CONTINUE };
@@ -83,6 +84,12 @@ struct LLVM_IR {
     // to be able to jump to those locations when a break/continue
     // statement is encountered.
     std::stack<Loop_Terminals *> loop_terminals;
+
+    // we need this to keep track of the variadic args list
+    // (va_list), throughout a function body, which goes across
+    // different expressions, and where we might need this to call
+    // va_arg over there.
+    llvm::Value* current_va_list = nullptr;
 
     LLVM_IR(llvm::LLVMContext &c, llvm::IRBuilder<> *b, llvm::Module *m)
         : _context(c), _builder(b), _module(m) {}
@@ -137,9 +144,11 @@ struct AST_Function_Definition : AST_Expression {
     AST_Function_Definition() : AST_Expression(EXPR_FUNC_DEF) {}
 
     bool is_prototype = false;
+    bool has_variadic_args = false;
 
     Data_Type return_type;
     std::string function_name;
+
     std::vector<Function_Parameter *> params;
     std::vector<AST_Expression *> block;
 
@@ -226,6 +235,14 @@ struct AST_Jump_Expression : AST_Expression {
     AST_Jump_Expression() : AST_Expression(EXPR_JUMP) {}
 
     Jump_Type jump_type;
+
+    llvm::Value *generate_ir(LLVM_IR *ir) override;
+};
+
+struct AST_Varg : AST_Expression {
+    AST_Varg() : AST_Expression(EXPR_VARG) {}
+
+    Data_Type data_type;
 
     llvm::Value *generate_ir(LLVM_IR *ir) override;
 };

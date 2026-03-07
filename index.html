@@ -97,7 +97,7 @@ Last updated: March 8, 2026
 <h2 id="intro">1 Introduction</h2>
 
 <p>
-Em is a systems programming language designed for simplicity and control over low-level details. The compiler, known as <code>emc</code>, generates efficient machine code through LLVM. Em supports modern programming constructs while maintaining minimal syntax overhead.
+Em is a systems programming language designed for simplicity and control over low-level details. The compiler, known as <code>emc</code>, generates efficient machine code through LLVM. Em is designed to be a language that is very much like C in terms of both its syntax and nature of having minimal features that allow for most of the job to be done. At the same time it also aims at adding some slightly modern conveniences that are reasonable enough to have, which are considered commonplace now and make life much easier. This differentiates it from C, which has largely remained unchanged since its inception, and also from C++, which has added so many features over the years that the language has grown to become incredibly complex and sometimes syntactically unpleasant. That said, Em is not being built with any intentions of replacing or superceding any language. It is a personal project of mine, mainly being developed out of my own interests in understanding Compilers and assembly generation, and having fun playing around with the intricacies of language design.
 </p>
 
 <h3 id="project-info">1.1 Project Information</h3>
@@ -116,7 +116,7 @@ The Em programming language is currently in early development. There are no offi
 </p>
 
 <p>
-Please check <a href="https://github.com/rachitdhar/em/releases">https://github.com/rachitdhar/em/releases</a> periodically for future releases and downloads.
+Please check <a href="https://github.com/rachitdhar/em/releases">https://github.com/rachitdhar/em/releases</a> periodically for future releases.
 </p>
 
 <hr>
@@ -132,8 +132,10 @@ To compile an Em source file, use the Em compiler <code>emc</code>:
 <pre>emc program.em</pre>
 
 <p>
-The source file must have a <code>.em</code> file extension. The compiler will produce an executable with the same name as the source file (minus the extension).
+The source file must have a <code>.em</code> file extension. The compiler will produce an executable with the name <code>out.exe</code>. If you want to specify the name, you can do something like:
 </p>
+
+<pre>emc program.em -o myprogram.exe</pre>
 
 <h3 id="multiple-files">2.2 Compiling Multiple Files</h3>
 
@@ -150,7 +152,7 @@ All specified files will be compiled and linked together into a single executabl
 <h3 id="header-files">2.3 Header Files (.emh)</h3>
 
 <p>
-Em uses header files with the <code>.emh</code> extension to provide declarations and function prototypes. Header files are included in source files using the <code>#include</code> preprocessor directive. Associated compiled header libraries with <code>.bc</code> extension are automatically linked during compilation when headers are included. This allows code to be organized into reusable libraries and modules.
+Em uses header files with the <code>.emh</code> extension to provide declarations and function prototypes. Header files are included in source files using the <code>#include</code> preprocessor directive. Associated compiled header libraries with <code>.bc</code> extension are automatically linked during compilation when standard library headers are included. This allows code to be organized into reusable libraries.
 </p>
 
 <h3 id="compiler-flags">2.4 Compiler Flags</h3>
@@ -200,7 +202,7 @@ Compiler flags are specified after the list of files to compile. A flag starts w
 <strong>Example:</strong>
 </p>
 
-<pre>emc prog.em -asm -cpu x86-64 -o prog.s</pre>
+<pre>emc prog.em -asm -cpu x86-64 -o prog</pre>
 
 <p>
 This command compiles <code>prog.em</code>, generates assembly output for x86-64, and saves it to <code>prog.s</code>.
@@ -237,7 +239,7 @@ If no target CPU is specified, the compiler automatically detects the host machi
 <h2 id="hello-world">3 Hello World Example</h2>
 
 <p>
-Here is a simple Hello World program in Em. Note that Em does not include built-in I/O functions; this example demonstrates the basic structure of an Em program with a main function:
+Here is a simple Hello World program in Em:
 </p>
 
 <pre>
@@ -251,7 +253,7 @@ int main()
 </pre>
 
 <p>
-This program defines a <code>main</code> function that takes no parameters and returns 0. To use I/O operations, you would need to use included header files from the standard library.
+This program defines a <code>main</code> function that takes no parameters and returns 0. To use I/O operations, you would need to use included header files from the standard library. Note that since Em is in very early development, there are very few standard library functions available at the moment, but more are planned to be added as time goes by. Standard library headers are located in the <code>include</code> directory of the project, and the associated bitcode libs to be linked with are present in the <code>lib</code> directory.
 </p>
 
 <hr>
@@ -355,7 +357,7 @@ Literals represent constant values in the program:
 </p>
 
 <p>
-<strong>Numeric Literals:</strong> Decimal integers and floating-point numbers. Examples: <code>0</code>, <code>42</code>, <code>-17</code>, <code>3.14</code>, <code>2.5e-3</code>
+<strong>Numeric Literals:</strong> Decimal integers and floating-point numbers. Examples: <code>0</code>, <code>42</code>, <code>-17</code>, <code>3.14</code>
 </p>
 
 <p>

@@ -23,7 +23,7 @@
     table))
 
 (defun em-types ()
-  '("void" "bool" "char" "int" "u32" "u64" "s32" "s64" "float" "string"))
+  '("void" "bool" "char" "int" "u8" "u16" "u32" "u64" "s8" "s16" "s32" "s64" "float" "double" "string"))
 
 (defun em-keywords ()
   '("if" "else" "switch" "case" "for" "while" "return" "break" "continue" "varg" "true" "false"))

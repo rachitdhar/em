@@ -95,6 +95,7 @@
 #define E098 "SYNTAX ERROR: Only integer or string literals are allowed in case expressions."
 #define E099 "SYNTAX ERROR: Missing \':\' in case expression."
 #define E100 "SYNTAX ERROR: Duplicate default case found in switch block."
+#define E102 "SYNTAX ERROR: Switch expressions can only accept integer or string types."
 
 /* errors originating in ir_generator */
 #define E063 "Non-integer type in logical expression."
@@ -117,5 +118,6 @@
 #define E080 "Global declaration can only be of assignment type."
 #define E081 "Global initializers must be constant expressions."
 #define E082 "Invalid top-level expression encountered."
+#define E101 "(FATAL) Cannot find parent IR block for \'switch\' statement."
 
 #endif

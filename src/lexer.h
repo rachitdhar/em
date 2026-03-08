@@ -120,6 +120,8 @@ enum Data_Type {
     T_UNIDENTIFIED,
     T_VOID,
     T_BOOL,
+
+    /* int types begin */
     T_U8,
     T_U16,
     T_U32,
@@ -128,10 +130,15 @@ enum Data_Type {
     T_S16,
     T_S32,
     T_S64,
+    /* int types end */
+
     T_F32,
     T_F64,
     T_STRING
 };
+
+inline bool is_int_type(Data_Type data_type)
+    return (data_type >= T_U8 && data_type <= T_S64);
 
 /*
 a symbol table to store the information on
@@ -187,6 +194,8 @@ struct Symbol_Table {
                 Symbol_Type symbol_type); // checks if symbol exists
     bool prototype_exists(
         std::string name); // tells whether a function prototype exists
+    Data_Type get_return_type(
+        std::string name, Symbol_Type symbol_type); // returns the return type of the symbol
 };
 
 inline void Symbol_Table::push() {
@@ -260,6 +269,34 @@ inline bool Symbol_Table::exists(std::string name, Symbol_Type symbol_type) {
 
 inline bool Symbol_Table::prototype_exists(std::string name) {
     return function_prototypes[name] != NULL;
+}
+
+inline Data_Type Symbol_Table::get_return_type(std::string name, Symbol_Type symbol_type) {
+    // if it is a function, we just need to check the functions map
+    if (symbol_type == SYM_FUNCTION) {
+        if (functions[name] == NULL) return T_UNIDENTIFIED;
+
+	return functions[name]->return_type;
+    }
+
+    // first check global variables
+    if (global_variables[name] != NULL) {
+	return global_variables[name]->return_type;
+    }
+
+    // we will go backwards, starting from the innermost scope
+    // to find the symbol
+
+    auto *scope_to_search = curr_scope;
+
+    while (scope_to_search != NULL) {
+        if (scope_to_search->variables[name] != NULL) {
+	    return scope_to_search->variables[name]->return_type;
+	}
+
+        scope_to_search = scope_to_search->parent;
+    }
+    return T_UNIDENTIFIED;
 }
 
 //                           Lexer

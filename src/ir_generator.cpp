@@ -279,7 +279,7 @@ llvm::Value *AST_Switch_Expression::generate_ir(LLVM_IR *ir) {
         return nullptr;
 
     if (ir->_builder->GetInsertBlock() == nullptr) {
-        throw_ir_error(E068);
+        throw_ir_error(E101);
     }
 
     llvm::Function *_f = ir->_builder->GetInsertBlock()->getParent();

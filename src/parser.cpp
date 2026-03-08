@@ -635,17 +635,17 @@ inline AST_Switch_Expression *parse_ast_switch_expression(Lexer* lexer) {
 
     if (ast_switch->identifier_or_call->expr_type == EXPR_IDENT) {
 	ident_or_call_type = lexer->symbol_table.get_return_type(
-	(AST_Identifier*)(ast_switch->identifier_or_call)->name, SYM_VARIABLE);
+	((AST_Identifier*)ast_switch->identifier_or_call)->name, SYM_VARIABLE);
     } else {
 	// if it is not an identifier, we can
 	// assume it must be a function call,
 	// since parse_ast_identifier just returns
 	// those two types.
 	ident_or_call_type = lexer->symbol_table.get_return_type(
-	(AST_Function_Call*)(ast_switch->identifier_or_call)->function_name, SYM_FUNCTION);
+	((AST_Function_Call*)ast_switch->identifier_or_call)->function_name, SYM_FUNCTION);
     }
-    if (ident_type == T_STRING) is_string_type = true;
-    else if (!is_int_type(ident_type)) throw_parser_error(E102, lexer);
+    if (ident_or_call_type == T_STRING) is_string_type = true;
+    else if (!is_int_type(ident_or_call_type)) throw_parser_error(E102, lexer);
 
     // TODO: handle hashing in case of string types
 

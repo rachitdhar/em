@@ -137,8 +137,9 @@ enum Data_Type {
     T_STRING
 };
 
-inline bool is_int_type(Data_Type data_type)
+inline bool is_int_type(Data_Type data_type) {
     return (data_type >= T_U8 && data_type <= T_S64);
+}
 
 /*
 a symbol table to store the information on

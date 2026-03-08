@@ -658,6 +658,12 @@ void generate_tokens(Lexer *lexer, bool *inside_multiline_comment) {
             pos++;
             break;
         }
+        case ':': {
+            lexer->tokens.push_back(Token{ ";", TOKEN_COLON, lexer->line_num,
+                                          pos, lexer->file_name });
+            pos++;
+            break;
+        }
         /* (! !=) */
         case '!': {
             pos++;

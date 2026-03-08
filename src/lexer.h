@@ -25,6 +25,7 @@ enum Token_Type {
     TOKEN_BOOL_LITERAL = 7,    // true, false
     TOKEN_SEPARATOR = 8,       // ,
     TOKEN_DELIMITER = 9,       // ;
+    TOKEN_COLON = 10,          // :
 
     /* brackets */
     TOKEN_LEFT_BRACE = 100, // {
@@ -336,6 +337,8 @@ const std::string KEYWORDS[] = {
     /* control flow */
     "if",
     "else",
+    "switch",
+    "case",
     "for",
     "while",
 

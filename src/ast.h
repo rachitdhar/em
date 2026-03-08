@@ -44,6 +44,8 @@ enum Expression_Type {
     EXPR_LITERAL,
     EXPR_FUNC_DEF,
     EXPR_IF,
+    EXPR_CASE,
+    EXPR_SWITCH,
     EXPR_FOR,
     EXPR_WHILE,
     EXPR_DECL,
@@ -97,7 +99,11 @@ struct LLVM_IR {
     // (va_list), throughout a function body, which goes across
     // different expressions, and where we might need this to call
     // va_arg over there.
-    llvm::Value* current_va_list = nullptr;
+    llvm::Value *current_va_list = nullptr;
+
+    // to keep track of the current switchend position
+    // so that it can be used inside a case block
+    llvm::BasicBlock *current_switch_end = nullptr;
 
     LLVM_IR(llvm::LLVMContext &c, llvm::IRBuilder<> *b, llvm::Module *m)
         : _context(c), _builder(b), _module(m) {}
@@ -173,6 +179,25 @@ struct AST_If_Expression : AST_Expression {
     AST_Expression *condition = NULL;
     std::vector<AST_Expression *> block;
     std::vector<AST_Expression *> else_block;
+
+    llvm::Value *generate_ir(LLVM_IR *ir) override;
+};
+
+struct AST_Case_Expression : AST_Expression {
+    AST_Case_Expression() : AST_Expression(EXPR_CASE) {}
+
+    AST_Literal *literal = NULL; // this is NULL for the "default" case
+    std::vector<AST_Expression *> block;
+
+    llvm::Value *generate_ir(LLVM_IR *ir) override;
+};
+
+struct AST_Switch_Expression : AST_Expression {
+    AST_Switch_Expression() : AST_Expression(EXPR_SWITCH) {}
+
+    bool has_default_case = false;
+    AST_Expression *identifier_or_call;
+    std::vector<AST_Case_Expression *> case_list;
 
     llvm::Value *generate_ir(LLVM_IR *ir) override;
 };

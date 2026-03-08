@@ -86,6 +86,15 @@
 #define E089 "SYNTAX ERROR: Invalid varg syntax: Expected \'(\'."
 #define E090 "SYNTAX ERROR: Invalid varg syntax: Expected data type."
 #define E091 "SYNTAX ERROR: Invalid varg syntax: Expected \')\'."
+#define E092 "SYNTAX ERROR: Incomplete switch expression encountered."
+#define E093 "SYNTAX ERROR: Switch expression must be followed by an identifier."
+#define E094 "SYNTAX ERROR: Missing \')\' from switch expression."
+#define E095 "SYNTAX ERROR: Missing \'{\' from switch expression."
+#define E096 "SYNTAX ERROR: Expected \'case\' keyword inside switch block."
+#define E097 "SYNTAX ERROR: Missing or invalid literal used in case expression."
+#define E098 "SYNTAX ERROR: Only integer or string literals are allowed in case expressions."
+#define E099 "SYNTAX ERROR: Missing \':\' in case expression."
+#define E100 "SYNTAX ERROR: Duplicate default case found in switch block."
 
 /* errors originating in ir_generator */
 #define E063 "Non-integer type in logical expression."

@@ -264,6 +264,76 @@ llvm::Value *AST_If_Expression::generate_ir(LLVM_IR *ir) {
     return nullptr; // if statement returns no value
 }
 
+llvm::Value *AST_Case_Expression::generate_ir(LLVM_IR *ir) {
+    bool has_return_expression_in_block = generate_block_ir(ir, block);
+
+    if (!has_return_expression_in_block)
+        ir->_builder->CreateBr(ir->current_switch_end);
+
+    return nullptr;
+}
+
+llvm::Value *AST_Switch_Expression::generate_ir(LLVM_IR *ir) {
+    llvm::Value *_value = identifier_or_call->generate_ir(ir);
+    if (!_value)
+        return nullptr;
+
+    if (ir->_builder->GetInsertBlock() == nullptr) {
+        throw_ir_error(E068);
+    }
+
+    llvm::Function *_f = ir->_builder->GetInsertBlock()->getParent();
+
+    llvm::BasicBlock *_switchend =
+        llvm::BasicBlock::Create(ir->_context, "switchend", _f);
+
+    llvm::BasicBlock *_default = nullptr;
+
+    // determine default block
+    for (auto *c : case_list) {
+        if (c->literal == nullptr) {
+            _default = llvm::BasicBlock::Create(ir->_context, "switch_default", _f);
+            break;
+        }
+    }
+
+    if (!_default)
+        _default = _switchend;
+
+    llvm::SwitchInst *_switch =
+        ir->_builder->CreateSwitch(_value, _default, case_list.size() - (has_default_case ? 1 : 0));
+
+    ir->current_switch_end = _switchend;
+
+    for (auto *c : case_list) {
+        llvm::BasicBlock *_case_block;
+
+        if (c->literal == nullptr) {
+            _case_block = _default;
+        } else {
+            _case_block =
+                llvm::BasicBlock::Create(ir->_context, "case", _f);
+
+            llvm::ConstantInt *_case_value =
+                llvm::cast<llvm::ConstantInt>(c->literal->generate_ir(ir));
+
+            _switch->addCase(_case_value, _case_block);
+        }
+
+        ir->_builder->SetInsertPoint(_case_block);
+
+        bool has_return_expression_in_block = generate_block_ir(ir, c->block);
+
+        if (!has_return_expression_in_block)
+            ir->_builder->CreateBr(_switchend);
+    }
+
+    ir->_builder->SetInsertPoint(_switchend);
+
+    ir->current_switch_end = nullptr;
+    return nullptr;
+}
+
 llvm::Value *AST_For_Expression::generate_ir(LLVM_IR *ir) {
     if (ir->_builder->GetInsertBlock() == nullptr) {
         throw_ir_error(

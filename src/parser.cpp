@@ -598,6 +598,118 @@ inline AST_Literal *parse_ast_literal(Lexer *lexer) {
     return ast_literal;
 }
 
+
+inline AST_Switch_Expression *parse_ast_switch_expression(Lexer* lexer) {
+    // currently the token must be a "switch"
+    // now, the syntax for a switch-case will be
+    /*
+    switch ( <identifier | function_call> ) {
+    case <INTEGER_LITERAL | STRING_LITERAL>: <block_expr>
+    case <INTEGER_LITERAL | STRING_LITERAL>: <block_expr>
+    .
+    .
+    .
+    case: <block_expr>
+    }
+    */
+
+    Token* tok = lexer->get_next_token();
+    if (tok == NULL) {
+        throw_parser_error(E092, lexer);
+    }
+    // the parenthesis is optional
+    bool has_parenthesis = false;
+    if (tok->type == TOKEN_LEFT_PAREN) {
+        has_parenthesis = true;
+        tok = lexer->get_next_token();
+    }
+    if (tok == NULL || tok->type != TOKEN_IDENTIFIER) {
+        throw_parser_error(E093, lexer);
+    }
+
+    auto* ast_switch = new AST_Switch_Expression;
+    ast_switch->identifier_or_call = parse_ast_identifier(lexer);
+    bool is_string_type = false; // TODO: get this from the type
+
+    tok = lexer->peek();
+    if (tok == NULL) {
+        throw_parser_error(E092, lexer);
+    }
+    if (has_parenthesis) {
+        if (tok->type == TOKEN_RIGHT_PAREN) {
+            tok = lexer->get_next_token();
+        }
+        else {
+            throw_parser_error(E094, lexer);
+        }
+    }
+
+    if (tok == NULL || tok->type != TOKEN_LEFT_BRACE) {
+        throw_parser_error(E095, lexer);
+    }
+    tok = lexer->get_next_token();
+
+    // from here onwards we have entered inside
+    // the switch block. now we would expect to
+    // have a bunch of case expressions.
+
+    while (tok != NULL && tok->type != TOKEN_RIGHT_BRACE) {
+        if (tok->val != "case") {
+            throw_parser_error(E096, lexer);
+        }
+        tok = lexer->get_next_token();
+
+        auto* ast_case = new AST_Case_Expression;
+
+        // handle the "default" case
+        if (tok != NULL && tok->type == TOKEN_COLON) {
+            if (ast_switch->has_default_case) {
+                throw_parser_error(E100, lexer);
+            }
+
+            lexer->move_to_next_token();
+            ast_switch->has_default_case = true;
+
+            goto case_block;
+        }
+
+        if (
+            tok == NULL ||
+            (!is_string_type && tok->type != TOKEN_NUMERIC_LITERAL) ||
+            (is_string_type && tok->type != TOKEN_STRING_LITERAL)
+            ) {
+            throw_parser_error(E097, lexer);
+        }
+
+        ast_case->literal = parse_ast_literal(lexer);
+
+        // if it is numeric, it should not be
+        // of a float/decimal type.
+        if (ast_case->literal->type == T_F32 || ast_case->literal->type == T_F64) {
+            throw_parser_error(E098, lexer);
+        }
+
+        tok = lexer->peek();
+        if (tok == NULL || tok->type != TOKEN_COLON) {
+            throw_parser_error(E099, lexer);
+        }
+        lexer->move_to_next_token();
+    case_block:
+        // now we should just parse the block that follows
+        // the literal.
+        lexer->symbol_table.push(); // push a new scope into the symbol table
+        parse_ast_block(ast_case->block, lexer);
+        lexer->symbol_table.pop(); // pop the current scope from the symbol table
+
+        ast_switch->case_list.push_back(ast_case);
+        tok = lexer->get_next_token();
+    }
+
+    if (tok == NULL) throw_parser_error(E092, lexer);
+    return ast_switch;
+}
+
+
 inline AST_Expression *parse_ast_parenthesized_expression(Lexer *lexer) {
     // parenthesized expression
     //     ( <expression> )
@@ -902,6 +1014,7 @@ AST_Expression *parse_ast_expression(Lexer *lexer) {
     //     POSSIBILITY 1 : starts with a keyword
 
     //     if ( <expression> ) <block>
+    //     switch ( <identifier> ) { ... }
     //     for ( <expression> ; <expression> ; <expression> ) <block>
     //     while ( <expression> ) <block>
     //     return <expression>;
@@ -910,6 +1023,8 @@ AST_Expression *parse_ast_expression(Lexer *lexer) {
     if (tok->type == TOKEN_KEYWORD) {
         if (tok->val == "if")
             return parse_ast_if_expression(lexer);
+	else if (tok->val == "switch")
+	    return parse_ast_switch_expression(lexer);
         else if (tok->val == "for")
             return parse_ast_for_expression(lexer);
         else if (tok->val == "while")

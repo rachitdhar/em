@@ -70,6 +70,12 @@ For example, in order to compile a program called "prog.em" and get the assembly
 emc prog.em -asm -cpu x86-64
 ```
 
+> **Note:**
+> When benchmarking, ensure that any Real-Time Anti-Virus Scanning is turned off, since that would significantly slow down
+> the entire linking stage (where CreateProcessA is called to create the executable). I personally figured this out when
+> I implemented this, and was trying to determine why CreateProcessA was taking 900 ms alone, for the same linking task
+> that was being performed in just 100 ms through a system() call!
+
 ## Compiling the Compiler + LLVM Linking
 
 It turns out that one of the most difficult and irritating parts of developing this compiler was to figure out how LLVM libraries can actually be included and compiled. After doing almost every possible thing - from installing the LLVM binaries and manually linking; using Visual Studio configurations; using CMAKE to handle builds; to building LLVM myself from the llvm-project source and trying to fix the compatibility issues between it and my own mingw compiler - I finally found that MSYS2 comes with the ability to install everything I need: C/C++ compilers, GDB, LLC,... and most importantly all the LLVM headers and libraries. From within the MSYS MINGW64 shell, all the compilation problems get handled very smoothly.

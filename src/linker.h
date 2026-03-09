@@ -23,6 +23,8 @@ involves two kinds of linking:
 #include "llvm.h"
 #include <filesystem>
 #include <string>
+#include <vector>
+#include <stdio.h>
 
 #if defined(_WIN32)
 #include <windows.h>

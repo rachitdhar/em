@@ -119,7 +119,8 @@ void print_benchmark_metrics(Compilation_Metrics *metrics) {
 
     printf("Aggregate frontend time elapsed: \t%.6f sec (Sum of frontend times of each thread)\n", metrics->aggregate_frontend_time);
     printf("Frontend time elapsed: \t\t\t%.6f sec\n", metrics->frontend_time);
-    printf("Backend time elapsed: \t\t\t%.6f sec\n\n", metrics->backend_time);
+    printf("Backend time elapsed: \t\t\t%.6f sec\n", metrics->backend_time);
+    printf("Linking time elapsed: \t\t\t%.6f sec (Time taken for making an exe from .o)\n\n", metrics->linking_time);
 
     printf("-------------------------------------------------------------------------------------------\n");
     printf("Total execution time: \t\t\t%.6f sec\n", metrics->total_time);
@@ -391,18 +392,23 @@ int main(int argc, char **argv) {
     } else
         write_llvm_ir_to_file(output_file_name.c_str(), linked_module.get());
 
-    // make an executable from the object file (if the output was .o)
-    if (flag_settings.output_file_type == OBJ)
-        make_executable_from_object(flag_settings.output_file_name);
-
     auto backend_end = std::chrono::high_resolution_clock::now();
 
     std::chrono::duration<double> backend_elapsed_time =
         backend_end - backend_start;
     metrics.backend_time = backend_elapsed_time.count();
 
+    // make an executable from the object file (if the output was .o)
+    if (flag_settings.output_file_type == OBJ) {
+        auto linking_start = std::chrono::high_resolution_clock::now();
+        make_executable_from_object(flag_settings.output_file_name);
+        auto linking_end = std::chrono::high_resolution_clock::now();
+
+        metrics.linking_time = ((std::chrono::duration<double>)(linking_end - linking_start)).count();
+    }
+
     if (show_benchmarking_metrics) {
-        metrics.total_time = ((std::chrono::duration<double>)(backend_end - frontend_start)).count();
+        metrics.total_time = metrics.frontend_time + metrics.backend_time + metrics.linking_time;
         print_benchmark_metrics(&metrics);
     }
     return 0;

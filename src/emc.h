@@ -29,6 +29,7 @@ struct Compilation_Metrics {
     double aggregate_frontend_time = 0;  // sum of frontend times of each thread
     double frontend_time = 0;      // total fronend time taken
     double backend_time = 0;       // total backend time taken (mainly by LLVM)
+    double linking_time = 0;       // total linking time taken (for obj to exe creation)
     double total_time = 0;         // total time for entire compilation process
 };
 

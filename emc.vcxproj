@@ -103,7 +103,6 @@
     <ClCompile Include="src\linker.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\parser.cpp" />
-    <ClCompile Include="src\type_checker.cpp" />
     <ClCompile Include="tests\test.cpp" />
   </ItemGroup>
   <ItemGroup>

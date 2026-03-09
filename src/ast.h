@@ -8,36 +8,6 @@
 #include "lexer.h"
 #include "llvm.h"
 
-inline Data_Type type_map(const std::string &type) {
-    if (type == "void")
-        return T_VOID;
-    if (type == "bool")
-        return T_BOOL;
-    if (type == "u8")
-        return T_U8;
-    if (type == "u16")
-        return T_U16;
-    if (type == "u32")
-        return T_U32;
-    if (type == "u64")
-        return T_U64;
-    if (type == "char" || type == "s8")
-        return T_S8;
-    if (type == "s16")
-        return T_S16;
-    if (type == "int" || type == "s32")
-        return T_S32;
-    if (type == "s64")
-        return T_S64;
-    if (type == "float" || type == "f32")
-        return T_F32;
-    if (type == "double" || type == "f64")
-        return T_F64;
-    if (type == "string")
-        return T_STRING;
-
-    return T_VOID;
-}
 
 enum Expression_Type {
     EXPR_IDENT,
@@ -62,7 +32,7 @@ enum Jump_Type { J_BREAK, J_CONTINUE };
 
 struct Function_Parameter {
     std::string name;
-    Data_Type type;
+    Data_Type *type = NULL;
 };
 
 //                             LLVM Objects
@@ -138,7 +108,7 @@ struct AST_Identifier : AST_Expression {
 struct AST_Literal : AST_Expression {
     AST_Literal() : AST_Expression(EXPR_LITERAL) {}
 
-    Data_Type type;
+    Data_Type *type = NULL;
 
     union {
         bool b;
@@ -164,7 +134,7 @@ struct AST_Function_Definition : AST_Expression {
     bool is_prototype = false;
     bool has_variadic_args = false;
 
-    Data_Type return_type;
+    Data_Type *return_type = NULL;
     std::string function_name;
 
     std::vector<Function_Parameter *> params;
@@ -225,7 +195,7 @@ struct AST_While_Expression : AST_Expression {
 struct AST_Declaration : AST_Expression {
     AST_Declaration() : AST_Expression(EXPR_DECL) {}
 
-    Data_Type data_type;
+    Data_Type *data_type = NULL;
     std::string variable_name;
 
     llvm::Value *generate_ir(LLVM_IR *ir) override;
@@ -279,7 +249,7 @@ struct AST_Jump_Expression : AST_Expression {
 struct AST_Varg : AST_Expression {
     AST_Varg() : AST_Expression(EXPR_VARG) {}
 
-    Data_Type data_type;
+    Data_Type *data_type = NULL;
 
     llvm::Value *generate_ir(LLVM_IR *ir) override;
 };

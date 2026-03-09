@@ -572,24 +572,24 @@ inline AST_Literal *parse_ast_literal(Lexer *lexer) {
 
         if (tok->val.find('.') != std::string::npos) {
             ast_literal->value.f_64 = std::stod(tok->val);
-            ast_literal->type = T_F64;
+            ast_literal->type = create_primitive_type(T_F64);
         } else if (fits_s32(tok->val)) {
             ast_literal->value.i_s32 = std::stoi(tok->val);
-            ast_literal->type = T_S32;
+            ast_literal->type = create_primitive_type(T_S32);
         } else {
             ast_literal->value.i_s64 = std::stoll(tok->val);
-            ast_literal->type = T_S64;
+            ast_literal->type = create_primitive_type(T_S64);
         }
 
     } else if (tok->type == TOKEN_BOOL_LITERAL) {
         ast_literal->value.b = tok->val == "true";
-        ast_literal->type = T_BOOL;
+        ast_literal->type = create_primitive_type(T_BOOL);
     } else if (tok->type == TOKEN_CHAR_LITERAL) {
         ast_literal->value.i_s8 = tok->val[0];
-        ast_literal->type = T_S8;
+        ast_literal->type = create_primitive_type(T_S8);
     } else {
         ast_literal->value.s = &(tok->val);
-        ast_literal->type = T_STRING;
+        ast_literal->type = create_primitive_type(T_STRING);
     }
 
     if (lexer->get_next_token() == NULL) {
@@ -631,7 +631,7 @@ inline AST_Switch_Expression *parse_ast_switch_expression(Lexer* lexer) {
     ast_switch->identifier_or_call = parse_ast_identifier(lexer);
 
     bool is_string_type = false;
-    Data_Type ident_or_call_type;
+    Data_Type *ident_or_call_type;
 
     if (ast_switch->identifier_or_call->expr_type == EXPR_IDENT) {
 	ident_or_call_type = lexer->symbol_table.get_return_type(
@@ -644,7 +644,7 @@ inline AST_Switch_Expression *parse_ast_switch_expression(Lexer* lexer) {
 	ident_or_call_type = lexer->symbol_table.get_return_type(
 	((AST_Function_Call*)ast_switch->identifier_or_call)->function_name, SYM_FUNCTION);
     }
-    if (ident_or_call_type == T_STRING) is_string_type = true;
+    if (ident_or_call_type->type_kind == TK_PRIMITIVE && ident_or_call_type->name.p == T_STRING) is_string_type = true;
     else if (!is_int_type(ident_or_call_type)) throw_parser_error(E102, lexer);
 
     // TODO: handle hashing in case of string types
@@ -703,7 +703,7 @@ inline AST_Switch_Expression *parse_ast_switch_expression(Lexer* lexer) {
 
         // if it is numeric, it should not be
         // of a float/decimal type.
-        if (ast_case->literal->type == T_F32 || ast_case->literal->type == T_F64) {
+        if (ast_case->literal->type->name.p == T_F32 || ast_case->literal->type->name.p == T_F64) {
             throw_parser_error(E098, lexer);
         }
 
@@ -1247,7 +1247,7 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer) {
     symbol->identifier = ast_function->function_name;
     symbol->symbol_type = SYM_FUNCTION;
     symbol->return_type = ast_function->return_type;
-    symbol->signature = new std::vector<Data_Type>();
+    symbol->signature = new std::vector<Data_Type *>();
     symbol->has_variadic_args = ast_function->has_variadic_args;
 
     for (auto *param : ast_function->params) {

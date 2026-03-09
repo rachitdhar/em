@@ -29,57 +29,63 @@
     <None Include=".gitattributes" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ast.h">
+    <ClInclude Include="src\ast.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="dsa.h">
+    <ClInclude Include="src\dsa.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ir_generator.h">
+    <ClInclude Include="src\emc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="lexer.h">
+    <ClInclude Include="src\errors.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="llvm.h">
+    <ClInclude Include="src\ir_generator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="parser.h">
+    <ClInclude Include="src\lexer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="errors.h">
+    <ClInclude Include="src\linker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="emc.h">
+    <ClInclude Include="src\llvm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="linker.h">
+    <ClInclude Include="src\parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\symbols.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\types.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ir_generator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="lexer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="parser.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="type_checker.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="dsa.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="tests\test.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="linker.cpp">
+    <ClCompile Include="src\dsa.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ir_generator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\lexer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\linker.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\parser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\type_checker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

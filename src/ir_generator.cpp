@@ -48,7 +48,10 @@ llvm::Value *AST_Identifier::generate_ir(LLVM_IR *ir) {
 }
 
 llvm::Value *AST_Literal::generate_ir(LLVM_IR *ir) {
-    switch (type) {
+    // I suppose it is fair to assume that
+    // literals must be of primitive types only
+    // and so we just need to handle that case.
+    switch (type->name.p) {
     case T_BOOL:
         return llvm::ConstantInt::get(
             llvm::Type::getInt1Ty(ir->_builder->getContext()), value.b ? 1 : 0);

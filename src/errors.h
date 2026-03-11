@@ -96,6 +96,10 @@
 #define E099 "SYNTAX ERROR: Missing \':\' in case expression."
 #define E100 "SYNTAX ERROR: Duplicate default case found in switch block."
 #define E102 "SYNTAX ERROR: Switch expressions can only accept integer or string types."
+#define E103 "TYPE ERROR: Invalid data type encountered."
+#define E104 "SYNTAX ERROR: Invalid top-level expression encountered. This keyword cannot be used at the global scope."
+#define E105 "SYNTAX ERROR: Incomplete typedef statement encountered."
+#define E106 "TYPE ERROR: typedef definition must be a valid type."
 
 /* errors originating in ir_generator */
 #define E063 "Non-integer type in logical expression."

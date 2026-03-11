@@ -51,11 +51,14 @@ struct Data_Type {
 
 
 inline bool is_int_type(Data_Type *data_type) {
-    if (data_type->type_kind != TK_PRIMITIVE) {
+    Data_Type* dt = data_type;
+    while (dt->type_kind == TK_ALIAS) dt = dt->base_type;
+
+    if (dt->type_kind != TK_PRIMITIVE) {
 	fprintf(stderr, "TYPE ERROR: Expected primitive data time");
 	exit(1);
     }
-    return (data_type->name.p >= T_U8 && data_type->name.p <= T_S64);
+    return (dt->name.p >= T_U8 && dt->name.p <= T_S64);
 }
 
 

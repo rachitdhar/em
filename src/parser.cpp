@@ -501,11 +501,14 @@ inline AST_Varg *parse_ast_varg(Lexer *lexer) {
         throw_parser_error(E089, lexer);
 
     tok = lexer->get_next_token();
-    if (tok == NULL || tok->type != TOKEN_DATA_TYPE)
+    if (tok == NULL)
         throw_parser_error(E090, lexer);
 
     auto *ast_varg = new AST_Varg;
     ast_varg->data_type = lexer->type_info_map[tok->val];
+    if (ast_varg->data_type == NULL) {
+	throw_parser_error(E103, lexer);
+    }
 
     tok = lexer->get_next_token();
     if (tok == NULL || tok->type != TOKEN_RIGHT_PAREN)
@@ -522,11 +525,11 @@ inline AST_Declaration *parse_ast_declaration(Lexer *lexer) {
 
     auto *ast_decl = new AST_Declaration;
     Token *tok = lexer->peek();
-    if (tok->type != TOKEN_DATA_TYPE) {
-        throw_parser_error(E039,
-                           lexer);
-    }
+
     ast_decl->data_type = lexer->type_info_map[tok->val];
+    if (ast_decl->data_type == NULL) {
+	throw_parser_error(E039, lexer);
+    }
 
     tok = lexer->get_next_token();
     if (tok == NULL || tok->type != TOKEN_IDENTIFIER) {
@@ -767,33 +770,36 @@ inline AST_Expression *parse_primary_subexpression(Lexer *lexer, Token *tok) {
 
     AST_Expression *expr = NULL;
 
-    switch (tok->type) {
-    case TOKEN_IDENTIFIER:
-        expr = parse_ast_identifier(lexer);
-        break;
-    case TOKEN_DATA_TYPE:
+    // handling data types here (through the type_info_map)
+    if (lexer->type_info_map[tok->val] != NULL) {
         expr = parse_ast_declaration(lexer);
-        break;
-    case TOKEN_CHAR_LITERAL:
-    case TOKEN_NUMERIC_LITERAL:
-    case TOKEN_BOOL_LITERAL:
-    case TOKEN_STRING_LITERAL:
-        expr = parse_ast_literal(lexer);
-        break;
-    case TOKEN_LEFT_PAREN:
-        expr = parse_ast_parenthesized_expression(lexer);
-        break;
-    case TOKEN_KEYWORD:
-	if (tok->val == "varg") {
-	    expr = parse_ast_varg(lexer);
-	    break;
-	}
-	// other keywords are not supposed to be inside
-	// a primary subexpression
-    default:
-        throw_parser_error(
-            E044,
-            lexer);
+    }
+    else {
+        switch (tok->type) {
+        case TOKEN_IDENTIFIER:
+            expr = parse_ast_identifier(lexer);
+            break;
+        case TOKEN_CHAR_LITERAL:
+        case TOKEN_NUMERIC_LITERAL:
+        case TOKEN_BOOL_LITERAL:
+        case TOKEN_STRING_LITERAL:
+            expr = parse_ast_literal(lexer);
+            break;
+        case TOKEN_LEFT_PAREN:
+            expr = parse_ast_parenthesized_expression(lexer);
+            break;
+        case TOKEN_KEYWORD:
+            if (tok->val == "varg") {
+                expr = parse_ast_varg(lexer);
+                break;
+            }
+            // other keywords are not supposed to be inside
+            // a primary subexpression
+        default:
+            throw_parser_error(
+                E044,
+                lexer);
+        }
     }
 
     if (ast_unary_prefix != NULL) {
@@ -1120,7 +1126,7 @@ void parse_ast_function_params(AST_Function_Definition *ast_function,
 	// and would be used to tell the compiler that
 	// this function allows variadic args here onwards.
 
-        if (tok->type != TOKEN_DATA_TYPE) {
+        if (!lexer->type_info_map[tok->val]) {
 	    if (tok->type == TOKEN_DOT) {
 		for (int i = 0; i < 2; ++i) {
 		    tok = lexer->get_next_token();
@@ -1200,14 +1206,12 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer) {
 
     // return type
     Token *tok_return_type = lexer->peek();
-    if (tok_return_type->type != TOKEN_DATA_TYPE) {
-        throw_parser_error(
-            E053,
-            lexer);
-    }
 
     auto *ast_function = new AST_Function_Definition;
     ast_function->return_type = lexer->type_info_map[tok_return_type->val];
+    if (ast_function->return_type == NULL) {
+	throw_parser_error(E053, lexer);
+    }
 
     // function name
     Token *tok_name = lexer->get_next_token();
@@ -1305,6 +1309,52 @@ AST_Expression *parse_ast_global_declaration(Lexer *lexer) {
     return ast_decl;
 }
 
+
+void parse_typedef(Lexer *lexer) {
+    // we are currently going to be at the "typedef" token.
+    // the syntax of typedef statements is
+    //
+    //    typedef <...> <TYPE_DEFINED>;
+
+    Token *tok;
+
+    int i = 1;
+    while (1) {
+	tok = lexer->peek(i);
+	if (tok == NULL) throw_parser_error(E061, lexer);
+	if (tok->type == TOKEN_DELIMITER) break;
+	i++;
+    }
+
+    // the tokens from 1 to (i - 2) are going to be
+    // part of the definition string, and the (i - 1)th token is the
+    // thing we are defining.
+    if (i < 3) throw_parser_error(E105, lexer);
+
+    std::string definition_string;
+    while (i >= 3) {
+	definition_string += lexer->get_next_token()->val;
+	if (i > 3) definition_string += " ";
+	i--;
+    }
+    Data_Type *type_definition = lexer->type_info_map[definition_string];
+    if (type_definition == NULL) {
+	throw_parser_error(E106, lexer);
+    }
+
+    // now we get the thing to be defined
+    std::string type_defined = lexer->get_next_token()->val;
+    auto *data_type_defined = new Data_Type;
+    data_type_defined->type_kind = TK_ALIAS;
+    data_type_defined->base_type = type_definition;
+    data_type_defined->name.np = &type_defined;
+
+    lexer->type_info_map.insert(type_defined, data_type_defined);
+
+    lexer->move_to_next_token();
+}
+
+
 std::vector<AST_Expression *> *parse_tokens(Lexer *lexer) {
     if (lexer->tokens.size() == 0) {
         throw_parser_error(E060, lexer);
@@ -1317,6 +1367,8 @@ std::vector<AST_Expression *> *parse_tokens(Lexer *lexer) {
     do {
         // at the outermost, we only have function definitions
         // or global declarations
+	// (well actually, we could also have some type related
+	// stuff, like: enums, structs, and typedefs)
 
         // both declarations and function definitions start with
         // <data_type> <identifier>. so the difference is at the
@@ -1324,7 +1376,23 @@ std::vector<AST_Expression *> *parse_tokens(Lexer *lexer) {
 
         // TODO : this does not handle pointers/arrays
 
-        Token *tok = lexer->peek(2);
+
+	// first we will check for keywords like enum, struct or typedef
+	Token *tok = lexer->peek();
+
+	if (tok->type == TOKEN_KEYWORD) {
+	    if (tok->val == "typedef") {
+		// this does not actually add anything
+		// to the ast. it simply inserts a new
+		// item into the type_info_map.
+		parse_typedef(lexer);
+		continue;
+	    }
+
+	    throw_parser_error(E104, lexer);
+	}
+
+        tok = lexer->peek(2);
         if (tok == NULL) {
             throw_parser_error(
                 E061,

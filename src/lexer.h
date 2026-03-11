@@ -245,7 +245,7 @@ const std::string KEYWORDS[] = {
 
     /* special builtins */
     "varg",
-    "typedef"
+    "typedef" // can only be used in global scope
 };
 
 const size_t TOTAL_KEYWORDS = sizeof(KEYWORDS) / sizeof(KEYWORDS[0]);

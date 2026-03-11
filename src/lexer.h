@@ -136,11 +136,18 @@ struct Lexer {
     Symbol_Table symbol_table; // to store symbols during parsing
     bool entry_point_found = false;
 
+    smap<Data_Type *> type_info_map; // mapping type names to their data types
+    void init_primitive_types();
+
     smap<Partial_Token *> preprocessor_definitions_map; // mapping #define definitions to actual token
     bool can_read_tokens = true; // to control reading #ifdef, #ifndef blocks
     int endif_nesting_level = 0; // is incremented when can_read_tokens is false and we see a #ifdef/#ifndef
 
     std::vector<std::string> libs_to_link;
+
+    Lexer() {
+	init_primitive_types();
+    }
 };
 
 inline Token *Lexer::get_next_token() {
@@ -173,6 +180,52 @@ inline void Lexer::move_to_next_token() {
     curr_token_index++;
 }
 
+
+/* ******************** Type Information ******************* */
+
+inline Data_Type* create_primitive_type(Primitive_Type pt) {
+    return new Data_Type{ TK_PRIMITIVE, nullptr, pt };
+}
+
+
+// the type info map stores the mapping of type names to the Data_Type*.
+// we could have defined this map globally, independent of Lexer, if it
+// were only for primitive types. however, since we will also be having
+// types (such as aliases created using typedefs) defined, we must consider
+// the possibility that different files have the same name used as an alias
+// for different actual types. so to handle that, we must associate the
+// type_info_map with a particular Lexer object.
+//
+// for primitives (which are same everywhere), we will initialize them at
+// once at the time when the lexer is created.
+inline void Lexer::init_primitive_types() {
+    type_info_map.insert("void", create_primitive_type(T_VOID));
+    type_info_map.insert("bool", create_primitive_type(T_BOOL));
+
+    // integer types
+    type_info_map.insert("u8", create_primitive_type(T_U8));
+    type_info_map.insert("u16", create_primitive_type(T_U16));
+    type_info_map.insert("u32", create_primitive_type(T_U32));
+    type_info_map.insert("u64", create_primitive_type(T_U64));
+    type_info_map.insert("s8", create_primitive_type(T_S8));
+    type_info_map.insert("s16", create_primitive_type(T_S16));
+    type_info_map.insert("s32", create_primitive_type(T_S32));
+    type_info_map.insert("s64", create_primitive_type(T_S64));
+
+    type_info_map.insert("char", type_info_map["s8"]);
+    type_info_map.insert("int", type_info_map["s32"]);
+
+    // floating point types
+    type_info_map.insert("f32", create_primitive_type(T_F32));
+    type_info_map.insert("f64", create_primitive_type(T_F64));
+
+    type_info_map.insert("float", type_info_map["f32"]);
+    type_info_map.insert("double", type_info_map["f64"]);
+
+    type_info_map.insert("string", create_primitive_type(T_STRING));
+}
+
+
 //          list of keywords for the language
 // *****************************************************
 
@@ -192,6 +245,7 @@ const std::string KEYWORDS[] = {
 
     /* special builtins */
     "varg",
+    "typedef"
 };
 
 const size_t TOTAL_KEYWORDS = sizeof(KEYWORDS) / sizeof(KEYWORDS[0]);

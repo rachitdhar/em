@@ -505,7 +505,7 @@ inline AST_Varg *parse_ast_varg(Lexer *lexer) {
         throw_parser_error(E090, lexer);
 
     auto *ast_varg = new AST_Varg;
-    ast_varg->data_type = type_map(tok->val);
+    ast_varg->data_type = lexer->type_info_map[tok->val];
 
     tok = lexer->get_next_token();
     if (tok == NULL || tok->type != TOKEN_RIGHT_PAREN)
@@ -526,7 +526,7 @@ inline AST_Declaration *parse_ast_declaration(Lexer *lexer) {
         throw_parser_error(E039,
                            lexer);
     }
-    ast_decl->data_type = type_map(tok->val);
+    ast_decl->data_type = lexer->type_info_map[tok->val];
 
     tok = lexer->get_next_token();
     if (tok == NULL || tok->type != TOKEN_IDENTIFIER) {
@@ -572,24 +572,24 @@ inline AST_Literal *parse_ast_literal(Lexer *lexer) {
 
         if (tok->val.find('.') != std::string::npos) {
             ast_literal->value.f_64 = std::stod(tok->val);
-            ast_literal->type = create_primitive_type(T_F64);
+            ast_literal->type = lexer->type_info_map["f64"];
         } else if (fits_s32(tok->val)) {
             ast_literal->value.i_s32 = std::stoi(tok->val);
-            ast_literal->type = create_primitive_type(T_S32);
+            ast_literal->type = lexer->type_info_map["s32"];
         } else {
             ast_literal->value.i_s64 = std::stoll(tok->val);
-            ast_literal->type = create_primitive_type(T_S64);
+            ast_literal->type = lexer->type_info_map["s64"];
         }
 
     } else if (tok->type == TOKEN_BOOL_LITERAL) {
         ast_literal->value.b = tok->val == "true";
-        ast_literal->type = create_primitive_type(T_BOOL);
+        ast_literal->type = lexer->type_info_map["bool"];
     } else if (tok->type == TOKEN_CHAR_LITERAL) {
         ast_literal->value.i_s8 = tok->val[0];
-        ast_literal->type = create_primitive_type(T_S8);
+        ast_literal->type = lexer->type_info_map["s8"];
     } else {
         ast_literal->value.s = &(tok->val);
-        ast_literal->type = create_primitive_type(T_STRING);
+        ast_literal->type = lexer->type_info_map["string"];
     }
 
     if (lexer->get_next_token() == NULL) {
@@ -1145,7 +1145,7 @@ void parse_ast_function_params(AST_Function_Definition *ast_function,
                 lexer);
         }
         auto *function_param = new Function_Parameter;
-        function_param->type = type_map(tok->val);
+        function_param->type = lexer->type_info_map[tok->val];
 
         tok = lexer->get_next_token();
         if (tok == NULL) {
@@ -1207,7 +1207,7 @@ AST_Function_Definition *parse_ast_function(Lexer *lexer) {
     }
 
     auto *ast_function = new AST_Function_Definition;
-    ast_function->return_type = type_map(tok_return_type->val);
+    ast_function->return_type = lexer->type_info_map[tok_return_type->val];
 
     // function name
     Token *tok_name = lexer->get_next_token();

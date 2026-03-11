@@ -67,43 +67,4 @@ const std::string DATA_TYPES[] = {
     "char", "string"
 };
 
-
-inline Data_Type* create_primitive_type(Primitive_Type pt) {
-    return new Data_Type{ TK_PRIMITIVE, nullptr, pt };
-}
-
-
-// to create and return the primitive types during parsing
-inline Data_Type* type_map(const std::string& type) {
-    if (type == "void")
-        return create_primitive_type(T_VOID);
-    if (type == "bool")
-        return create_primitive_type(T_BOOL);
-    if (type == "u8")
-        return create_primitive_type(T_U8);
-    if (type == "u16")
-        return create_primitive_type(T_U16);
-    if (type == "u32")
-        return create_primitive_type(T_U32);
-    if (type == "u64")
-        return create_primitive_type(T_U64);
-    if (type == "char" || type == "s8")
-        return create_primitive_type(T_S8);
-    if (type == "s16")
-        return create_primitive_type(T_S16);
-    if (type == "int" || type == "s32")
-        return create_primitive_type(T_S32);
-    if (type == "s64")
-        return create_primitive_type(T_S64);
-    if (type == "float" || type == "f32")
-        return create_primitive_type(T_F32);
-    if (type == "double" || type == "f64")
-        return create_primitive_type(T_F64);
-    if (type == "string")
-        return create_primitive_type(T_STRING);
-
-    return create_primitive_type(T_VOID);
-}
-
-
 #endif

@@ -55,7 +55,7 @@ inline bool is_int_type(Data_Type *data_type) {
     while (dt->type_kind == TK_ALIAS) dt = dt->base_type;
 
     if (dt->type_kind != TK_PRIMITIVE) {
-	fprintf(stderr, "TYPE ERROR: Expected primitive data time");
+	fprintf(stderr, "TYPE ERROR: Expected primitive data type.");
 	exit(1);
     }
     return (dt->name.p >= T_U8 && dt->name.p <= T_S64);

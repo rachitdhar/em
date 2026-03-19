@@ -32,6 +32,7 @@
 #define E085 "SYNTAX ERROR: \'#\' must be the first non-whitespace character on a line."
 #define E086 "SYNTAX ERROR: Included file name must be in the format: <FILE_NAME>.<EXTENSION>"
 #define E087 "ERROR: Could not find the file: %s"
+#define E107 "SYNTAX ERROR: Invalid escape sequence encountered."
 
 /* errors originating in parser */
 #define E015 "\nFATAL (Parser): Could not find current token."

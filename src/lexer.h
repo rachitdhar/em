@@ -260,6 +260,22 @@ inline bool is_alpha(char c) {
 
 inline bool is_numeric(char c) { return (c >= '0' && c <= '9'); }
 
+inline char get_escape_sequence(char c)
+{
+    switch (c) {
+        case 'n': return '\n';
+        case 't': return '\t';
+        case 'r': return '\r';
+	case 'b': return '\b';
+	case 'v': return '\v';
+        case '\\': return '\\';
+        case '\'': return '\'';
+        case '\"': return '\"';
+        case '0': return '\0';
+        default: return -1; // invalid escape
+    }
+}
+
 // to print error messages
 inline void throw_error(const char *message, const std::string &line,
                         int line_num, int pos, std::string &file_name) {

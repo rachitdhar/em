@@ -589,7 +589,24 @@ void generate_tokens(Lexer *lexer, bool *inside_multiline_comment) {
                 throw_error(E010,
                             lexer->line, lexer->line_num, pos,
                             lexer->file_name);
-            }
+	    }
+
+	    // handle escape sequences
+	    if (literal_val == '\\') {
+		pos++;
+		char esc_type = lexer->line[pos];
+		if (!esc_type || esc_type == '\t') {
+                    throw_error(E010,
+                    lexer->line, lexer->line_num, pos,
+                    lexer->file_name);
+		}
+		char esc = get_escape_sequence(esc_type);
+		if (esc == -1) {
+		    throw_error(E107, lexer->line, lexer->line_num, pos, lexer->file_name);
+		}
+
+		literal_val = esc;
+	    }
 
             lexer->tokens.push_back(Token{std::string(1, literal_val),
                                           TOKEN_CHAR_LITERAL, lexer->line_num,
@@ -610,7 +627,22 @@ void generate_tokens(Lexer *lexer, bool *inside_multiline_comment) {
             char literal_char = lexer->line[pos];
 
             while (literal_char && literal_char != '\"') {
-                if (literal_char == '\t') {
+		// handle escape sequences
+		if (literal_char == '\\') {
+		    pos++;
+		    char esc_type = lexer->line[pos];
+		    if (!esc_type || esc_type == '\t') {
+			throw_error(E013,
+                            lexer->line, lexer->line_num, pos,
+                            lexer->file_name);
+		    }
+		    char esc = get_escape_sequence(esc_type);
+		    if (esc == -1) {
+			throw_error(E107, lexer->line, lexer->line_num, pos, lexer->file_name);
+		    }
+
+		    literal_char = esc;
+		} else if (literal_char == '\t') {
                     throw_error(E012,
                                 lexer->line, lexer->line_num, pos,
                                 lexer->file_name);

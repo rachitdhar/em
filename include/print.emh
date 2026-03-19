@@ -8,6 +8,7 @@
 #ifndef __EM_HEADER__PRINT
 #define __EM_HEADER__PRINT 1
 
-void print(string text, u32 len);
+void putchar(char c);
+void print(string text, ...);
 
 #endif

@@ -41,6 +41,7 @@ Here are the flags that can be added, along with their purposes:
 - **-cpu** : To specify the target CPU type. This flag must be followed by the CPU name
 - **-o** : To name the output file (for any type). This flag must be followed by the file name
 - **-benchmark** : Prints the performance metrics for the compilation process
+- **-O1 / -O2 / -O3** : To specify the optimization level (1, 2 or 3). If not given, default is 0.
 
 The list of CPU types that can be set as targets using "-cpu", are:
 

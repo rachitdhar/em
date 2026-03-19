@@ -41,10 +41,46 @@ of threads to run the compilation process in parallel.
 
 
 
+// to optimize the IR as per the selected optimization level passed by the user
+void run_optimization(llvm::Module *_module, llvm::TargetMachine *target_machine, int optimization_level)
+{
+    llvm::OptimizationLevel opt_level;
+
+    switch (optimization_level) {
+        case 0: opt_level = llvm::OptimizationLevel::O0; break;
+        case 1: opt_level = llvm::OptimizationLevel::O1; break;
+        case 2: opt_level = llvm::OptimizationLevel::O2; break;
+        case 3: opt_level = llvm::OptimizationLevel::O3; break;
+        default: opt_level = llvm::OptimizationLevel::O0;
+    }
+
+    llvm::PassBuilder pb(target_machine);
+
+    // Analysis managers
+    llvm::LoopAnalysisManager lam;
+    llvm::FunctionAnalysisManager fam;
+    llvm::CGSCCAnalysisManager cgam;
+    llvm::ModuleAnalysisManager mam;
+
+    // Register analyses
+    pb.registerModuleAnalyses(mam);
+    pb.registerFunctionAnalyses(fam);
+    pb.registerLoopAnalyses(lam);
+    pb.registerCGSCCAnalyses(cgam);
+    pb.crossRegisterProxies(lam, fam, cgam, mam);
+
+    // Build optimization pipeline
+    llvm::ModulePassManager mpm = pb.buildPerModuleDefaultPipeline(opt_level);
+
+    // Run optimization
+    mpm.run(*_module, mam);
+}
+
+
 // to generate the executable / assembly file for the particular target
 void run_llvm_backend(llvm::Module *_module, const std::string &out_file_name,
                       Output_File_Type output_file_type, std::string cpu_type,
-                      std::string target_triple) {
+                      std::string target_triple, int optimization_level) {
     // initialize all targets
     llvm::InitializeAllTargetInfos();
     llvm::InitializeAllTargets();
@@ -82,6 +118,10 @@ void run_llvm_backend(llvm::Module *_module, const std::string &out_file_name,
         llvm::errs() << "ERROR: Could not open file: " << EC.message();
         return;
     }
+
+    // run optimization (if optimization level flag is passed)
+    if (optimization_level > 0)
+        run_optimization(_module, target_machine, optimization_level);
 
     llvm::legacy::PassManager pass;
 
@@ -261,7 +301,13 @@ int main(int argc, char **argv) {
             } else if (strcmp(argv[i], "-o") == 0 && i < argc - 1) {
                 flag_settings.output_file_name =
                     argv[++i]; // reads the next argument as output file name
-            }
+	    }
+	    else if (strcmp(argv[i], "-O1") == 0)
+	        flag_settings.optimization_level = 1;
+	    else if (strcmp(argv[i], "-O2") == 0)
+	        flag_settings.optimization_level = 2;
+	    else if (strcmp(argv[i], "-O3") == 0)
+	        flag_settings.optimization_level = 3;
         }
     }
 
@@ -388,7 +434,7 @@ int main(int argc, char **argv) {
     if (flag_settings.output_file_type != LL) {
         run_llvm_backend(linked_module.get(), output_file_name,
                          flag_settings.output_file_type, flag_settings.cpu_type,
-                         target_triple);
+                         target_triple, flag_settings.optimization_level);
     } else
         write_llvm_ir_to_file(output_file_name.c_str(), linked_module.get());
 

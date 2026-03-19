@@ -29,6 +29,10 @@
 /* for linking */
 #include "llvm/Linker/Linker.h"
 
+/* for optimization levels */
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Passes/OptimizationLevel.h"
+
 // This function is needed for a very particular reason. The thing is that if we
 // compile multiple files, we would get multiple different modules for each
 // such file, and then we would have to link them into a single module that is

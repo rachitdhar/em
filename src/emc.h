@@ -21,6 +21,7 @@ struct Flag_Settings {
     Output_File_Type output_file_type = OBJ;
     std::string cpu_type;
     std::string output_file_name = "out";
+    int optimization_level = 0;
 };
 
 struct Compilation_Metrics {

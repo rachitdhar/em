@@ -7,6 +7,8 @@
 
 #include "types.h"
 #include "dsa.h"
+#include <string>
+#include <vector>
 
 
 //                       Symbol Table

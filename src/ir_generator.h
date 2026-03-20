@@ -15,7 +15,8 @@ to help describe what IR instructions are meant to be generated.
 
 #pragma once
 
-#include "parser.h"
+#include "ast.h"
+#include "errors.h"
 
 
 // to print an error message, for errors that occur

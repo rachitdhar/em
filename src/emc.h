@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "ir_generator.h"
 #include <chrono>
 #include <mutex>
 #include <thread>

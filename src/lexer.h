@@ -3,8 +3,6 @@
 #pragma once
 
 
-#include "errors.h"
-#include "linker.h"
 #include "symbols.h"
 #include <fstream>
 #include <iterator>

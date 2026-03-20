@@ -38,6 +38,9 @@ of threads to run the compilation process in parallel.
 */
 
 #include "emc.h"
+#include "parser.h"
+#include "ir_generator.h"
+#include "linker.h"
 
 
 

@@ -3,6 +3,8 @@
 //
 
 #include "lexer.h"
+#include "linker.h"
+#include "errors.h"
 
 /*
 

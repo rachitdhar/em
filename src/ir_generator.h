@@ -13,8 +13,7 @@ to help describe what IR instructions are meant to be generated.
 
 */
 
-#ifndef IR_GENERATOR_H
-#define IR_GENERATOR_H
+#pragma once
 
 #include "parser.h"
 
@@ -179,5 +178,3 @@ inline void emit_va_end(LLVM_IR *ir) {
 LLVM_IR *emit_llvm_ir(std::vector<AST_Expression *> *ast,
                       const char *file_name);
 void write_llvm_ir_to_file(const char *llvm_file_name, llvm::Module *_module);
-
-#endif

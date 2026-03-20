@@ -9,8 +9,7 @@
 // also, for each error, we will use a code number
 // which will be of the form E<NUMBER>.
 
-#ifndef ERRORS_H
-#define ERRORS_H
+#pragma once
 
 /* errors originating in lexer */
 #define E001 "SYNTAX ERROR: Included file path not specified."
@@ -124,5 +123,3 @@
 #define E081 "Global initializers must be constant expressions."
 #define E082 "Invalid top-level expression encountered."
 #define E101 "(FATAL) Cannot find parent IR block for \'switch\' statement."
-
-#endif

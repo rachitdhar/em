@@ -2,8 +2,7 @@
 // types.h
 //
 
-#ifndef TYPES_H
-#define TYPES_H
+#pragma once
 
 #include <stdio.h>
 #include <string>
@@ -69,5 +68,3 @@ const std::string DATA_TYPES[] = {
     "float", "f32", "double", "f64",
     "char", "string"
 };
-
-#endif

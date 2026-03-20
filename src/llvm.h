@@ -2,8 +2,7 @@
 // llvm.h
 //
 
-#ifndef __LLVM_H
-#define __LLVM_H
+#pragma once
 
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
@@ -128,5 +127,3 @@ get_module_from_bitcode(const std::string &filename,
     }
     return std::move(*module_or_error);
 }
-
-#endif

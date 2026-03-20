@@ -2,8 +2,7 @@
 // parser.h
 //
 
-#ifndef PARSER_H
-#define PARSER_H
+#pragma once
 
 #include "ast.h"
 
@@ -395,5 +394,3 @@ AST_Expression *parse_ast_subexpression(Lexer *lexer,
                                         AST_Expression *left = NULL);
 AST_Expression *parse_ast_expression(Lexer *lexer);
 std::vector<AST_Expression *> *parse_tokens(Lexer *lexer);
-
-#endif

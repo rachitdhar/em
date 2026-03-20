@@ -17,8 +17,7 @@ involves two kinds of linking:
 
 */
 
-#ifndef LINKER_H
-#define LINKER_H
+#pragma once
 
 #include "llvm.h"
 #include <filesystem>
@@ -41,5 +40,3 @@ void make_executable_from_object(std::string object_file_name);
 std::filesystem::path get_compiler_executable_path();
 std::string get_include_path();
 std::string get_lib_path();
-
-#endif

@@ -2,8 +2,7 @@
 // symbols.h
 //
 
-#ifndef SYMBOLS_H
-#define SYMBOLS_H
+#pragma once
 
 
 #include "types.h"
@@ -172,5 +171,3 @@ inline Data_Type *Symbol_Table::get_return_type(std::string name, Symbol_Type sy
     }
     return nullptr;
 }
-
-#endif

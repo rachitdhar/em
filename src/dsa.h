@@ -12,8 +12,7 @@ that are unnecessarily large or unoptimized, or where there
 is a way to write a uniquely specialized implementation.
 */
 
-#ifndef DSA_H
-#define DSA_H
+#pragma once
 
 #include <string>
 
@@ -153,5 +152,3 @@ template <typename T> inline void smap<T>::resize(size_t new_capacity) {
 //    (2) it is a valid integer string (may have a sign at the beginning)
 
 bool fits_s32(std::string& str);
-
-#endif

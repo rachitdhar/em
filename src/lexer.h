@@ -1,7 +1,6 @@
 // Lexer.h
 
-#ifndef LEXER_H
-#define LEXER_H
+#pragma once
 
 
 #include "errors.h"
@@ -303,5 +302,3 @@ inline void print_tokens(Lexer *lexer) {
 //               Function definitions
 // **************************************************
 Lexer *perform_lexical_analysis(const char *file_name);
-
-#endif

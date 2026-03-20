@@ -2,8 +2,7 @@
 // ast.h
 //
 
-#ifndef AST_H
-#define AST_H
+#pragma once
 
 #include "lexer.h"
 #include "llvm.h"
@@ -263,5 +262,3 @@ struct AST_Block_Expression : AST_Expression {
 
     llvm::Value *generate_ir(LLVM_IR *ir) override;
 };
-
-#endif

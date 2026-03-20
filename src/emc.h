@@ -2,8 +2,7 @@
 // emc.h
 //
 
-#ifndef EMC_H
-#define EMC_H
+#pragma once
 
 #include "ir_generator.h"
 #include <chrono>
@@ -63,5 +62,3 @@ const std::string cpu_to_target[][2] = {
     {"neoverse-n2", "aarch64-unknown-linux-gnu"}};
 
  const int NUM_CPU_TYPES = sizeof(cpu_to_target) / sizeof(cpu_to_target[0]);
-
- #endif

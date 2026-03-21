@@ -377,16 +377,7 @@ int main(int argc, char **argv) {
 
     // include libs that are needed, by converting
     // .bc files to LLVM modules.
-    //
-    // TODO:
-    //
-    // right now I have hardcoded this to only
-    // work for windows, but this should be changed later.
     std::string lib_path = get_lib_path();
-
-#ifdef _WIN32
-    unified_modules.push_back(std::move(get_module_from_bitcode(lib_path + "win_runtime.bc", shared_context)));
-#endif
 
     for (std::string& lib_to_link: libs_to_link) {
 	unified_modules.push_back(std::move(

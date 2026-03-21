@@ -21,6 +21,7 @@ involves two kinds of linking:
 
 #include "llvm.h"
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <stdio.h>
@@ -32,6 +33,14 @@ involves two kinds of linking:
 #elif defined(__linux__)
 #include <unistd.h>
 #endif
+
+
+// this will be read from the cached_paths.txt
+struct Cached_Paths {
+    std::filesystem::path Windows_SDK;
+    std::filesystem::path VS_Build_Tools;
+};
+
 
 std::unique_ptr<llvm::Module>
 link_modules(std::vector<std::unique_ptr<llvm::Module>> module_list);

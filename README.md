@@ -5,6 +5,30 @@ This project was largely undertaken by me for fun and educational purposes, but 
 
 > **Note:** This project is still in early development.
 
+## Installation
+
+Before using this compiler, you would need to have Visual Studio Build Tools
+installed on your system (I know, this is a stupid pain, but unfortunately,
+at least on Windows, certain C Runtime libs are present only via Build Tools).
+
+You can download the Build Tools installer yourself, or you may use a script to
+do so, called `build_tools_installation.bat`, located in the bin folder. This
+will automatically download the installer, and then run it (it will open the GUI
+interface for you to then work with).
+
+The only thing needed is really the C++ Developer Tools, which will bring in the
+libs like vcruntime.lib, msvcrt.lib, and libcmt.lib, required at link time (Technically,
+these are not _really_ required if you write your own runtime. I did provide a
+minimal runtime to link with, called win_runtime.bc, which is a bitcode file that
+provides the startup glue code needed for an executable. But this is devoid of any
+C runtime library features, which usually are useful, and otherwise you would have to
+implement on your own (which is an option if desired)).
+
+The first time the compiler is run and it reaches the linking stage, it will search for
+the paths to the Windows SDK and VS Build Tools. If it does not find them, it will
+print an error on the console. If found, these are going to be cached in a txt file
+called `cached_paths.txt`, for future use.
+
 ## Usage
 
 Compile a file at a given path using emc (the "Em compiler"):

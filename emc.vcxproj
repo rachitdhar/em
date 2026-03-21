@@ -116,6 +116,7 @@
     <ClInclude Include="src\llvm.h" />
     <ClInclude Include="src\parser.h" />
     <ClInclude Include="src\symbols.h" />
+    <ClInclude Include="src\tokens.h" />
     <ClInclude Include="src\types.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -50,7 +50,7 @@ llvm::Type *llvm_type_map(const Data_Type *type,
         default:
             return nullptr;
         }
-    } else if (type->type_kind == TK_ALIAS) {
+    } else if (type->type_kind == TK_ALIAS || type->type_kind == TK_ENUM) {
 	return llvm_type_map(type->base_type, _context);
     }
 

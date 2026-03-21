@@ -68,3 +68,14 @@ const std::string DATA_TYPES[] = {
     "float", "f32", "double", "f64",
     "char", "string"
 };
+
+
+inline Data_Type *create_enum_type(std::string& name) {
+    auto *base_type = new Data_Type{ TK_PRIMITIVE, nullptr, T_U64 };
+    auto *enum_data_type = new Data_Type;
+
+    enum_data_type->type_kind = TK_ENUM;
+    enum_data_type->base_type = base_type;
+    enum_data_type->name.np = &name;
+    return enum_data_type;
+}

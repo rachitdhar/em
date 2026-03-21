@@ -1377,6 +1377,10 @@ void parse_enum_definition(Lexer *lexer) {
     }
     std::string enum_type = tok->val;
 
+    // we can add this as a data type to the type_info_map
+    Data_Type *enum_data_type = create_enum_type(enum_type);
+    lexer->type_info_map.insert(enum_type, enum_data_type);
+
     tok = lexer->get_next_token();
     if (tok == NULL || tok->type != TOKEN_LEFT_BRACE) {
 	throw_parser_error(E109, lexer);

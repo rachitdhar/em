@@ -5,6 +5,7 @@
 #pragma once
 
 #include "ast.h"
+#include "lexer.h"
 #include "errors.h"
 
 // defining precedence levels

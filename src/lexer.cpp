@@ -470,9 +470,17 @@ void generate_tokens(Lexer *lexer, bool *inside_multiline_comment) {
                    // exists)
         }
 
+    check_if_line_has_ended:
+
         // reached a whitespace or end of line
         if (curr != "" && (!c || c == ' ' || c == '\t')) {
-            make_token_as_per_ptok(lexer, curr, ptok, pos);
+            Partial_Token *actual_token = lexer->preprocessor_definitions_map[curr];
+
+	    if (actual_token != NULL) {
+		make_token_as_per_ptok(lexer, actual_token->val, actual_token->type, pos);
+	    } else {
+		make_token_as_per_ptok(lexer, curr, ptok, pos);
+	    }
             curr.clear();
 
             pos++;
@@ -487,6 +495,11 @@ void generate_tokens(Lexer *lexer, bool *inside_multiline_comment) {
         if (c == '.' && curr != "" && ptok == PTOK_NUMERIC) {
             curr += c;
             pos++;
+
+	    if (lexer->line[pos] == NULL) {
+		c = NULL;
+		goto check_if_line_has_ended;
+	    }
             continue;
         }
 
@@ -498,6 +511,11 @@ void generate_tokens(Lexer *lexer, bool *inside_multiline_comment) {
             curr += c;
 
             pos++;
+
+	    if (lexer->line[pos] == NULL) {
+		c = NULL;
+		goto check_if_line_has_ended;
+	    }
             continue;
         }
 
@@ -516,6 +534,11 @@ void generate_tokens(Lexer *lexer, bool *inside_multiline_comment) {
             ptok = PTOK_ALNUM;
 
             pos++;
+
+	    if (lexer->line[pos] == NULL) {
+		c = NULL;
+		goto check_if_line_has_ended;
+	    }
             continue;
         }
 

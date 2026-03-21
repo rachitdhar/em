@@ -4,8 +4,11 @@
 
 #pragma once
 
-#include "lexer.h"
+#include "tokens.h"
 #include "llvm.h"
+#include "types.h"
+#include "dsa.h"
+#include <stack>
 
 
 enum Expression_Type {

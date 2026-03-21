@@ -458,7 +458,7 @@ inline AST_Function_Call *parse_ast_function_call(Lexer *lexer) {
 }
 
 // may either return an identifier or a function call expression (depending upon
-// the next token)
+// the next token). it is also possible that it may be a literal (like an enum literal).
 inline AST_Expression *parse_ast_identifier(Lexer *lexer) {
     // we need to "peek" ahead just to check in case
     // it might be actually a function call.
@@ -475,7 +475,19 @@ inline AST_Expression *parse_ast_identifier(Lexer *lexer) {
         return parse_ast_function_call(lexer);
     }
 
-    // if it is not a function call
+    // if it is not a function call...
+    //
+    // now there is one possibility that
+    // this is not just a standard identifier,
+    // but actually something that has a definition
+    // (like an enum literal). so we should check
+    // for that first.
+    AST_Literal *enum_val = lexer->enum_values_map[tok->val];
+    if (enum_val != NULL) {
+        lexer->move_to_next_token();
+        return enum_val;
+    }
+
     auto *ast_ident = new AST_Identifier;
     ast_ident->name = tok->val;
 
@@ -639,13 +651,11 @@ inline AST_Switch_Expression *parse_ast_switch_expression(Lexer* lexer) {
     if (ast_switch->identifier_or_call->expr_type == EXPR_IDENT) {
 	ident_or_call_type = lexer->symbol_table.get_return_type(
 	((AST_Identifier*)ast_switch->identifier_or_call)->name, SYM_VARIABLE);
-    } else {
-	// if it is not an identifier, we can
-	// assume it must be a function call,
-	// since parse_ast_identifier just returns
-	// those two types.
+    } else if (ast_switch->identifier_or_call->expr_type == EXPR_FUNC_CALL) {
 	ident_or_call_type = lexer->symbol_table.get_return_type(
 	((AST_Function_Call*)ast_switch->identifier_or_call)->function_name, SYM_FUNCTION);
+    } else {
+	throw_parser_error(E093, lexer);
     }
     if (ident_or_call_type->type_kind == TK_PRIMITIVE && ident_or_call_type->name.p == T_STRING) is_string_type = true;
     else if (!is_int_type(ident_or_call_type)) throw_parser_error(E102, lexer);
@@ -1355,13 +1365,90 @@ void parse_typedef(Lexer *lexer) {
 }
 
 
+void parse_enum_definition(Lexer *lexer) {
+    // currently we are at the "enum" token.
+    // the syntax of enum statements is
+    //
+    //     enum <ENUM_TYPE> { <E1> = <INTEGER_1>, <E2> = <INTEGER_2> , ... };
+
+    Token *tok = lexer->get_next_token();
+    if (tok == NULL || tok->type != TOKEN_IDENTIFIER) {
+	throw_parser_error(E108, lexer);
+    }
+    std::string enum_type = tok->val;
+
+    tok = lexer->get_next_token();
+    if (tok == NULL || tok->type != TOKEN_LEFT_BRACE) {
+	throw_parser_error(E109, lexer);
+    }
+
+    uint64_t current_enum_val = 0;
+    tok = lexer->get_next_token();
+
+    do {
+	if (tok == NULL || tok->type != TOKEN_IDENTIFIER) {
+	    throw_parser_error(E110, lexer);
+	}
+	std::string enum_name = tok->val;
+
+	// now, we may or may not have an "=" sign
+	tok = lexer->peek_next_token();
+	if (tok == NULL) throw_parser_error(E111, lexer);
+	if (tok->type == TOKEN_ASSIGN) {
+	    // now we expect a value, of integer type
+        lexer->move_to_next_token();
+	    tok = lexer->get_next_token();
+	    if (tok == NULL || tok->type != TOKEN_NUMERIC_LITERAL) {
+		throw_parser_error(E112, lexer);
+	    }
+
+	    AST_Literal *enum_val = parse_ast_literal(lexer);
+	    lexer->enum_values_map.insert(enum_name, enum_val);
+
+	    switch (enum_val->type->name.p) {
+	    case T_U8: current_enum_val = enum_val->value.i_u8 + 1; break;
+	    case T_S8: current_enum_val = enum_val->value.i_s8 + 1; break;
+	    case T_U16: current_enum_val = enum_val->value.i_u16 + 1; break;
+	    case T_S16: current_enum_val = enum_val->value.i_s16 + 1; break;
+	    case T_U32: current_enum_val = enum_val->value.i_u32 + 1; break;
+	    case T_S32: current_enum_val = enum_val->value.i_s32 + 1; break;
+	    case T_U64: current_enum_val = enum_val->value.i_u64 + 1; break;
+	    case T_S64: current_enum_val = enum_val->value.i_s64 + 1; break;
+	    default: throw_parser_error(E112, lexer);
+	    }
+	} else {
+	    auto *enum_val = new AST_Literal;
+	    enum_val->type = create_primitive_type(T_U64);
+	    enum_val->value.i_u64 = current_enum_val;
+
+	    lexer->enum_values_map.insert(enum_name, enum_val);
+	    current_enum_val++;
+	}
+
+	// now if we do not encounter a "," we should get a "}"
+	tok = lexer->get_next_token();
+	if (tok == NULL) {
+	    throw_parser_error(E111, lexer);
+	}
+	if (tok->type == TOKEN_SEPARATOR) {
+	    tok = lexer->get_next_token();
+	}
+    } while (tok != NULL && tok->type != TOKEN_RIGHT_BRACE);
+
+    if (tok == NULL) throw_parser_error(E111, lexer);
+    tok = lexer->get_next_token(); // to move to the semicolon at the end
+    if (tok == NULL || tok->type != TOKEN_DELIMITER) {
+	throw_parser_error(E113, lexer);
+    }
+}
+
+
 std::vector<AST_Expression *> *parse_tokens(Lexer *lexer) {
     if (lexer->tokens.size() == 0) {
         throw_parser_error(E060, lexer);
     }
 
-    auto *ast =
-        new std::vector<AST_Expression *>; // abstract syntax tree initialized
+    auto *ast = new std::vector<AST_Expression *>; // abstract syntax tree initialized
     bool entry_point_exists = false;
 
     do {
@@ -1386,6 +1473,9 @@ std::vector<AST_Expression *> *parse_tokens(Lexer *lexer) {
 		// to the ast. it simply inserts a new
 		// item into the type_info_map.
 		parse_typedef(lexer);
+		continue;
+	    } else if (tok->val == "enum") {
+		parse_enum_definition(lexer);
 		continue;
 	    }
 

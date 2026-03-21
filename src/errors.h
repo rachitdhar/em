@@ -100,6 +100,12 @@
 #define E104 "SYNTAX ERROR: Invalid top-level expression encountered. This keyword cannot be used at the global scope."
 #define E105 "SYNTAX ERROR: Incomplete typedef statement encountered."
 #define E106 "TYPE ERROR: typedef definition must be a valid type."
+#define E108 "SYNTAX ERROR: enum keyword must be followed by the enum type name."
+#define E109 "SYNTAX ERROR: Missing \'{\' from enum statement."
+#define E110 "SYNTAX ERROR: Expected an enum identifier."
+#define E111 "SYNTAX ERROR: Incomplete enum statement encountered."
+#define E112 "SYNTAX ERROR: Expected integer literal for enum value."
+#define E113 "SYNTAX ERROR: Expected \';\' at the end of enum statement."
 
 /* errors originating in ir_generator */
 #define E063 "Non-integer type in logical expression."

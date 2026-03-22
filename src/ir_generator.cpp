@@ -21,10 +21,14 @@ is hardware architecture independent).
 #include "ir_generator.h"
 
 
-llvm::Type *llvm_type_map(const Data_Type *type,
-                                 llvm::LLVMContext &_context) {
-    if (type->type_kind == TK_PRIMITIVE) {
-        switch (type->name.p) {
+llvm::Type *llvm_type_map(Data_Type *type,
+llvm::LLVMContext &_context) {
+    Data_Type *curr_type = type;
+
+get_llvm_data_type:
+
+    if (curr_type->type_kind == TK_PRIMITIVE) {
+        switch (curr_type->name.p) {
         case T_S8:
         case T_U8:
             return llvm::Type::getInt8Ty(_context);
@@ -50,8 +54,9 @@ llvm::Type *llvm_type_map(const Data_Type *type,
         default:
             return nullptr;
         }
-    } else if (type->type_kind == TK_ALIAS || type->type_kind == TK_ENUM) {
-	return llvm_type_map(type->base_type, _context);
+    } else if (curr_type->type_kind == TK_ALIAS || curr_type->type_kind == TK_ENUM) {
+	curr_type = curr_type->base_type;
+	goto get_llvm_data_type;
     }
 
     // TODO: handle non-primitive types later

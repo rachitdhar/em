@@ -234,7 +234,7 @@ llvm::Value *AST_Function_Definition::generate_ir(LLVM_IR *ir) {
         llvm::Intrinsic::getDeclaration(
             ir->_module,
             llvm::Intrinsic::vastart,
-            { i8_ptr_ty }
+	    { i8_ptr_ty }
         );
 
 	// call va_start
@@ -242,12 +242,12 @@ llvm::Value *AST_Function_Definition::generate_ir(LLVM_IR *ir) {
     }
 
     // emit body
-    bool has_return_expression_in_block = generate_block_ir(ir, block);
+    bool has_terminator_in_block = generate_block_ir(ir, block);
 
     // if return type is void, add a return void instruction
     // (for other types, the return expression should be present
     // in the block itself).
-    if (!has_return_expression_in_block) {
+    if (!has_terminator_in_block) {
 	if (has_variadic_args) emit_va_end(ir);
 
 	if (llvm_return_type->isVoidTy()) ir->_builder->CreateRetVoid();
@@ -291,16 +291,16 @@ llvm::Value *AST_If_Expression::generate_ir(LLVM_IR *ir) {
 
     // emit instructions for _then block
     ir->_builder->SetInsertPoint(_then);
-    bool has_return_expression_in_block = generate_block_ir(ir, block);
-    if (!has_return_expression_in_block)
+    bool has_terminator_in_block = generate_block_ir(ir, block);
+    if (!has_terminator_in_block)
         ir->_builder->CreateBr(_ifend);
     _then = ir->_builder->GetInsertBlock();
 
     // emit instructions for _else block
     _else->insertInto(_f);
     ir->_builder->SetInsertPoint(_else);
-    has_return_expression_in_block = generate_block_ir(ir, block);
-    if (!has_return_expression_in_block)
+    has_terminator_in_block = generate_block_ir(ir, block);
+    if (!has_terminator_in_block)
         ir->_builder->CreateBr(_ifend);
     _else = ir->_builder->GetInsertBlock();
 
@@ -312,9 +312,9 @@ llvm::Value *AST_If_Expression::generate_ir(LLVM_IR *ir) {
 }
 
 llvm::Value *AST_Case_Expression::generate_ir(LLVM_IR *ir) {
-    bool has_return_expression_in_block = generate_block_ir(ir, block);
+    bool has_terminator_in_block = generate_block_ir(ir, block);
 
-    if (!has_return_expression_in_block)
+    if (!has_terminator_in_block)
         ir->_builder->CreateBr(ir->current_switch_end);
 
     return nullptr;
@@ -369,9 +369,9 @@ llvm::Value *AST_Switch_Expression::generate_ir(LLVM_IR *ir) {
 
         ir->_builder->SetInsertPoint(_case_block);
 
-        bool has_return_expression_in_block = generate_block_ir(ir, c->block);
+        bool has_terminator_in_block = generate_block_ir(ir, c->block);
 
-        if (!has_return_expression_in_block)
+        if (!has_terminator_in_block)
             ir->_builder->CreateBr(_switchend);
     }
 
@@ -427,10 +427,10 @@ llvm::Value *AST_For_Expression::generate_ir(LLVM_IR *ir) {
     _forbody->insertInto(f);
     ir->_builder->SetInsertPoint(_forbody);
 
-    bool has_return_expression_in_block = generate_block_ir(ir, block);
+    bool has_terminator_in_block = generate_block_ir(ir, block);
 
     // after the body, jump to increment
-    if (!has_return_expression_in_block)
+    if (!has_terminator_in_block)
         ir->_builder->CreateBr(_forinc);
 
     // increment
@@ -495,10 +495,10 @@ llvm::Value *AST_While_Expression::generate_ir(LLVM_IR *ir) {
     _body->insertInto(f);
     ir->_builder->SetInsertPoint(_body);
 
-    bool has_return_expression_in_block = generate_block_ir(ir, block);
+    bool has_terminator_in_block = generate_block_ir(ir, block);
 
     // jump back to condition
-    if (!has_return_expression_in_block)
+    if (!has_terminator_in_block)
         ir->_builder->CreateBr(_whilecond);
     _body = ir->_builder->GetInsertBlock();
 
@@ -830,11 +830,6 @@ llvm::Value *AST_Jump_Expression::generate_ir(LLVM_IR *ir) {
         throw_ir_error(
             E079);
     }
-
-    llvm::Function *f = ir->_builder->GetInsertBlock()->getParent();
-    auto *jumpend = llvm::BasicBlock::Create(ir->_context, "jumpend", f);
-    ir->_builder->SetInsertPoint(jumpend);
-
     return nullptr; // break and continue don't return any value
 }
 

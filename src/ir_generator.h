@@ -148,10 +148,8 @@ inline bool generate_block_ir(LLVM_IR *ir,
 
             // once return/jump expression is encountered
             // the expressions after it can be ignored.
-            if (expr->expr_type == EXPR_RETURN)
+            if (expr->expr_type == EXPR_RETURN || expr->expr_type == EXPR_JUMP)
                 return true;
-            if (expr->expr_type == EXPR_JUMP)
-                return false;
         }
     }
     return false;

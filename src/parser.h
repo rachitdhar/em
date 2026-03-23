@@ -347,7 +347,7 @@ inline void throw_parser_error(const char *message, Lexer *lexer) {
         exit(1);
     }
 
-    printf("[%s: line %d, position %d] ", tok->file_name.c_str(), tok->line_num,
+    printf("%s(%d,%d): ", get_filename_from_path(tok->file_name).c_str(), tok->line_num,
            tok->position);
     fprintf(stderr, message);
     printf("\n\n");
@@ -357,8 +357,8 @@ inline void throw_parser_error(const char *message, Lexer *lexer) {
     std::string leading_ws = get_leading_whitespace(line);
     int error_pointer_pos = tok->position - leading_ws.size();
 
-    printf("\t%s\n", line.c_str());
-    printf("\t%s%*c\n", leading_ws.c_str(), error_pointer_pos,
+    printf(" %6d | %s\n", tok->line_num, line.c_str());
+    printf(" %6s | %s%*c\n", "", leading_ws.c_str(), error_pointer_pos,
            '^'); // to mark (using ^) the position of the error
 
     exit(1);

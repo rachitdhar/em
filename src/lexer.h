@@ -178,16 +178,25 @@ inline char get_escape_sequence(char c)
     }
 }
 
+inline std::string get_filename_from_path(const std::string& path) {
+    size_t pos = path.find_last_of("/\\");
+
+    if (pos == std::string::npos)
+        return path;
+
+    return path.substr(pos + 1);
+}
+
 // to print error messages
 inline void throw_error(const char *message, const std::string &line,
                         int line_num, int pos, std::string &file_name) {
-    printf("[%s: line %d, position %d] ", file_name.c_str(), line_num, pos);
+    printf("%s(%d,%d): ", get_filename_from_path(file_name).c_str(), line_num, pos);
     fprintf(stderr, message);
     printf("\n\n");
 
     // display the line where error occurred
-    printf("\t%s\n", line.c_str());
-    printf("\t%*c\n", pos + 1,
+    printf(" %6d | %s\n", line_num, line.c_str());
+    printf(" %6s | %*c\n", "", pos + 1,
            '^'); // to mark (using ^) the position of the error
 
     exit(1); // terminate the execution

@@ -1,1 +1,2 @@
 *.em linguist-language=C
+*.h linguist-language=CPP

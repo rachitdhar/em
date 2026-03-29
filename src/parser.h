@@ -167,6 +167,39 @@ inline void print_ast_expression(AST_Expression *ast_expr,
         }
         break;
     }
+    case EXPR_CASE: {
+	auto *expr = (AST_Case_Expression *)ast_expr;
+	print_indentation(indentation_level);
+
+	if (expr->literal != NULL) {
+	    printf("<CASE> (\n");
+	    print_ast_expression(expr->literal, indentation_level + 1);
+	    print_indentation(indentation_level);
+	    printf(") {\n");
+	} else printf("<DEFAULT> {\n");
+
+	for (AST_Expression *e : expr->block) {
+            print_ast_expression(e, indentation_level + 1);
+        }
+	print_indentation(indentation_level);
+	printf("}\n");
+	break;
+    }
+    case EXPR_SWITCH: {
+	auto *expr = (AST_Switch_Expression *)ast_expr;
+	print_indentation(indentation_level);
+	printf("<SWITCH> (\n");
+	print_ast_expression(expr->identifier_or_call, indentation_level + 1);
+	print_indentation(indentation_level);
+	printf(") {\n");
+
+	for (AST_Expression *e : expr->case_list) {
+            print_ast_expression(e, indentation_level + 1);
+        }
+	print_indentation(indentation_level);
+	printf("}\n");
+	break;
+    }
     case EXPR_FOR: {
         auto *expr = (AST_For_Expression *)ast_expr;
         print_indentation(indentation_level);
@@ -290,6 +323,11 @@ inline void print_ast_expression(AST_Expression *ast_expr,
         }
         print_indentation(indentation_level);
         printf("}\n");
+        break;
+    }
+    case EXPR_VARG: {
+	print_indentation(indentation_level);
+        printf("<VARG>\n");
         break;
     }
     default: {

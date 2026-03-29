@@ -168,7 +168,7 @@ struct AST_Switch_Expression : AST_Expression {
     AST_Switch_Expression() : AST_Expression(EXPR_SWITCH) {}
 
     bool has_default_case = false;
-    AST_Expression *identifier_or_call;
+    AST_Expression *identifier_or_call = NULL;
     std::vector<AST_Case_Expression *> case_list;
 
     llvm::Value *generate_ir(LLVM_IR *ir) override;

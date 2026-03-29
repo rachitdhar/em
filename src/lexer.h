@@ -11,6 +11,7 @@
 #include <stack>
 #include <vector>
 #include <stdint.h>
+#include <tracy/Tracy.hpp>
 
 
 //                           Lexer

@@ -7,6 +7,8 @@
 #include "ast.h"
 #include "lexer.h"
 #include "errors.h"
+#include <tracy/Tracy.hpp>
+
 
 // defining precedence levels
 // (from lowest to highest)

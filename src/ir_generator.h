@@ -17,6 +17,7 @@ to help describe what IR instructions are meant to be generated.
 
 #include "ast.h"
 #include "errors.h"
+#include <tracy/Tracy.hpp>
 
 
 // to print an error message, for errors that occur

@@ -1448,6 +1448,8 @@ void parse_enum_definition(Lexer *lexer) {
 
 
 std::vector<AST_Expression *> *parse_tokens(Lexer *lexer) {
+    ZoneScopedS(10); // for tracy profiler
+
     if (lexer->tokens.size() == 0) {
         throw_parser_error(E060, lexer);
     }

@@ -2,6 +2,8 @@
 
 set OPT_FLAG=/O2
 set DEBUG_FLAG=
+set TRACY_PROFILE_FLAGS=
+set TRACY_CLIENT_CPP=
 
 if "%1"=="Clean" (
 	del /Q bin\emc.exe bin\emc.ilk bin\emc.pdb
@@ -12,6 +14,8 @@ if "%1"=="Clean" (
 if "%1"=="Debug" (
    set OPT_FLAG=/Od
    set DEBUG_FLAG=/Zi /DEBUG
+   set TRACY_PROFILE_FLAGS=/DTRACY_ENABLE /DTRACY_CALLSTACK=10 /DTRACY_ALLOC /DTRACY_SAMPLING /DTRACY_ON_DEMAND
+   set TRACY_CLIENT_CPP="D:\softwares\tracy\public\TracyClient.cpp"
 )
 
 echo Build type: %1
@@ -25,8 +29,10 @@ clang-cl ^
 /D__STDC_FORMAT_MACROS ^
 /D__STDC_LIMIT_MACROS ^
 %DEBUG_FLAG% ^
+%TRACY_PROFILE_FLAGS% ^
 /I "D:\softwares\clang+llvm-21.1.8-x86_64-pc-windows-msvc\include" ^
-src/lexer.cpp src/parser.cpp src/ir_generator.cpp src/dsa.cpp src/linker.cpp src/main.cpp ^
+/I "D:\softwares\tracy\public" ^
+src/lexer.cpp src/parser.cpp src/ir_generator.cpp src/dsa.cpp src/linker.cpp src/main.cpp %TRACY_CLIENT_CPP% ^
 /link ^
 ntdll.lib ^
 /LIBPATH:"D:\softwares\clang+llvm-21.1.8-x86_64-pc-windows-msvc\lib" ^

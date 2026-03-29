@@ -906,6 +906,8 @@ llvm::Value *generate_ir__global_declaration(LLVM_IR *ir,
 // this emits the llvm IR into the module.
 LLVM_IR *emit_llvm_ir(std::vector<AST_Expression *> *ast,
                       const char *file_name) {
+    ZoneScopedS(10); // for tracy profiler
+
     auto *_context = new llvm::LLVMContext; // creating a context for this file
     auto *_module =
         new llvm::Module(file_name, *_context); // container for functions/vars

@@ -996,6 +996,8 @@ void generate_tokens(Lexer *lexer, bool *inside_multiline_comment) {
 
 // reads the file line by line and generates tokens
 Lexer *perform_lexical_analysis(const char *file_name) {
+    ZoneScopedS(10); // for tracy profiler
+
     auto *lexer = new Lexer;
 
     std::ifstream file(file_name);

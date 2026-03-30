@@ -7,7 +7,7 @@
 
 <body>
 
-<div style="width:600px; margin:auto;">
+<div style="width:700px; margin-left: 50px; text-align: justify;">
 
 <a id="top"></a>
 
@@ -18,7 +18,7 @@ Em is a systems programming language with a C-style syntax that emphasizes clean
 </p>
 
 <p>
-Last updated: March 8, 2026
+Last updated: March 31, 2026
 </p>
 
 <div>
@@ -71,12 +71,15 @@ Last updated: March 8, 2026
     <li><a href="#if-else">8.8 If-Else Statements</a></li>
     <li><a href="#for-loop">8.9 For Loops</a></li>
     <li><a href="#while-loop">8.10 While Loops</a></li>
-    <li><a href="#break-continue">8.11 Break and Continue</a></li>
-    <li><a href="#return">8.12 Return Statements</a></li>
-    <li><a href="#func-def">8.13 Function Definitions</a></li>
-    <li><a href="#func-proto">8.14 Function Prototypes</a></li>
-    <li><a href="#varg">8.15 Variadic Arguments</a></li>
-    <li><a href="#blocks">8.16 Block Expressions</a></li>
+    <li><a href="#switch-case">8.11 Switch-Case Statements</a></li>
+    <li><a href="#break-continue">8.12 Break and Continue</a></li>
+    <li><a href="#return">8.13 Return Statements</a></li>
+    <li><a href="#typedef">8.14 Typedefs</a></li>
+    <li><a href="#enum">8.15 Enums</a></li>
+    <li><a href="#func-def">8.16 Function Definitions</a></li>
+    <li><a href="#func-proto">8.17 Function Prototypes</a></li>
+    <li><a href="#varg">8.18 Variadic Arguments</a></li>
+    <li><a href="#blocks">8.19 Block Expressions</a></li>
     </ul>
 </li>
 <li><a href="#preprocessor">9 Preprocessor Directives</a>
@@ -112,11 +115,10 @@ Copyright © 2025 Rachit Dhar. Licensed under the Apache License 2.0.
 <h3 id="releases">1.2 Releases / Downloads</h3>
 
 <p>
-The Em programming language is currently in early development. There are no official releases available yet, but the initial release is expected soon.
+The Em compiler is currently in early development and there is no stable release. However, alpha releases are now available in case anyone would like to play around with the compiler, or even test it on their own.
 </p>
-
 <p>
-Please check <a href="https://github.com/rachitdhar/em/releases">https://github.com/rachitdhar/em/releases</a> periodically for future releases.
+Please check <a href="https://github.com/rachitdhar/em/releases">https://github.com/rachitdhar/em/releases</a> for releases of the Em compiler.
 </p>
 
 <hr>
@@ -154,6 +156,26 @@ All specified files will be compiled and linked together into a single executabl
 <p>
 Em uses header files with the <code>.emh</code> extension to provide declarations and function prototypes. Header files are included in source files using the <code>#include</code> preprocessor directive. Associated compiled header libraries with <code>.bc</code> extension are automatically linked during compilation when standard library headers are included. This allows code to be organized into reusable libraries.
 </p>
+
+<h4>Standard C Runtime Linking</h4>
+
+<p>
+Em supports linking with the standard C runtime library, allowing the use of standard C library functions. While dedicated Em headers are being developed for common functions, you can declare function prototypes manually to use standard C library functions such as <code>strlen</code>, <code>puts</code>, <code>printf</code>, and others.
+</p>
+
+<p>
+<strong>Example:</strong>
+</p>
+
+<pre>// Declare function prototype for strlen
+u64 strlen(string s);
+
+// Use the function
+int main() {
+    string msg = "hello";
+    u64 len = strlen(msg);
+    return 0;
+}</pre>
 
 <h3 id="compiler-flags">2.4 Compiler Flags</h3>
 
@@ -195,6 +217,10 @@ Compiler flags are specified after the list of files to compile. A flag starts w
 <tr>
     <td><code>-benchmark</code></td>
     <td>Prints compilation performance metrics</td>
+</tr>
+<tr>
+    <td><code>-O1 / -O2 / -O3</code></td>
+    <td>Optimization levels (if not specified, taken as -O0)</td>
 </tr>
 </table>
 
@@ -470,7 +496,11 @@ The following words are reserved keywords in Em and cannot be used as identifier
 </tr>
 <tr>
     <td>Control Flow</td>
-    <td><code>if</code>, <code>else</code>, <code>for</code>, <code>while</code></td>
+    <td><code>if</code>, <code>else</code>, <code>for</code>, <code>while</code>, <code>switch</code>, <code>case</code></td>
+</tr>
+<tr>
+    <td>Type Definitions</td>
+    <td><code>typedef</code>, <code>enum</code></td>
 </tr>
 <tr>
     <td>Jump Statements</td>
@@ -1149,7 +1179,65 @@ while (y &lt; 5) {
 The while loop continues executing the body block as long as the condition is true. If the condition is initially false, the body never executes.
 </p>
 
-<h3 id="break-continue">8.11 Break and Continue Statements</h3>
+<h3 id="switch-case">8.11 Switch-Case Statements</h3>
+
+<p>
+Switch-case statements provide a way to execute different code blocks based on different conditions. Currently, switch-case works with integer values (string cases are planned for future support):
+</p>
+
+<pre>int x = 2;
+
+switch (x) {
+    case 1: // executed if x equals 1
+    case 2: // executed if x equals 2
+    case 3: // executed if x equals 3
+    case:  // default case (note: no value after 'case')
+        // executed if x doesn't match any case
+}</pre>
+
+If a case block has multiple statements, it MUST be wrapped inside curly braces.
+Also, note that case statements DO NOT require a break statement at the end of the block (unlike C/C++).
+
+<pre>
+switch (x) {
+    case 1: {
+        // some code for case 1
+    }
+    case 2: {
+        // some code for case 2
+    }
+    case 3: {
+        // some code for case 3
+    }
+    case: {
+        // default case code
+    }
+}
+</pre>
+
+<p>
+<strong>Syntax:</strong>
+</p>
+
+<pre>switch (&lt;expression&gt;) {
+    case &lt;value&gt;:
+        &lt;statements&gt;
+    case:
+        &lt;default statements&gt;
+}</pre>
+
+<p>
+Key points:
+<ul>
+<li>The expression is evaluated once and compared with each case value</li>
+<li>If a match is found, execution starts at that case</li>
+<li>The default case is specified with just <code>case:</code> (no value)</li>
+<li>The default case is optional</li>
+<li>Currently only works with integer cases; string cases are planned for future versions</li>
+</ul>
+</p>
+
+<h3 id="break-continue">8.12 Break and Continue Statements</h3>
 
 <p>
 <code>break</code> and <code>continue</code> are jump statements used within loops:
@@ -1170,13 +1258,13 @@ The while loop continues executing the body block as long as the condition is tr
 </p>
 
 <pre>for (int i = 0; i &lt; 10; i++) {
-    if (i %% 2 == 0) {
+    if (i % 2 == 0) {
         continue;  // skips even numbers
     }
     // process odd numbers
 }</pre>
 
-<h3 id="return">8.12 Return Statements</h3>
+<h3 id="return">8.13 Return Statements</h3>
 
 <p>
 A return statement exits a function and optionally returns a value:
@@ -1210,7 +1298,92 @@ return &lt;value&gt;;  // returns a value</pre>
 The return type of the value must match the function's declared return type.
 </p>
 
-<h3 id="func-def">8.13 Function Definitions</h3>
+<h3 id="typedef">8.14 Typedefs</h3>
+
+<p>
+Typedefs allow you to create aliases for existing types. Typedefs can only be defined in global scope:
+</p>
+
+<pre>// Create type aliases
+typedef s32 my_int;
+typedef u8* byte_ptr;
+typedef float temperature;
+
+my_int x = 42;
+byte_ptr ptr;
+temperature t = 98.6;</pre>
+
+<p>
+<strong>Syntax:</strong>
+</p>
+
+<pre>typedef &lt;existing_type&gt; &lt;new_name&gt;;</pre>
+
+<p>
+Key points:
+<ul>
+<li>Typedefs must be declared in global scope (at the top level of the program)</li>
+<li>Once defined, the new type name can be used anywhere the original type could be used</li>
+<li>Typedefs are useful for improving code readability and creating platform-independent types</li>
+<li>You can create type aliases for primitive types, pointer types, and other type constructs</li>
+</ul>
+</p>
+
+<h3 id="enum">8.15 Enums</h3>
+
+<p>
+Enumerations define a set of named integer constants. Enums can only be defined in global scope:
+</p>
+
+<pre>// Basic enum
+enum Color {
+    RED = 0,
+    GREEN = 1,
+    BLUE = 2
+};
+
+// Enum with automatic values (starting at 0)
+enum Direction {
+    NORTH,
+    SOUTH,
+    EAST,
+    WEST
+};
+
+// More complex enum value assignment
+enum Status {
+    OK = 1,
+    ERROR, // automatically assigned 2
+    WARNING = 4,
+    UNKNOWN // automatically assigned 5
+};
+
+// Using enums
+Color myColor = RED;
+Direction dir = NORTH;</pre>
+
+<p>
+<strong>Syntax:</strong>
+</p>
+
+<pre>enum &lt;enum_name&gt; {
+    &lt;member1&gt;,
+    &lt;member2&gt; = &lt;value&gt;,
+    ...
+}</pre>
+
+<p>
+Key points:
+<ul>
+<li>Enums must be declared in global scope (at the top level of the program)</li>
+<li>Enum members are assigned integer values (automatically incrementing from 0 if not specified)</li>
+<li>You can explicitly assign values to enum members</li>
+<li>Enum members are accessed using the dot notation: <code>EnumName.member</code></li>
+<li>Enums provide a way to create meaningful names for numeric values, improving code readability</li>
+</ul>
+</p>
+
+<h3 id="func-def">8.16 Function Definitions</h3>
 
 <p>
 A function definition declares a function that can be called elsewhere in the program:
@@ -1264,7 +1437,7 @@ A function definition includes:
 </ul>
 </p>
 
-<h3 id="func-proto">8.14 Function Prototypes</h3>
+<h3 id="func-proto">8.17 Function Prototypes</h3>
 
 <p>
 A function prototype declares a function without implementing its body. This is useful for forward declarations and for declaring functions that will be defined elsewhere (e.g., in another file or in a header):
@@ -1295,7 +1468,7 @@ void printMessage() {
 Function prototypes allow you to use a function before its full definition appears in the code, or to declare interfaces for functions defined elsewhere.
 </p>
 
-<h3 id="varg">8.15 Variadic Arguments</h3>
+<h3 id="varg">8.18 Variadic Arguments</h3>
 
 <p>
 Functions can accept a variable number of arguments using the <code>varg</code> keyword to access them:
@@ -1327,7 +1500,7 @@ int result2 = sum(3, 1, 2, 3);    // sum of 1, 2, and 3</pre>
 The <code>varg</code> keyword is used within the function to retrieve each variadic argument. The function must know or determine how many variadic arguments were passed.
 </p>
 
-<h3 id="blocks">8.16 Block Expressions</h3>
+<h3 id="blocks">8.19 Block Expressions</h3>
 
 <p>
 Em supports scoped block expressions that create a new scope for variables:

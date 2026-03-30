@@ -147,3 +147,9 @@ assumed, it shouldn't matter which one you installed, as they are all the same L
 Anyways, long story short, now I can actually build using the Visual Studio default compiler. Of course, I wrote a separate build script
 for this purpose, in build-msvc.bat, which I configured Visual Studio to use as part of its Makefile project configuration. It took a
 few hours figuring out how I am supposed to add the flags for linking and stuff, but now it seems to be working fine.
+
+## Profiling using Tracy
+
+In order to check for performance bottlenecks, I am using the Tracy profiler. For this I have basically just added the necessary flags in the build script for Debug builds, and added a ZoneScopedS function call in certain key places in the frontend (which is the place I can control the most at the moment).
+
+Due to this, you would need to have the Tracy repo downloaded, and set the path for it in the script, in case you want to build the compiler yourself. Alternatively, you could just remove the flag for tracy and remove the cpp file path for the TracyClient.cpp from the list of files being compiled. This is the simplest way if you just want to build the project without any plan for running a profiler on it.
